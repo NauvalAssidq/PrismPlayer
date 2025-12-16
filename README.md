@@ -5,6 +5,10 @@ Prism Player is an Android offline music player built with Jetpack Compose. It f
 ## Screenshot preview
 <p align="center">
     <img src="docs/screenshots/01-home.jpeg" alt="Screenshot 1" width="200" style="border-radius:26px;"/>
+    <img src="docs/screenshots/02-library.jpeg" alt="Screenshot 1" width="200" style="border-radius:26px;"/>
+    <img src="docs/screenshots/03-player.jpeg" alt="Screenshot 1" width="200" style="border-radius:26px;"/>
+    <img src="docs/screenshots/04-queue.jpeg" alt="Screenshot 1" width="200" style="border-radius:26px;"/>
+    <img src="docs/screenshots/05-equalizer.jpeg" alt="Screenshot 1" width="200" style="border-radius:26px;"/>
 </p>
 
 ## Features
