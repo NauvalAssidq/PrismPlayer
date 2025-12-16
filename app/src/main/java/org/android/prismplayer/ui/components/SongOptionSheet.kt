@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -173,6 +174,40 @@ private fun OptionItem(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White.copy(0.9f)
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun SongOptionSheetPreview() {
+    MaterialTheme{
+        val mockSongs = Song(
+            id = 1,
+            title = "Midnight City",
+            artist = "M83",
+            albumName = "Hurry Up, We're Dreaming",
+            albumId = 0,
+            duration = 240_000L,
+            path = "",
+            folderName = "Music",
+            dateAdded = 0L,
+            songArtUri = null,
+            year = 1993,
+            genre = "Rock",
+            trackNumber = 12
+        )
+        
+        SongOptionSheet(
+            song = mockSongs,
+            bottomPadding = 60.dp,
+            onPlayNext = {},
+            onAddToQueue = {},
+            onAddToPlaylist = {},
+            onGoToAlbum = {},
+            onGoToArtist = {},
+            onEdit = {},
+            onShare = {}
         )
     }
 }

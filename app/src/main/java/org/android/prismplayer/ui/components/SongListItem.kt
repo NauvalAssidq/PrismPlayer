@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import org.android.prismplayer.data.model.Song
@@ -93,7 +94,7 @@ fun SongListItem(
             Box(
                 modifier = Modifier
                     .size(56.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFF252525))
             ) {
                 if (!song.songArtUri.isNullOrBlank()) {
@@ -181,4 +182,41 @@ private fun formatDuration(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return String.format("%d:%02d", minutes, seconds)
+}
+
+@Preview(showBackground = false)
+@Composable
+fun SongListItemPreview() {
+    MaterialTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF050505))
+        ) {
+            SongListItem(
+                song = Song(
+                    id = 1L,
+                    title = "Starboy",
+                    artist = "The Weeknd",
+                    duration = 230_000L,
+                    albumName = "Starboy",
+                    albumId = 10L,
+                    path = "/storage/emulated/0/Music/TheWeeknd/Starboy.mp3",
+                    folderName = "Music",
+                    dateAdded = System.currentTimeMillis() / 1000,
+                    songArtUri = null,
+                    year = 2016,
+                    trackNumber = 1,
+                    genre = "Pop",
+                    dateModified = System.currentTimeMillis() / 1000
+                ),
+                isActive = true,
+                isPlaying = true,
+                index = 1,
+                showDuration = true,
+                onClick = {},
+                onMoreClick = {}
+            )
+        }
+    }
 }

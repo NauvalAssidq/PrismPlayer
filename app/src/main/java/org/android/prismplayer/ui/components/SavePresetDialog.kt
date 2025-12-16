@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -101,6 +102,24 @@ fun SavePresetDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun SavePresetDialogPreview() {
+    MaterialTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF050505))
+            .blur(20.dp)
+        ) {
+            SavePresetDialog(
+                onDismiss = {},
+                onSave = {}
+            )
         }
     }
 }

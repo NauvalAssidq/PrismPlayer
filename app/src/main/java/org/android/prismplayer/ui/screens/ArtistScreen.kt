@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +29,8 @@ import coil.compose.AsyncImage
 import org.android.prismplayer.data.model.Album
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.SongListItem
+import androidx.compose.ui.graphics.Brush
+
 
 @Composable
 fun ArtistScreen(
@@ -119,6 +120,15 @@ fun ArtistHeroHeader(
     onPlayClick: () -> Unit,
     onShuffleClick: () -> Unit
 ) {
+    val backgroundBrush = Brush.verticalGradient (
+        colors = listOf(
+            Color.White.copy(alpha = 0.10f),
+            Color.White.copy(alpha = 0.03f)
+        )
+    )
+
+
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -143,7 +153,6 @@ fun ArtistHeroHeader(
             )
         }
 
-        // Back Button
         IconButton(
             onClick = onBack,
             modifier = Modifier
@@ -151,7 +160,7 @@ fun ArtistHeroHeader(
                 .padding(16.dp)
                 .align(Alignment.TopStart)
                 .clip(CircleShape)
-                .background(Color.Black.copy(0.3f))
+                .background(backgroundBrush)
                 .border(1.dp, Color.White.copy(0.1f), CircleShape)
         ) {
             Icon(Icons.Rounded.ArrowBack, null, tint = Color.White)
@@ -162,7 +171,6 @@ fun ArtistHeroHeader(
                 .align(Alignment.BottomStart)
                 .padding(horizontal = 24.dp, vertical = 24.dp)
         ) {
-            // Row: Avatar + Info
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -230,7 +238,7 @@ fun ArtistHeroHeader(
                         contentColor = Color.Black
                     ),
                     shape = RoundedCornerShape(50),
-                    contentPadding = PaddingValues(horizontal = 24.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 24.dp),
                     modifier = Modifier.height(48.dp)
                 ) {
                     Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(20.dp))
@@ -242,8 +250,9 @@ fun ArtistHeroHeader(
                     modifier = Modifier
                         .height(48.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(Color.White.copy(0.1f))
+                        .background(backgroundBrush)
                         .clickable { onShuffleClick() }
+                        .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(50))
                         .padding(horizontal = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {

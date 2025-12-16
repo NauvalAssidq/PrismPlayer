@@ -1,6 +1,7 @@
 package org.android.prismplayer.ui
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -25,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import androidx.lifecycle.DEFAULT_ARGS_KEY
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -61,6 +65,7 @@ fun MainLayout(
     onEditSong: (Long) -> Unit,
     onReselectFolders: () -> Unit
 ) {
+    val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
     var currentTab by rememberSaveable { mutableStateOf(PrismTab.HOME) }
     var isFullPlayerOpen by remember { mutableStateOf(false) }
@@ -76,11 +81,32 @@ fun MainLayout(
     var optionsState by remember { mutableStateOf<Pair<Song, SheetContext>?>(null) }
     val searchQuery by homeViewModel.searchQuery.collectAsState()
     val searchResults by homeViewModel.searchResults.collectAsState()
-    var selectedArtist by remember { mutableStateOf<String?>(null) }
-    var selectedAlbumId by remember { mutableStateOf<Long?>(null) }
-    var isEqualizerOpen by remember { mutableStateOf(false) }
+    var selectedArtist by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedAlbumId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var isEqualizerOpen by rememberSaveable { mutableStateOf(false) }
     val globalBottomPadding = if (currentSong != null) 146.dp else 84.dp
     val allSongs by homeViewModel.allSongs.collectAsState()
+
+
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val activity = context as? android.app.Activity
+                val intent = activity?.intent
+
+                if (intent?.getBooleanExtra("OPEN_FULL_PLAYER", false) == true) {
+                    if (currentSong != null) {
+                        isFullPlayerOpen = true
+                    }
+                    intent.removeExtra("OPEN_FULL_PLAYER")
+                }
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(homeViewModel.allSongs) {
         audioViewModel.setLibrary(homeViewModel.allSongs.value)
@@ -186,7 +212,7 @@ fun MainLayout(
                             list.shuffled().first(), list.shuffled()
                         )
                     },
-                    onSongMoreClick = { song -> optionsState = song to SheetContext.SEARCH },
+                    onSongMoreClick = { song -> optionsState = song to SheetContext.ARTIST },
                     bottomPadding = globalBottomPadding,
                 )
             }
@@ -231,7 +257,6 @@ fun MainLayout(
                     onBack = { isEqualizerOpen = false }
                 )
             }
-
 
             AnimatedVisibility(
                 visible = isFullPlayerOpen,
@@ -291,6 +316,7 @@ fun MainLayout(
                             {
                                 val artistName = song.artist
                                 optionsState = null
+                                selectedAlbumId = null
                                 selectedArtist = artistName
                             }
                         } else null,

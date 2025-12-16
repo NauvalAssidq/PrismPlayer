@@ -66,7 +66,7 @@ fun CustomBottomSheet(
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(
-            initialOffsetY = { it }, // Start from bottom
+            initialOffsetY = { it },
             animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f)
         ),
         exit = slideOutVertically(

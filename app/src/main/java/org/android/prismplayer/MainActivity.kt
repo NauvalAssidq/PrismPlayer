@@ -1,6 +1,7 @@
 package org.android.prismplayer
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color as AndroidColor
 import android.os.Bundle
 import android.provider.MediaStore
@@ -44,6 +45,11 @@ class MainActivity : ComponentActivity() {
                 PrismNavigation()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 }
 
