@@ -48,7 +48,7 @@ class ArtistViewModel(
         ArtistUiState(
             artistName = artistName,
             heroArtUri = heroImage,
-            songs = artistSongs.sortedByDescending { it.year }, // Newest first
+            songs = artistSongs.sortedByDescending { it.year },
             albums = artistAlbums,
             totalDuration = durationStr,
             isLoading = false

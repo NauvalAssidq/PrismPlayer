@@ -87,8 +87,6 @@ fun MainLayout(
     val globalBottomPadding = if (currentSong != null) 146.dp else 84.dp
     val allSongs by homeViewModel.allSongs.collectAsState()
 
-
-
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -108,8 +106,10 @@ fun MainLayout(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(homeViewModel.allSongs) {
-        audioViewModel.setLibrary(homeViewModel.allSongs.value)
+    LaunchedEffect(allSongs) {
+        if (allSongs.isNotEmpty()) {
+            audioViewModel.setLibrary(allSongs)
+        }
     }
 
     BackHandler(enabled = isFullPlayerOpen) { isFullPlayerOpen = false }

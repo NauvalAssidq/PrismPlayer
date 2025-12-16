@@ -89,8 +89,6 @@ fun SplashScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-
-        // Ambient glow
         Canvas(modifier = Modifier.fillMaxSize()) {
             val centerTop = Offset(size.width / 2, -120f)
 
@@ -167,7 +165,6 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Loader
             Box(
                 modifier = Modifier
                     .width(120.dp)

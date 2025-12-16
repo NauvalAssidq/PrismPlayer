@@ -31,10 +31,9 @@ import java.util.Locale
 
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private var player: Player? = null
-
     private var librarySongs: List<Song> = emptyList()
 
-    // State Flow
+    // --- State Flows ---
     private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
     val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
 
@@ -52,33 +51,28 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentTime = MutableStateFlow(0L)
     val currentTime: StateFlow<Long> = _currentTime.asStateFlow()
 
-    // Control
     private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
 
     private val _isShuffleEnabled = MutableStateFlow(false)
     val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
+    private val _isAutoplayEnabled = MutableStateFlow(false)
+    val isAutoplayEnabled: StateFlow<Boolean> = _isAutoplayEnabled.asStateFlow()
 
-    // Equalizer
+    // --- Equalizer State ---
     private var equalizer: Equalizer? = null
     private val eqPrefs = EqPreferences(application)
-
     private val _eqBands = MutableStateFlow<List<EqBand>>(emptyList())
     val eqBands = _eqBands.asStateFlow()
-
     private val _eqEnabled = MutableStateFlow(false)
     val eqEnabled = _eqEnabled.asStateFlow()
-
     private val _presets = MutableStateFlow<List<EqPreset>>(emptyList())
     val presets = _presets.asStateFlow()
-
     private val _currentPresetName = MutableStateFlow("Custom")
     val currentPresetName = _currentPresetName.asStateFlow()
 
     private var isSeeking = false
-
     private var progressJob: Job? = null
-
 
     init {
         val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
@@ -125,7 +119,9 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 syncCurrentSongFromMediaItem(mediaItem)
-                ensureQueueContinuity()
+                if (_isAutoplayEnabled.value) {
+                    autoPlay()
+                }
             }
             override fun onRepeatModeChanged(repeatMode: Int) {
                 _repeatMode.value = repeatMode
@@ -137,12 +133,11 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         })
     }
 
-    private fun ensureQueueContinuity() {
+    private fun autoPlay() {
         val p = player ?: return
         val currentQ = _queue.value
         if (currentQ.isEmpty() || librarySongs.isEmpty()) return
         val currentIndex = p.currentMediaItemIndex
-
         val threshold = currentQ.size - 2
 
         if (currentIndex >= threshold) {
@@ -150,7 +145,8 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             val candidates = librarySongs.filter { it.id != currentId }
 
             if (candidates.isNotEmpty()) {
-                val newSongs = candidates.asSequence().shuffled().take(5).toList()
+                val batchSize = currentQ.size.coerceIn(5, 50)
+                val newSongs = candidates.shuffled().take(batchSize)
                 val newItems = newSongs.map { QueueItem(song = it) }
                 _queue.value = currentQ + newItems
                 p.addMediaItems(newItems.map { it.toMediaItem() })
@@ -160,34 +156,28 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun syncCurrentSongFromMediaItem(mediaItem: MediaItem?) {
         if (mediaItem == null) return
-
         val queueId = mediaItem.mediaId
-
         val item = _queue.value.find { it.queueId == queueId }
-
         if (item != null) {
             _currentSong.value = item.song
             _currentQueueId.value = item.queueId
         }
     }
 
-
     fun playSong(song: Song, contextList: List<Song> = emptyList()) {
         val p = player ?: return
-
         val safeList = contextList.ifEmpty { listOf(song) }
         val newQueue = safeList.map { QueueItem(song = it) }
-
         _queue.value = newQueue
 
-        val targetItem = newQueue.firstOrNull { it.song.id == song.id } ?: newQueue.first()
+        val targetIndex = newQueue.indexOfFirst { it.song.id == song.id }.coerceAtLeast(0)
+
+        val targetItem = newQueue[targetIndex]
         _currentSong.value = targetItem.song
         _currentQueueId.value = targetItem.queueId
 
         val mediaItems = newQueue.map { it.toMediaItem() }
-        val startIndex = newQueue.indexOf(targetItem).coerceAtLeast(0)
-
-        p.setMediaItems(mediaItems, startIndex, 0L)
+        p.setMediaItems(mediaItems, targetIndex, 0L)
         p.prepare()
         p.play()
 
@@ -196,27 +186,45 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun commitReordering() {
+    fun addToQueue(song: Song) {
+        val newItem = QueueItem(song = song)
+        _queue.value = _queue.value + newItem
+        player?.addMediaItem(newItem.toMediaItem())
+    }
+
+    fun playNext(song: Song) {
         val p = player ?: return
-        val currentQ = _queue.value
-        if (currentQ.isEmpty()) return
-        val currentQueueId = _currentQueueId.value
-        val newIndex = currentQ.indexOfFirst { it.queueId == currentQueueId }.coerceAtLeast(0)
-        val currentPos = p.currentPosition
-        p.setMediaItems(currentQ.map { it.toMediaItem() }, newIndex, currentPos)
+        val newItem = QueueItem(song = song)
+        val currentIndex = p.currentMediaItemIndex
+        val nextIndex = currentIndex + 1
+
+        val currentQ = _queue.value.toMutableList()
+        currentQ.add(nextIndex.coerceAtMost(currentQ.size), newItem)
+        _queue.value = currentQ
+
+        p.addMediaItem(nextIndex.coerceAtMost(p.mediaItemCount), newItem.toMediaItem())
+    }
+
+    fun removeSongFromQueue(song: Song) {
+        val currentQueue = _queue.value.toMutableList()
+        val index = currentQueue.indexOfFirst { it.song.id == song.id }
+
+        if (index != -1) {
+            player?.removeMediaItem(index)
+            currentQueue.removeAt(index)
+            _queue.value = currentQueue
+        }
     }
 
     fun playQueueItem(item: QueueItem) {
         val index = _queue.value.indexOfFirst { it.queueId == item.queueId }
-
         if (index != -1) {
             player?.seekTo(index, 0L)
-            if (player?.isPlaying == false) {
-                player?.play()
-            }
+            if (player?.isPlaying == false) player?.play()
         }
     }
 
+    // --- Standard Player Controls ---
     fun togglePlayPause() {
         val p = player ?: return
         if (p.isPlaying) p.pause() else p.play()
@@ -227,6 +235,10 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         p.shuffleModeEnabled = !p.shuffleModeEnabled
     }
 
+    fun toggleAutoplay() {
+        _isAutoplayEnabled.value = !_isAutoplayEnabled.value
+    }
+
     fun toggleRepeat() {
         val p = player ?: return
         val nextMode = when (p.repeatMode) {
@@ -235,6 +247,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             else -> Player.REPEAT_MODE_OFF
         }
         p.repeatMode = nextMode
+        _repeatMode.value = nextMode
     }
 
     fun seekTo(fraction: Float) {
@@ -270,45 +283,9 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateQueue(newSongs: List<Song>) {
-        val p = player ?: return
-        if (newSongs.isEmpty()) return
-
-        val newQueueItems = newSongs.map { QueueItem(song = it) }
-        _queue.value = newQueueItems
-        val currentId = _currentSong.value?.id
-        val newIndex = newSongs.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
-
-        val targetItem = newQueueItems[newIndex]
-        _currentSong.value = targetItem.song
-        _currentQueueId.value = targetItem.queueId
-
-        p.setMediaItems(newQueueItems.map { it.toMediaItem() }, newIndex, p.currentPosition)
-    }
-
-    fun reorderQueue(newQueue: List<QueueItem>) {
-        val p = player ?: return
-        val currentQ = _queue.value
-
-        _queue.value = newQueue
-
-        if (currentQ.size == newQueue.size && currentQ.toSet() == newQueue.toSet()) {
-            val currentQueueId = _currentQueueId.value
-            val newIndex = newQueue.indexOfFirst { it.queueId == currentQueueId }.coerceAtLeast(0)
-            val currentPos = p.currentPosition
-
-            p.setMediaItems(newQueue.map { it.toMediaItem() }, newIndex, currentPos)
-        } else {
-            val currentQueueId = _currentQueueId.value
-            val newIndex = newQueue.indexOfFirst { it.queueId == currentQueueId }.coerceAtLeast(0)
-            p.setMediaItems(newQueue.map { it.toMediaItem() }, newIndex, p.currentPosition)
-        }
-    }
-
     fun moveQueueItem(fromIndex: Int, toIndex: Int) {
         val currentQ = _queue.value.toMutableList()
         val p = player ?: return
-
         if (fromIndex in currentQ.indices && toIndex in currentQ.indices) {
             val item = currentQ.removeAt(fromIndex)
             currentQ.add(toIndex, item)
@@ -317,23 +294,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addToQueue(song: Song) {
-        val newItem = QueueItem(song = song)
-        _queue.value = _queue.value + newItem
-        player?.addMediaItem(newItem.toMediaItem())
-    }
-
-    fun removeSongFromQueue(song: Song) {
-        val currentQueue = _queue.value.toMutableList()
-        val index = currentQueue.indexOfFirst { it.song.id == song.id }
-
-        if (index != -1) {
-            player?.removeMediaItem(index)
-            currentQueue.removeAt(index)
-            _queue.value = currentQueue
-        }
-    }
-
+    // --- Helpers ---
     private fun getMimeType(path: String): String {
         return when (path.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
             "mp3" -> "audio/mpeg"
@@ -351,7 +312,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
             song.id
         )
-
         val metadata = MediaMetadata.Builder()
             .setTitle(song.title)
             .setArtist(song.artist)
@@ -369,8 +329,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             .build()
     }
 
-    //Equalizer
-
+    // --- Equalizer Logic ---
     fun setupEqualizer(audioSessionId: Int) {
         try {
             if (equalizer != null) return
@@ -380,38 +339,21 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             eq.enabled = savedEnabledState
             _eqEnabled.value = savedEnabledState
             loadPresets(equalizer?.numberOfBands?.toInt() ?: 5)
-
             loadEqBands(eq)
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     private fun loadEqBands(eq: Equalizer) {
         val min = eq.bandLevelRange[0]
         val max = eq.bandLevelRange[1]
         val numBands = eq.numberOfBands
-
         val bands = mutableListOf<EqBand>()
-
         for (i in 0 until numBands) {
             val idx = i.toShort()
             val hardwareLevel = eq.getBandLevel(idx)
             val savedLevel = eqPrefs.getBandLevel(idx, hardwareLevel)
-            if (savedLevel != hardwareLevel) {
-                eq.setBandLevel(idx, savedLevel)
-            }
-
-            bands.add(
-                EqBand(
-                    id = idx,
-                    centerFreq = eq.getCenterFreq(idx),
-                    level = savedLevel,
-                    minLevel = min,
-                    maxLevel = max
-                )
-            )
+            if (savedLevel != hardwareLevel) eq.setBandLevel(idx, savedLevel)
+            bands.add(EqBand(idx, eq.getCenterFreq(idx), savedLevel, min, max))
         }
         _eqBands.value = bands
     }
@@ -425,11 +367,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
         eqPrefs.saveBandLevel(bandId, level)
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                equalizer?.setBandLevel(bandId, level)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            try { equalizer?.setBandLevel(bandId, level) } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
@@ -442,8 +380,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadPresets(numBands: Int) {
         val flat = EqPreset("Flat", List(numBands) { 0 })
         val bass = EqPreset("Bass", List(numBands) { if(it < 2) 600.toShort() else 0.toShort() })
-        val vocal = EqPreset("Vocal",
-            List(numBands) { if(it in 1..3) 500.toShort() else -200.toShort() } as List<Short>)
+        val vocal = EqPreset("Vocal", List(numBands) { if(it in 1..3) 500.toShort() else -200.toShort() } as List<Short>)
         val treble = EqPreset("Treble", List(numBands) { if(it > 3) 600.toShort() else 0.toShort() })
         val defaultPresets = listOf(flat, bass, vocal, treble)
         val savedPresets = eqPrefs.loadCustomPresets()

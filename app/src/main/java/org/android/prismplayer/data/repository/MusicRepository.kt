@@ -22,8 +22,6 @@ class MusicRepository(
     suspend fun importSongsFromFolders(folderPaths: List<String>) = withContext(Dispatchers.IO) {
         val songsToInsert = mutableListOf<Song>()
         val authorizedPaths = folderPaths.map { it.trimEnd('/') }
-
-        // 1. Build Genre Map
         val genreMap = HashMap<Long, String>()
         try {
             val genreProjection = arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME)
@@ -44,7 +42,6 @@ class MusicRepository(
             }
         } catch (e: Exception) { e.printStackTrace() }
 
-        // 2. Scan Songs
         try {
             val projection = arrayOf(
                 MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DATA, MediaStore.Audio.Media.TITLE,
@@ -110,10 +107,15 @@ class MusicRepository(
                 .groupBy { it.albumName.trim() }
                 .map { (name, groupedSongs) ->
                     val first = groupedSongs.first()
+
                     val mainArtist = groupedSongs
                         .groupingBy { it.artist }
                         .eachCount()
                         .maxByOrNull { it.value }?.key ?: first.artist
+
+                    val bestYear = groupedSongs.map { it.year }
+                        .filter { it > 0 }
+                        .maxOrNull() ?: 0
 
                     Album(
                         id = first.albumId,
@@ -121,7 +123,7 @@ class MusicRepository(
                         artist = mainArtist,
                         coverUri = first.songArtUri,
                         songCount = groupedSongs.size,
-                        year = first.year
+                        year = bestYear
                     )
                 }
                 .sortedBy { it.title }
@@ -141,7 +143,6 @@ class MusicRepository(
     fun getSongsByAlbum(albumId: Long): Flow<List<Song>> = statsDao.getSongsByAlbum(albumId)
 
     suspend fun updateSong(song: Song) = statsDao.updateSong(song)
-
 
     suspend fun getSongById(id: Long): Song? {
         val localSong = statsDao.getSongById(id)
