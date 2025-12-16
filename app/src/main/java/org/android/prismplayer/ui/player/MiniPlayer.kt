@@ -1,8 +1,6 @@
 package org.android.prismplayer.ui.player
 
 import android.graphics.Bitmap
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
@@ -12,7 +10,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,6 +48,7 @@ fun MiniPlayer(
 ) {
     val context = LocalContext.current
 
+    // Extract Color Logic
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(song.songArtUri) {
         bitmap = null
@@ -64,53 +65,53 @@ fun MiniPlayer(
     }
 
     val rawColor = rememberDominantColor(bitmap)
-
-    val backgroundColor = remember(rawColor) {
-        PrismaColorUtils.adjustForBackground(rawColor)
-    }
+    val backgroundColor = remember(rawColor) { PrismaColorUtils.adjustForBackground(rawColor) }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .height(72.dp)
-            .shadow(16.dp, RoundedCornerShape(16.dp), spotColor = Color.Black)
-            .clip(RoundedCornerShape(16.dp))
+            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 0.dp)
+            .height(60.dp)
+            .shadow(12.dp, RoundedCornerShape(12.dp), spotColor = Color.Black)
+            .clip(RoundedCornerShape(12.dp))
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
                         backgroundColor,
-                        Color(0xFF1E1E1E)
+                        Color(0xFF181818)
                     )
                 )
             )
-            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp))
+            .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(12.dp))
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(end = 16.dp),
+                .padding(end = 12.dp), // Tighter right padding
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 3. FIXED IMAGE SIZE: Fits perfectly inside 60dp height
             AsyncImage(
                 model = song.songArtUri,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(82.dp)
+                    .size(60.dp) // Full height of the player
+                    .aspectRatio(1f)
                     .background(Color(0xFF202020))
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
+            // 4. REFINED TYPOGRAPHY
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = song.title,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium, // Smaller than bodyLarge
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 1,
@@ -118,7 +119,7 @@ fun MiniPlayer(
                 )
                 Text(
                     text = song.artist,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall, // Smaller than bodyMedium
                     color = Color.White.copy(0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -127,28 +128,39 @@ fun MiniPlayer(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 IconButton(
                     onClick = onTogglePlay,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(Color.White, CircleShape)
+                    modifier = Modifier.size(40.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color.White, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying)
+                                Icons.Rounded.Pause
+                            else
+                                Icons.Rounded.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
-                IconButton(onClick = onSkipNext, modifier = Modifier.size(36.dp)) {
+                IconButton(
+                    onClick = onSkipNext,
+                    modifier = Modifier.size(32.dp)
+                ) {
                     Icon(
                         Icons.Rounded.SkipNext,
                         null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        tint = Color.White.copy(0.9f),
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -159,9 +171,9 @@ fun MiniPlayer(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(2.dp),
+                .height(1.5.dp),
             color = Color.White,
-            trackColor = Color.White.copy(0.1f),
+            trackColor = Color.Transparent,
             drawStopIndicator = {}
         )
     }

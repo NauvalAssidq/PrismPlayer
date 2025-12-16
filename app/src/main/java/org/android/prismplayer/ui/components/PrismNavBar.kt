@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,7 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 enum class PrismTab {
-    HOME, SEARCH, LIBRARY
+    HOME, SEARCH, LIBRARY, SETTING
 }
 
 @Composable
@@ -37,16 +38,16 @@ fun PrismNavBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 24.dp)
-            .height(72.dp)
+            .padding(start = 12.dp, end = 12.dp, bottom = 18.dp, top = 6.dp)
+            .height(60.dp)
             .shadow(
                 elevation = 30.dp,
                 spotColor = Color.Black.copy(0.5f),
-                shape = RoundedCornerShape(24.dp)
+                shape = RoundedCornerShape(14.dp)
             )
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(Color(0xFF121212).copy(alpha = 0.95f))
-            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(24.dp))
+            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(14.dp))
     ) {
         Box(
             modifier = Modifier
@@ -82,6 +83,12 @@ fun PrismNavBar(
                 icon = Icons.Rounded.LibraryMusic,
                 isSelected = currentTab == PrismTab.LIBRARY,
                 onClick = { onTabSelected(PrismTab.LIBRARY) }
+            )
+
+            NavBarItem(
+                icon = Icons.Rounded.Settings,
+                isSelected = currentTab == PrismTab.SETTING,
+                onClick = { onTabSelected(PrismTab.SETTING) }
             )
         }
     }

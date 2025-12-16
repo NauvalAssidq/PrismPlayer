@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -53,7 +54,6 @@ fun PrismNavigation() {
     val app = context.applicationContext as PrismApplication
     val audioViewModel: AudioViewModel = viewModel()
     val homeViewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
-    var songForOptions by remember { mutableStateOf<org.android.prismplayer.data.model.Song?>(null) }
 
     NavHost(navController = navController, startDestination = "splash") {
 
@@ -87,60 +87,57 @@ fun PrismNavigation() {
             }
         }
 
+        composable("manage_library") {
+            val scope = rememberCoroutineScope()
+            val libraryPrefs = remember { org.android.prismplayer.ui.utils.LibraryPreferences(context) }
+
+            val savedPaths by produceState<List<String>>(initialValue = emptyList()) {
+                value = withContext(Dispatchers.IO) {
+                    libraryPrefs.getSavedFolders()
+                }
+            }
+
+            if (savedPaths.isNotEmpty()) {
+                ManageFoldersScreen(
+                    currentPaths = savedPaths,
+                    onBack = { navController.popBackStack() },
+                    onSave = { newPaths ->
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                libraryPrefs.saveFolders(newPaths)
+                            }
+                            app.repository.importSongsFromFolders(newPaths)
+                            navController.popBackStack()
+                        }
+                    }
+                )
+            } else {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color(0xFF1DB954))
+                }
+            }
+        }
+
         composable("main") {
             MainLayout(
                 audioViewModel = audioViewModel,
                 homeViewModel = homeViewModel,
-                onOpenAlbum = { albumId -> navController.navigate("album_detail/$albumId") },
                 onEditSong = { songId -> navController.navigate("edit_track/$songId") },
-                onSettingsClick = { navController.navigate("settings") }
+                onReselectFolders = {
+                    navController.navigate("manage_library")
+                }
             )
         }
 
-        composable(
-            route = "album_detail/{albumId}",
-            arguments = listOf(navArgument("albumId") { type = NavType.LongType })
-        ) {
-            val albumViewModel: AlbumViewModel = viewModel(factory = AlbumViewModel.Factory)
-            val state by albumViewModel.uiState.collectAsState()
-            val currentSong by audioViewModel.currentSong.collectAsState()
-            val isPlaying by audioViewModel.isPlaying.collectAsState()
-
-            AlbumDetailScreen(
-                albumId = 0,
-                albumName = state.albumName,
-                artistName = state.artistName,
-                artUri = state.artUri,
-                songs = state.songs,
-                currentSong = currentSong,
-                isPlaying = isPlaying,
-                onBack = { navController.popBackStack() },
-                onPlayAlbum = { list -> if (list.isNotEmpty()) audioViewModel.playSong(list.first(), list) },
-                onSongClick = { song, list -> audioViewModel.playSong(song, list) },
-                onSongMoreClick = { song -> songForOptions = song },
-            )
-        }
-
-        // FIXED EDIT ROUTE
         composable(
             route = "edit_track/{songId}",
             arguments = listOf(navArgument("songId") { type = NavType.LongType })
         ) { backStackEntry ->
             val songId = backStackEntry.arguments?.getLong("songId") ?: -1L
-            // DELEGATE ALL LOGIC TO THE ROUTE COMPOSABLE
             EditTrackRoute(
                 songId = songId,
                 onBack = { navController.popBackStack() }
             )
-        }
-
-        composable("settings") {
-            SettingsScreen(onBack = { navController.popBackStack() }, onOpenEqualizer = { navController.navigate("equalizer") })
-        }
-
-        composable("equalizer") {
-            val eqViewModel: AudioViewModel = viewModel()
-            EqualizerScreen(viewModel = eqViewModel, onBack = { navController.popBackStack() })
         }
     }
 }

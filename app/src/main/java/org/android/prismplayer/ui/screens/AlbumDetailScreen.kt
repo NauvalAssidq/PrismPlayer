@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import coil.compose.AsyncImage
@@ -77,6 +78,7 @@ fun AlbumDetailScreen(
     onPlayAlbum: (List<Song>) -> Unit,
     onSongClick: (Song, List<Song>) -> Unit,
     onSongMoreClick: (Song) -> Unit,
+    bottomPadding: Dp
 
     ) {
     val context = LocalContext.current
@@ -159,8 +161,10 @@ fun AlbumDetailScreen(
             }
         ) { padding ->
             LazyColumn(
-                contentPadding = padding,
-                modifier = Modifier.fillMaxSize()
+                contentPadding = PaddingValues(
+                    top = padding.calculateTopPadding(),
+                    bottom = bottomPadding
+                ),                modifier = Modifier.fillMaxSize()
             ) {
                 item {
                     Column(
@@ -305,7 +309,8 @@ fun PreviewAlbumDetail() {
             onBack = {},
             onPlayAlbum = {},
             onSongClick = { _, _ -> },
-            onSongMoreClick = {}
+            onSongMoreClick = {},
+            bottomPadding = 120.dp
         )
     }
 }

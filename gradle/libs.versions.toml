@@ -32,6 +32,8 @@ uiToolingPreview = "1.10.0"
 uiTooling = "1.10.0"
 animationCore = "1.10.0"
 uiText = "1.10.0"
+playServicesAppsearch = "16.0.1"
+foundation = "1.10.0"
 
 
 [libraries]
@@ -74,6 +76,8 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "uiTooling" }
 androidx-compose-animation-core = { group = "androidx.compose.animation", name = "animation-core", version.ref = "animationCore" }
 androidx-compose-ui-text = { group = "androidx.compose.ui", name = "ui-text", version.ref = "uiText" }
+play-services-appsearch = { group = "com.google.android.gms", name = "play-services-appsearch", version.ref = "playServicesAppsearch" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 
 [plugins]

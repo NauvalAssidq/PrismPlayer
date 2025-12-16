@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -23,14 +22,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp // Import Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import org.android.prismplayer.data.model.Album
 import org.android.prismplayer.data.model.Song
@@ -42,6 +40,7 @@ fun HomeScreen(
     state: HomeState,
     currentSong: Song? = null,
     isPlaying: Boolean = false,
+    bottomPadding: Dp, // <--- 1. New Parameter for dynamic padding
     onSongClick: (Song, List<Song>) -> Unit,
     onSeeAllSongs: () -> Unit = {},
     onOpenAlbums: () -> Unit = {},
@@ -60,6 +59,9 @@ fun HomeScreen(
             containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
+            // We ignore 'paddingValues' here because we want manual control
+            // over the bottom padding, and top padding is handled by statusBarsPadding()
+
             when {
                 state.isLoading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -79,7 +81,7 @@ fun HomeScreen(
                         albums = state.albums,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
-                        contentPadding = paddingValues,
+                        bottomPadding = bottomPadding, // <--- 2. Pass it down
                         onSongClick = onSongClick,
                         onSeeAllSongs = onSeeAllSongs,
                         onOpenAlbums = onOpenAlbums,
@@ -100,7 +102,7 @@ private fun HomeDashboardContent(
     albums: List<Album>,
     currentSong: Song?,
     isPlaying: Boolean,
-    contentPadding: PaddingValues,
+    bottomPadding: Dp, // <--- 3. Receive it here
     onSongClick: (Song, List<Song>) -> Unit,
     onSeeAllSongs: () -> Unit,
     onOpenAlbums: () -> Unit,
@@ -120,7 +122,7 @@ private fun HomeDashboardContent(
     }
 
     LazyColumn(
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(bottom = bottomPadding),
         modifier = Modifier.fillMaxSize()
     ) {
         item {
@@ -213,10 +215,9 @@ private fun HomeDashboardContent(
                 )
             }
         }
-
-        item { Spacer(Modifier.height(100.dp)) }
     }
 }
+
 
 @Composable
 fun CategoryPill(text: String, onClick: () -> Unit) {
@@ -376,6 +377,7 @@ fun HomeScreenPreview() {
             onOpenArtists = {},
             onSongMoreClick = {},
             onSongClick = { _, _ -> },
+            bottomPadding = 100.dp
         )
     }
 }

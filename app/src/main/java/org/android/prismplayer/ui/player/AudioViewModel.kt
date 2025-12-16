@@ -15,6 +15,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,6 @@ import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.service.PlaybackService
 import org.android.prismplayer.ui.utils.EqPreferences
 import java.util.Locale
-import java.util.UUID
 
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private var player: Player? = null
@@ -78,6 +78,9 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     private var isSeeking = false
 
+    private var progressJob: Job? = null
+
+
     init {
         val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
         val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
@@ -112,7 +115,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Call this from MainLayout to provide the pool for autoplay
     fun setLibrary(songs: List<Song>) {
         librarySongs = songs
     }
@@ -124,7 +126,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 syncCurrentSongFromMediaItem(mediaItem)
-                // Trigger Autoplay Check
                 ensureQueueContinuity()
             }
             override fun onRepeatModeChanged(repeatMode: Int) {
@@ -137,29 +138,21 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         })
     }
 
-    // --- INFINITE PLAYBACK LOGIC ---
     private fun ensureQueueContinuity() {
         val p = player ?: return
         val currentQ = _queue.value
         if (currentQ.isEmpty() || librarySongs.isEmpty()) return
-
-        // 1. Where are we now?
         val currentIndex = p.currentMediaItemIndex
 
-        // 2. Are we near the end? (e.g., within last 2 songs)
         val threshold = currentQ.size - 2
 
         if (currentIndex >= threshold) {
-            // 3. Append 5 random songs from library
-            // Filter out the song currently playing to avoid immediate repeat
             val currentId = _currentSong.value?.id
             val candidates = librarySongs.filter { it.id != currentId }
 
             if (candidates.isNotEmpty()) {
                 val newSongs = candidates.asSequence().shuffled().take(5).toList()
                 val newItems = newSongs.map { QueueItem(song = it) }
-
-                // 4. Update State and Player
                 _queue.value = currentQ + newItems
                 p.addMediaItems(newItems.map { it.toMediaItem() })
             }
@@ -179,27 +172,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun handleSongUpdate(oldId: Long, newSong: Song) {
-        val currentList = _queue.value.toMutableList()
-        var updated = false
-
-        val updatedList = currentList.map { item ->
-            if (item.song.id == oldId) {
-                updated = true
-                item.copy(song = newSong)
-            } else {
-                item
-            }
-        }
-
-        if (updated) {
-            _queue.value = updatedList
-            val currentItem = updatedList.find { it.queueId == _currentQueueId.value }
-            if (currentItem != null && currentItem.song.id == newSong.id) {
-                _currentSong.value = newSong
-            }
-        }
-    }
 
     fun playSong(song: Song, contextList: List<Song> = emptyList()) {
         val p = player ?: return
@@ -220,10 +192,19 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         p.prepare()
         p.play()
 
-        // Ensure library is set for fallback if context provided
         if (contextList.isNotEmpty()) {
             setLibrary(contextList)
         }
+    }
+
+    fun commitReordering() {
+        val p = player ?: return
+        val currentQ = _queue.value
+        if (currentQ.isEmpty()) return
+        val currentQueueId = _currentQueueId.value
+        val newIndex = currentQ.indexOfFirst { it.queueId == currentQueueId }.coerceAtLeast(0)
+        val currentPos = p.currentPosition
+        p.setMediaItems(currentQ.map { it.toMediaItem() }, newIndex, currentPos)
     }
 
     fun playQueueItem(item: QueueItem) {
@@ -296,9 +277,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
         val newQueueItems = newSongs.map { QueueItem(song = it) }
         _queue.value = newQueueItems
-
-        // Logic to keep playing current song if it exists in new list
-        // Or default to first
         val currentId = _currentSong.value?.id
         val newIndex = newSongs.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
 
@@ -309,13 +287,35 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         p.setMediaItems(newQueueItems.map { it.toMediaItem() }, newIndex, p.currentPosition)
     }
 
-    // Updated for reordering pure QueueItems (Internal reorder)
     fun reorderQueue(newQueue: List<QueueItem>) {
         val p = player ?: return
+        val currentQ = _queue.value
+
         _queue.value = newQueue
 
-        // Optional: Deep sync with Player (Complexity varies)
-        // For visual reordering only, state update is enough unless you want seamless playback order change
+        if (currentQ.size == newQueue.size && currentQ.toSet() == newQueue.toSet()) {
+            val currentQueueId = _currentQueueId.value
+            val newIndex = newQueue.indexOfFirst { it.queueId == currentQueueId }.coerceAtLeast(0)
+            val currentPos = p.currentPosition
+
+            p.setMediaItems(newQueue.map { it.toMediaItem() }, newIndex, currentPos)
+        } else {
+            val currentQueueId = _currentQueueId.value
+            val newIndex = newQueue.indexOfFirst { it.queueId == currentQueueId }.coerceAtLeast(0)
+            p.setMediaItems(newQueue.map { it.toMediaItem() }, newIndex, p.currentPosition)
+        }
+    }
+
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        val currentQ = _queue.value.toMutableList()
+        val p = player ?: return
+
+        if (fromIndex in currentQ.indices && toIndex in currentQ.indices) {
+            val item = currentQ.removeAt(fromIndex)
+            currentQ.add(toIndex, item)
+            _queue.value = currentQ
+            p.moveMediaItem(fromIndex, toIndex)
+        }
     }
 
     fun addToQueue(song: Song) {

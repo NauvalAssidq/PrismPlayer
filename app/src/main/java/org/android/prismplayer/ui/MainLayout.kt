@@ -3,7 +3,10 @@ package org.android.prismplayer.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
@@ -12,14 +15,18 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.core.os.bundleOf
+import androidx.lifecycle.DEFAULT_ARGS_KEY
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.viewmodel.MutableCreationExtras
+import androidx.lifecycle.viewmodel.compose.viewModel
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.CustomBottomSheet
 import org.android.prismplayer.ui.components.PrismNavBar
@@ -28,9 +35,20 @@ import org.android.prismplayer.ui.components.SongOptionSheet
 import org.android.prismplayer.ui.player.AudioViewModel
 import org.android.prismplayer.ui.player.FullPlayerScreen
 import org.android.prismplayer.ui.player.MiniPlayer
+import org.android.prismplayer.ui.screens.AlbumDetailScreen
+import org.android.prismplayer.ui.screens.AlbumViewModel
+import org.android.prismplayer.ui.screens.ArtistScreen
+import org.android.prismplayer.ui.screens.ArtistViewModel
+import org.android.prismplayer.ui.screens.EqualizerScreen // Make sure this is imported
 import org.android.prismplayer.ui.screens.HomeScreen
 import org.android.prismplayer.ui.screens.HomeViewModel
 import org.android.prismplayer.ui.screens.LibraryScreen
+import org.android.prismplayer.ui.screens.SearchScreen
+import org.android.prismplayer.ui.screens.SettingsScreen
+
+enum class SheetContext {
+    HOME, LIBRARY, ALBUM, ARTIST, SEARCH, PLAYER
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -38,13 +56,13 @@ import org.android.prismplayer.ui.screens.LibraryScreen
 fun MainLayout(
     audioViewModel: AudioViewModel,
     homeViewModel: HomeViewModel,
-    onOpenAlbum: (Long) -> Unit,
     onEditSong: (Long) -> Unit,
-    onSettingsClick: () -> Unit
+    onReselectFolders: () -> Unit
 ) {
     val context = LocalContext.current
     var currentTab by rememberSaveable { mutableStateOf(PrismTab.HOME) }
     var isFullPlayerOpen by remember { mutableStateOf(false) }
+    var libraryTabIndex by rememberSaveable { mutableIntStateOf(0) }
     val homeState by homeViewModel.uiState.collectAsState()
     val currentSong by audioViewModel.currentSong.collectAsState()
     val queue by audioViewModel.queue.collectAsState()
@@ -53,12 +71,24 @@ fun MainLayout(
     val currentTime by audioViewModel.currentTime.collectAsState()
     val repeatMode by audioViewModel.repeatMode.collectAsState()
     val isShuffleEnabled by audioViewModel.isShuffleEnabled.collectAsState()
-    var songForOptions by remember { mutableStateOf<Song?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var optionsState by remember { mutableStateOf<Pair<Song, SheetContext>?>(null) }
+    val searchQuery by homeViewModel.searchQuery.collectAsState()
+    val searchResults by homeViewModel.searchResults.collectAsState()
+    var selectedArtist by remember { mutableStateOf<String?>(null) }
+    var selectedAlbumId by remember { mutableStateOf<Long?>(null) }
+    var isEqualizerOpen by remember { mutableStateOf(false) }
+    val globalBottomPadding = if (currentSong != null) 146.dp else 84.dp
+    val allSongs by homeViewModel.allSongs.collectAsState()
 
     LaunchedEffect(homeViewModel.allSongs) {
         audioViewModel.setLibrary(homeViewModel.allSongs.value)
     }
+
+    BackHandler(enabled = isFullPlayerOpen) { isFullPlayerOpen = false }
+    BackHandler(enabled = !isFullPlayerOpen && isEqualizerOpen) { isEqualizerOpen = false }
+    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumId != null) { selectedAlbumId = null }
+    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumId == null && selectedArtist != null) { selectedArtist = null }
+    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumId == null && selectedArtist == null && currentTab != PrismTab.HOME) { currentTab = PrismTab.HOME }
 
     Scaffold(
         containerColor = Color(0xFF050505),
@@ -66,42 +96,209 @@ fun MainLayout(
         bottomBar = {}
     ) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
-
             Box(modifier = Modifier.fillMaxSize()) {
                 when (currentTab) {
                     PrismTab.HOME -> HomeScreen(
                         state = homeState,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
-                        onSongClick = { song, list ->
-                            audioViewModel.playSong(song, list)
+                        onSongClick = { song, list -> audioViewModel.playSong(song, list) },
+                        onSeeAllSongs = {
+                            libraryTabIndex = 0
+                            currentTab = PrismTab.LIBRARY
                         },
-                        onSeeAllSongs = { currentTab = PrismTab.LIBRARY },
-                        onOpenAlbums = { currentTab = PrismTab.LIBRARY },
-                        onOpenArtists = { currentTab = PrismTab.LIBRARY },
-                        onAlbumClick = onOpenAlbum,
-                        onSongMoreClick = { song -> songForOptions = song },
-                        onSettingsClick = onSettingsClick
+                        onOpenAlbums = {
+                            libraryTabIndex = 1
+                            currentTab = PrismTab.LIBRARY
+                        },
+                        onOpenArtists = {
+                            libraryTabIndex = 2
+                            currentTab = PrismTab.LIBRARY
+                        },
+                        onAlbumClick = { selectedAlbumId = it },
+                        onSongMoreClick = { song -> optionsState = song to SheetContext.HOME },
+                        onSettingsClick = { currentTab = PrismTab.SETTING },
+                        bottomPadding = globalBottomPadding,
+
                     )
 
-                    PrismTab.SEARCH -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Search Coming Soon", color = Color.White)
-                        }
-                    }
+                    PrismTab.SEARCH -> SearchScreen(
+                        query = searchQuery,
+                        results = searchResults,
+                        onQueryChange = { homeViewModel.onSearchQueryChanged(it) },
+                        onSongClick = { song -> audioViewModel.playSong(song, searchResults.songs) },
+                        onAlbumClick = { selectedAlbumId = it },
+                        onArtistClick = { selectedArtist = it },
+                        onSongMoreClick = { song -> optionsState = song to SheetContext.SEARCH },
+                        bottomPadding = globalBottomPadding
+                    )
 
-                    PrismTab.LIBRARY -> {
-                        LibraryScreen(
-                            state = homeState,
-                            currentSong = currentSong,
-                            isPlaying = isPlaying,
-                            onSongClick = { song, list ->
-                                audioViewModel.playSong(song, list)
-                            },
-                            onSongMoreClick = { song -> songForOptions = song },
-                            onAlbumClick = onOpenAlbum
-                        )
+                    PrismTab.LIBRARY -> LibraryScreen(
+                        state = homeState,
+                        songs = allSongs,
+                        currentSong = currentSong,
+                        isPlaying = isPlaying,
+                        onSongClick = { song, list -> audioViewModel.playSong(song, list) },
+                        onAlbumClick = { selectedAlbumId = it },
+                        onArtistClick = { selectedArtist = it },
+                        onSongMoreClick = { song -> optionsState = song to SheetContext.LIBRARY },
+                        bottomPadding = globalBottomPadding,
+                        initialPage = libraryTabIndex,
+                    )
+
+                    PrismTab.SETTING -> SettingsScreen(
+                        onBack = { currentTab = PrismTab.HOME },
+                        onOpenEqualizer = { isEqualizerOpen = true },
+                        bottomPadding = globalBottomPadding,
+                        onReselectFolders = onReselectFolders
+                    )
+                }
+            }
+
+            if (selectedArtist != null) {
+                val owner = androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current
+                val defaultExtras = (owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
+                    ?: androidx.lifecycle.viewmodel.CreationExtras.Empty
+
+                val artistViewModel: ArtistViewModel = viewModel(
+                    key = "artist_$selectedArtist",
+                    factory = ArtistViewModel.Factory,
+                    extras = MutableCreationExtras(defaultExtras).apply {
+                        set(DEFAULT_ARGS_KEY, bundleOf("artistName" to selectedArtist))
                     }
+                )
+                val artistState by artistViewModel.uiState.collectAsState()
+
+                ArtistScreen(
+                    state = artistState,
+                    currentSong = currentSong,
+                    isPlaying = isPlaying,
+                    onBack = { selectedArtist = null },
+                    onSongClick = { song, list -> audioViewModel.playSong(song, list) },
+                    onAlbumClick = { selectedAlbumId = it },
+                    onShufflePlay = { list -> if (list.isNotEmpty()) audioViewModel.playSong(list.shuffled().first(), list.shuffled()) },
+                )
+            }
+
+            if (selectedAlbumId != null) {
+                val owner = androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current
+                val defaultExtras = (owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
+                    ?: androidx.lifecycle.viewmodel.CreationExtras.Empty
+
+                val albumViewModel: AlbumViewModel = viewModel(
+                    key = "album_$selectedAlbumId",
+                    factory = AlbumViewModel.Factory,
+                    extras = MutableCreationExtras(defaultExtras).apply {
+                        set(DEFAULT_ARGS_KEY, bundleOf("albumId" to selectedAlbumId))
+                    }
+                )
+                val albumState by albumViewModel.uiState.collectAsState()
+
+                AlbumDetailScreen(
+                    albumId = selectedAlbumId!!,
+                    albumName = albumState.albumName,
+                    artistName = albumState.artistName,
+                    artUri = albumState.artUri,
+                    songs = albumState.songs,
+                    currentSong = currentSong,
+                    isPlaying = isPlaying,
+                    onBack = { selectedAlbumId = null },
+                    onPlayAlbum = { list -> audioViewModel.playSong(list.first(), list) },
+                    onSongClick = { song, list -> audioViewModel.playSong(song, list) },
+                    onSongMoreClick = { song -> optionsState = song to SheetContext.ALBUM },
+                    bottomPadding = globalBottomPadding
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isEqualizerOpen,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                EqualizerScreen(
+                    viewModel = audioViewModel,
+                    onBack = { isEqualizerOpen = false }
+                )
+            }
+
+
+            AnimatedVisibility(
+                visible = isFullPlayerOpen && isEqualizerOpen,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it })
+            ) {
+                if (currentSong != null) {
+                    FullPlayerScreen(
+                        song = currentSong!!,
+                        queue = queue,
+                        isPlaying = isPlaying,
+                        progress = progress,
+                        currentTime = formatTime(currentTime),
+                        totalTime = formatTime(currentSong!!.duration),
+                        repeatMode = repeatMode,
+                        isShuffleEnabled = isShuffleEnabled,
+                        onPlayPause = { audioViewModel.togglePlayPause() },
+                        onNext = { audioViewModel.skipNext() },
+                        onPrev = { audioViewModel.skipPrev() },
+                        onToggleRepeat = { audioViewModel.toggleRepeat() },
+                        onToggleShuffle = { audioViewModel.toggleShuffle() },
+                        onClose = { isFullPlayerOpen = false },
+                        onQueueItemClick = { clickedSong -> audioViewModel.playQueueItem(clickedSong) },
+                        onRemoveFromQueue = { songToRemove -> audioViewModel.removeSongFromQueue(songToRemove) },
+                        onQueueReorder = { from, to ->
+                            audioViewModel.moveQueueItem(from, to)
+                        },
+                        audioViewModel = audioViewModel
+                    )
+                }
+            }
+
+            if (optionsState != null) {
+                BackHandler {
+                    optionsState = null
+                }
+                val song = optionsState!!.first
+                val source = optionsState!!.second
+
+                CustomBottomSheet(
+                    visible = true,
+                    onDismiss = { optionsState = null }
+                ) {
+                    SongOptionSheet(
+                        song = song,
+                        onPlayNext = { optionsState = null },
+                        onAddToQueue = { optionsState = null },
+                        onAddToPlaylist = { optionsState = null },
+                        onGoToAlbum = if (source != SheetContext.ALBUM) {
+                            {
+                                val albumId = song.albumId
+                                optionsState = null
+                                selectedAlbumId = albumId
+                            }
+                        } else null,
+                        onGoToArtist = if (source != SheetContext.ARTIST) {
+                            {
+                                val artistName = song.artist
+                                optionsState = null
+                                selectedArtist = artistName
+                            }
+                        } else null,
+                        onShare = {
+                            val shareIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "audio/*"
+                                putExtra(Intent.EXTRA_STREAM, Uri.parse(song.path))
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Song"))
+                            optionsState = null
+                        },
+                        onEdit = {
+                            val songId = song.id
+                            optionsState = null
+                            onEditSong(songId)
+                        },
+                        bottomPadding = globalBottomPadding
+                    )
                 }
             }
 
@@ -125,83 +322,16 @@ fun MainLayout(
                     }
                 }
 
-                PrismNavBar(
-                    currentTab = currentTab,
-                    onTabSelected = { currentTab = it }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = isFullPlayerOpen,
-                enter = slideInVertically(initialOffsetY = { it }),
-                exit = slideOutVertically(targetOffsetY = { it })
-            ) {
-                if (currentSong != null) {
-                    FullPlayerScreen(
-                        song = currentSong!!,
-                        queue = queue,
-                        isPlaying = isPlaying,
-                        progress = progress,
-                        currentTime = formatTime(currentTime),
-                        totalTime = formatTime(currentSong!!.duration),
-                        repeatMode = repeatMode,
-                        isShuffleEnabled = isShuffleEnabled,
-                        onPlayPause = { audioViewModel.togglePlayPause() },
-                        onNext = { audioViewModel.skipNext() },
-                        onPrev = { audioViewModel.skipPrev() },
-                        onSeek = { frac -> audioViewModel.seekTo(frac) },
-                        onToggleRepeat = { audioViewModel.toggleRepeat() },
-                        onToggleShuffle = { audioViewModel.toggleShuffle() },
-                        onClose = { isFullPlayerOpen = false },
-                        onQueueItemClick = { clickedSong ->
-                            audioViewModel.playQueueItem(clickedSong)
-                        },
-                        onRemoveFromQueue = { songToRemove ->
-                            audioViewModel.removeSongFromQueue(songToRemove)
-                        },
-                        onQueueReorder = { newList ->
-                            audioViewModel.updateQueue(newList)
-                        },
-                        audioViewModel = audioViewModel
-                    )
-                }
-            }
-
-            if (songForOptions != null) {
-                CustomBottomSheet(
-                    visible = true,
-                    onDismiss = { songForOptions = null }
+                AnimatedVisibility(
+                    visible = !isFullPlayerOpen,
                 ) {
-                    SongOptionSheet(
-                        song = songForOptions!!,
-                        onPlayNext = {
-                            songForOptions = null
-                        },
-                        onAddToQueue = {
-                            songForOptions = null
-                        },
-                        onAddToPlaylist = {
-                            songForOptions = null
-                        },
-                        onGoToAlbum = {
-                            val albumId = songForOptions!!.albumId
-                            songForOptions = null
-                            onOpenAlbum(albumId)
-                        },
-                        onShare = {
-                            val shareIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "audio/*"
-                                putExtra(Intent.EXTRA_STREAM, Uri.parse(songForOptions!!.path))
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Song"))
-                            songForOptions = null
-                        },
-                        onEdit = {
-                            val songId = songForOptions!!.id
-                            songForOptions = null
-                            onEditSong(songId)
-                        },
+                    PrismNavBar(
+                        currentTab = currentTab,
+                        onTabSelected = {
+                            currentTab = it
+                            selectedArtist = null
+                            selectedAlbumId = null
+                        }
                     )
                 }
             }

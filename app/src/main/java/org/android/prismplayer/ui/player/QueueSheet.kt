@@ -1,6 +1,7 @@
 package org.android.prismplayer.ui.player
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,11 +25,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import org.android.prismplayer.data.model.QueueItem
 import org.android.prismplayer.data.model.Song
@@ -43,33 +47,28 @@ fun QueueSheet(
     glowColor: Color,
     onClose: () -> Unit,
     onRemove: (Song) -> Unit,
-    onOrderFinished: (List<Song>) -> Unit,
+    onMove: (Int, Int) -> Unit,
     onItemClick: (QueueItem) -> Unit
 ) {
-    val splitLists by remember(queue, currentSong.id) {
-        derivedStateOf {
-            val currentIndex = queue.indexOfFirst { it.song.id == currentSong.id }
-            val splitIndex = if (currentIndex == -1) 0 else currentIndex + 1
-            Pair(queue.take(splitIndex), queue.drop(splitIndex))
+    val haptic = LocalHapticFeedback.current
+    val (historySize, nextUpList) = remember(queue, currentSong.id) {
+        val currentIndex = queue.indexOfFirst { it.song.id == currentSong.id }
+        if (currentIndex == -1) {
+            Pair(0, queue)
+        } else {
+            val splitIndex = currentIndex + 1
+            Pair(splitIndex, queue.drop(splitIndex))
         }
     }
-
-    var nextUpList by remember(splitLists.second) { mutableStateOf(splitLists.second) }
 
     val lazyListState = rememberLazyListState()
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        nextUpList = nextUpList.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
-    }
 
-    LaunchedEffect(reorderableState.isAnyItemDragging) {
-        if (!reorderableState.isAnyItemDragging) {
-            val fullNewList = splitLists.first + nextUpList
-            if (fullNewList.map { it.queueId } != queue.map { it.queueId }) {
-                onOrderFinished(fullNewList.map { it.song })
-            }
-        }
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        val globalFrom = from.index + historySize
+        val globalTo = to.index + historySize
+        onMove(globalFrom, globalTo)
+
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
     Box(
@@ -127,35 +126,46 @@ fun QueueSheet(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
+                    // key is crucial for reordering!
                     itemsIndexed(items = nextUpList, key = { _, item -> item.queueId }) { index, item ->
-                        ReorderableItem(reorderableState, key = item.queueId) { isDragging ->
 
-                            val elevation = animateDpAsState(if (isDragging) 8.dp else 0.dp)
-                            val scale = if (isDragging) 1.05f else 1f
+                        ReorderableItem(reorderableState, key = item.queueId) { isDragging ->
+                            val elevationPx by animateFloatAsState(
+                                targetValue = if (isDragging) 8.dp.value else 0f,
+                                label = "elevationPx"
+                            )
+
+                            Modifier.graphicsLayer {
+                                shadowElevation = elevationPx
+                            }
+                            val scale by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(80.dp)
                                     .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .shadow(elevation.value, RoundedCornerShape(12.dp))
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isDragging) Color(0xFF252525) else Color.Transparent)
-                                    .border(1.dp, if (isDragging) Color.White.copy(0.3f) else Color.Transparent, RoundedCornerShape(12.dp))
-                                    .clickable { onItemClick(item) }
-                                    .padding(8.dp)
+                                    .zIndex(if (isDragging) 1f else 0f) // Keep dragged item on top
                                     .graphicsLayer {
                                         scaleX = scale
                                         scaleY = scale
-                                    },
+                                        shadowElevation = elevationPx
+                                        shape = RoundedCornerShape(12.dp)
+                                        clip = true
+                                    }
+                                    .background(if (isDragging) Color(0xFF252525) else Color.Transparent)
+                                    .border(1.dp, if (isDragging) Color.White.copy(0.1f) else Color.Transparent, RoundedCornerShape(12.dp))
+                                    .clickable { onItemClick(item) }
+                                    .padding(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.DragIndicator,
-                                    contentDescription = null,
+                                    contentDescription = "Reorder",
                                     tint = if (isDragging) Color.White else Color.White.copy(0.2f),
                                     modifier = Modifier
                                         .padding(end = 12.dp)
+                                        .size(24.dp)
                                         .draggableHandle()
                                 )
 
@@ -189,13 +199,10 @@ fun QueueSheet(
                                 }
 
                                 IconButton(
-                                    onClick = {
-                                        onRemove(item.song)
-                                        nextUpList = nextUpList.toMutableList().apply { remove(item) }
-                                    },
-                                    modifier = Modifier.size(24.dp)
+                                    onClick = { onRemove(item.song) },
+                                    modifier = Modifier.size(32.dp)
                                 ) {
-                                    Icon(Icons.Rounded.Close, null, tint = Color.White.copy(0.3f), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Rounded.Close, null, tint = Color.White.copy(0.3f), modifier = Modifier.size(20.dp))
                                 }
                             }
                         }

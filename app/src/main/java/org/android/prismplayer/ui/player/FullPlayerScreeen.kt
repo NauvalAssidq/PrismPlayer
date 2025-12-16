@@ -58,20 +58,17 @@ fun FullPlayerScreen(
     progress: Float,
     currentTime: String,
     totalTime: String,
-    // NEW: States
     repeatMode: Int,
     isShuffleEnabled: Boolean,
-    // NEW: Actions
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
-    onSeek: (Float) -> Unit,
     onToggleRepeat: () -> Unit,
     onToggleShuffle: () -> Unit,
     onClose: () -> Unit,
     onQueueItemClick: (QueueItem) -> Unit,
-    onRemoveFromQueue: (Song) -> Unit = {},
-    onQueueReorder: (List<Song>) -> Unit = {},
+    onRemoveFromQueue: (Song) -> Unit,
+    onQueueReorder: (Int, Int) -> Unit = { _, _ -> },
     audioViewModel: AudioViewModel,
 ) {
     BackHandler(onBack = onClose)
@@ -288,7 +285,6 @@ fun FullPlayerScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // SHUFFLE BUTTON
                     IconButton(onClick = onToggleShuffle) {
                         Icon(
                             Icons.Rounded.Shuffle,
@@ -382,8 +378,8 @@ fun FullPlayerScreen(
                 glowColor = glowColor,
                 onClose = { showQueue = false },
                 onRemove = onRemoveFromQueue,
-                onOrderFinished = onQueueReorder,
-                onItemClick = onQueueItemClick as (QueueItem) -> Unit
+                onItemClick = onQueueItemClick as (QueueItem) -> Unit,
+                onMove = onQueueReorder,
             )
         }
 

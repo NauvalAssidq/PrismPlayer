@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -35,14 +37,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenEqualizer: () -> Unit,
+    bottomPadding: Dp,
+    onReselectFolders: () -> Unit,
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val isScanning by viewModel.isScanning.collectAsState()
+
     SettingsContent(
         isScanning = isScanning,
         onBack = onBack,
-        onRescan = { viewModel.rescanLibrary() },
-        onOpenEqualizer = onOpenEqualizer
+        onRescan = { if (!isScanning) viewModel.rescanLibrary() }, // optional: prevent double scan
+        onOpenEqualizer = onOpenEqualizer,
+        onReselectFolders = onReselectFolders,
+        bottomPadding = bottomPadding
     )
 }
 
@@ -52,7 +59,9 @@ fun SettingsContent(
     isScanning: Boolean,
     onBack: () -> Unit,
     onRescan: () -> Unit,
-    onOpenEqualizer: () -> Unit
+    onOpenEqualizer: () -> Unit,
+    onReselectFolders: () -> Unit,
+    bottomPadding: Dp
 ) {
     Box(
         modifier = Modifier
@@ -64,16 +73,45 @@ fun SettingsContent(
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
+                val glassBrush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.10f),
+                        Color.White.copy(alpha = 0.03f)
+                    )
+                )
+                val glassBorder = Color.White.copy(alpha = 0.12f)
+
                 CenterAlignedTopAppBar(
-                    title = { Text("Settings", fontWeight = FontWeight.SemiBold) },
+                    modifier = Modifier.padding(top = 12.dp),
+                    title = {
+                        Text(
+                            text = "Settings",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = Color.Transparent,
                         titleContentColor = Color.White,
                         navigationIconContentColor = Color.White
                     ),
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Rounded.ArrowBack, null)
+                        Box(
+                            modifier = Modifier
+                                .padding(start = 16.dp)
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(60.dp))
+                                .background(glassBrush)
+                                .border(1.dp, glassBorder, RoundedCornerShape(60.dp))
+                                .clickable(onClick = onBack),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
                 )
@@ -83,7 +121,7 @@ fun SettingsContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(vertical = 16.dp)
+                    .padding(top = 16.dp, bottom = bottomPadding + 16.dp)
             ) {
                 Text(
                     text = "Audio",
@@ -113,6 +151,13 @@ fun SettingsContent(
                     title = "Rescan Library",
                     subtitle = "Refresh your music list",
                     onClick = onRescan
+                )
+
+                SettingsItem(
+                    icon = Icons.Rounded.FolderOpen,
+                    title = "Reselect Music Folders",
+                    subtitle = "Scan new folders for music",
+                    onClick = onReselectFolders
                 )
             }
         }
@@ -198,7 +243,7 @@ fun SettingsItem(
                         )
                     )
                 )
-                .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(50)),
+                .border(1.dp, Color.White.copy(0.12f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -225,13 +270,10 @@ fun SettingsItem(
     }
 }
 
-
-
 @Composable
 private fun AuraBackground() {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val width = size.width
-
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
@@ -255,7 +297,9 @@ fun PreviewSettingsScreen() {
             isScanning = false,
             onBack = {},
             onRescan = {},
-            onOpenEqualizer = {}
+            onOpenEqualizer = {},
+            onReselectFolders = {},
+            bottomPadding = 80.dp
         )
     }
 }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.android.prismplayer.PrismApplication
 import org.android.prismplayer.data.model.Album
+import org.android.prismplayer.data.model.SearchResult
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.data.repository.MusicRepository
 
@@ -32,18 +33,58 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(HomeState())
     val uiState: StateFlow<HomeState> = _uiState.asStateFlow()
 
-    val allSongs: StateFlow<List<Song>> = repository.getAllSongs()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
+    val allSongs = repository.getAllSongs()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val allAlbums = repository.getAlbums()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    val searchResults: StateFlow<SearchResult> = combine(
+        allSongs,
+        allAlbums,
+        _searchQuery
+    ) { songs, albums, query ->
+        if (query.isBlank()) {
+            SearchResult()
+        } else {
+            val trimmedQuery = query.trim()
+            val matchedSongs = songs.filter {
+                it.title.contains(trimmedQuery, true) || it.artist.contains(trimmedQuery, true)
+            }.take(10)
+
+            val matchedAlbums = albums.filter {
+                it.title.contains(trimmedQuery, true) || it.artist.contains(trimmedQuery, true)
+            }.take(4)
+
+            val matchedArtists = (matchedSongs.map { it.artist } + matchedAlbums.map { it.artist })
+                .distinct()
+                .filter { it.contains(trimmedQuery, true) }
+                .take(3)
+
+            SearchResult(
+                songs = matchedSongs,
+                albums = matchedAlbums,
+                artists = matchedArtists
+            )
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = SearchResult()
+    )
+
+    fun onSearchQueryChanged(query: String) {
+        _searchQuery.value = query
+    }
 
     init {
         viewModelScope.launch {
             combine(
                 repository.getQuickPlaySongs(),
-                repository.getAlbums()
+                allAlbums
             ) { songs, albums ->
                 HomeState(
                     isLoading = false,
