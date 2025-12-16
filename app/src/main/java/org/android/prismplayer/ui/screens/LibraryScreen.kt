@@ -44,22 +44,37 @@ fun LibraryScreen(
     onSongMoreClick: (Song) -> Unit,
     onArtistClick: (String) -> Unit,
     bottomPadding: Dp,
-    initialPage: Int = 0
+    initialPage: Int = 0,
+    onPageChanged: (Int) -> Unit,
 ) {
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(
+        initialPage = initialPage,
+        pageCount = { 3 }
+    )
     val scope = rememberCoroutineScope()
     val albums = remember(songs) {
         songs
-            .groupBy { it.albumId }
+            .groupBy { "${it.albumName.trim()}|${it.artist.trim()}" }
             .map { (_, list) -> list.first() }
+            .sortedBy { it.albumName.lowercase() }
     }
 
     val artists = remember(songs) {
-        songs.map { it.artist }.distinct().sorted()
+        songs
+            .map { it.artist.trim() }
+            .distinct()
+            .sortedWith(String.CASE_INSENSITIVE_ORDER)
     }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            onPageChanged(page)
+        }
+    }
+
     LaunchedEffect(initialPage) {
-        if (pagerState.currentPage != initialPage) {
-            pagerState.animateScrollToPage(initialPage)
+        if (pagerState.currentPage != initialPage && !pagerState.isScrollInProgress) {
+            pagerState.scrollToPage(initialPage)
         }
     }
 
@@ -302,7 +317,8 @@ fun LibraryScreenPreview() {
             onAlbumClick = {},
             onSongMoreClick = {},
             onArtistClick = {},
-            bottomPadding = 120.dp
+            bottomPadding = 120.dp,
+            onPageChanged = {}
         )
     }
 }

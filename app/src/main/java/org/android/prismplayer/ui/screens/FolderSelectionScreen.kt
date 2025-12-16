@@ -108,7 +108,6 @@ fun FolderSelectionScreen(
                     FolderRow(
                         item = folder,
                         onToggle = {
-                            // Toggle logic
                             currentFolders = currentFolders.map {
                                 if (it.path == folder.path) it.copy(isSelected = !it.isSelected) else it
                             }

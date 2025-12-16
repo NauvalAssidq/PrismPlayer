@@ -37,7 +37,6 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 
-// --- DATA CLASS TO DEFINE PAGE CONTENT ---
 data class PermissionPageContent(
     val step: Int,
     val title: String,
@@ -96,7 +95,7 @@ fun PermissionScreen(onAllPermissionsGranted: () -> Unit) {
             description = "Allow notifications to control music from your lock screen and status bar.",
             buttonText = "Allow Access",
             icon = Icons.Rounded.Notifications,
-            color = Color(0xFF9C27B0) // Purple (Matches your bottom glow!)
+            color = Color(0xFF9C27B0)
         )
     }
 

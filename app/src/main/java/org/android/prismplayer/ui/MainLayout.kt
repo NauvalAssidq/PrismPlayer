@@ -25,7 +25,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import androidx.lifecycle.DEFAULT_ARGS_KEY
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.CustomBottomSheet
@@ -144,6 +146,9 @@ fun MainLayout(
                         onSongMoreClick = { song -> optionsState = song to SheetContext.LIBRARY },
                         bottomPadding = globalBottomPadding,
                         initialPage = libraryTabIndex,
+                        onPageChanged = { newIndex ->
+                            libraryTabIndex = newIndex
+                        },
                     )
 
                     PrismTab.SETTING -> SettingsScreen(
@@ -156,9 +161,9 @@ fun MainLayout(
             }
 
             if (selectedArtist != null) {
-                val owner = androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current
+                val owner = LocalViewModelStoreOwner.current
                 val defaultExtras = (owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
-                    ?: androidx.lifecycle.viewmodel.CreationExtras.Empty
+                    ?: CreationExtras.Empty
 
                 val artistViewModel: ArtistViewModel = viewModel(
                     key = "artist_$selectedArtist",
@@ -176,14 +181,20 @@ fun MainLayout(
                     onBack = { selectedArtist = null },
                     onSongClick = { song, list -> audioViewModel.playSong(song, list) },
                     onAlbumClick = { selectedAlbumId = it },
-                    onShufflePlay = { list -> if (list.isNotEmpty()) audioViewModel.playSong(list.shuffled().first(), list.shuffled()) },
+                    onShufflePlay = { list ->
+                        if (list.isNotEmpty()) audioViewModel.playSong(
+                            list.shuffled().first(), list.shuffled()
+                        )
+                    },
+                    onSongMoreClick = { song -> optionsState = song to SheetContext.SEARCH },
+                    bottomPadding = globalBottomPadding,
                 )
             }
 
             if (selectedAlbumId != null) {
-                val owner = androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current
+                val owner = LocalViewModelStoreOwner.current
                 val defaultExtras = (owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
-                    ?: androidx.lifecycle.viewmodel.CreationExtras.Empty
+                    ?: CreationExtras.Empty
 
                 val albumViewModel: AlbumViewModel = viewModel(
                     key = "album_$selectedAlbumId",
@@ -223,7 +234,7 @@ fun MainLayout(
 
 
             AnimatedVisibility(
-                visible = isFullPlayerOpen && isEqualizerOpen,
+                visible = isFullPlayerOpen,
                 enter = slideInVertically(initialOffsetY = { it }),
                 exit = slideOutVertically(targetOffsetY = { it })
             ) {
@@ -306,7 +317,7 @@ fun MainLayout(
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
                 AnimatedVisibility(
-                    visible = currentSong != null && !isFullPlayerOpen,
+                    visible = currentSong != null && !isFullPlayerOpen && !isEqualizerOpen,
                     enter = slideInVertically { it },
                     exit = slideOutVertically { it }
                 ) {
@@ -323,7 +334,7 @@ fun MainLayout(
                 }
 
                 AnimatedVisibility(
-                    visible = !isFullPlayerOpen,
+                    visible = !isFullPlayerOpen && !isEqualizerOpen,
                 ) {
                     PrismNavBar(
                         currentTab = currentTab,

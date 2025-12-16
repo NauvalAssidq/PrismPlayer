@@ -181,10 +181,10 @@ fun FullPlayerScreen(
                 modifier = Modifier
                     .width(screenWidth * 0.85f)
                     .aspectRatio(1f)
-                    .shadow(50.dp, RoundedCornerShape(32.dp), spotColor = glowColor)
-                    .clip(RoundedCornerShape(32.dp))
+                    .shadow(50.dp, RoundedCornerShape(24.dp), spotColor = glowColor)
+                    .clip(RoundedCornerShape(24.dp))
                     .background(Color(0xFF121212))
-                    .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(32.dp))
+                    .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(24.dp))
             ) {
                 if (bitmap != null) {
                     Image(
