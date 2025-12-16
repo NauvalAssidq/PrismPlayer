@@ -3,13 +3,9 @@
 Prism Player is an Android offline music player built with Jetpack Compose. It focuses on a clean library experience, queue-first playback, a built-in equalizer with presets, and lightweight local analytics (recently added tracks, simple play history).
 
 ## Screenshot preview
-
-- `docs/screenshots/01-home.jpeg` — Home screen with Quick Play / recommendations
-- `docs/screenshots/02-library.jpeg` — Library tab (songs/albums/artists)
-- `docs/screenshots/03-player.jpeg` — Full player (artwork, controls, queue access)
-- `docs/screenshots/04-queue.jpeg` — Queue sheet with drag-to-reorder
-- `docs/screenshots/05-equalizer.jpeg` — Equalizer screen (bands + presets)
-- `docs/screenshots/06-edit-track.jpeg` — Track metadata editor (tags + artwork)
+<p align="center">
+    <img src="docs/screenshots/01-home.jpeg" alt="Screenshot 1" width="200" style="border-radius:26px;"/>
+</p>
 
 ## Features
 
