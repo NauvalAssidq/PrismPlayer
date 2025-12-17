@@ -1,4 +1,4 @@
-package org.android.prismplayer.data.local
+package org.android.prismplayer.data.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -15,7 +15,7 @@ interface StatsDao {
     @Query("SELECT * FROM songs ORDER BY title ASC")
     fun getAllSongs(): Flow<List<Song>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertSongs(songs: List<Song>)
 
     @Query("SELECT * FROM songs ORDER BY dateAdded DESC LIMIT 20")

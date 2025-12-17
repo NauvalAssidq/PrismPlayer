@@ -4,16 +4,20 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import org.android.prismplayer.data.dao.LyricsDao
+import org.android.prismplayer.data.dao.StatsDao
+import org.android.prismplayer.data.model.LyricsEntity // ✅ Import this
 import org.android.prismplayer.data.model.PlayHistory
 import org.android.prismplayer.data.model.Song
 
 @Database(
-    entities = [Song::class, PlayHistory::class],
-    version = 1,
+    entities = [Song::class, PlayHistory::class, LyricsEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class PrismDatabase : RoomDatabase() {
     abstract fun statsDao(): StatsDao
+    abstract fun lyricsDao(): LyricsDao
 
     companion object {
         @Volatile
@@ -26,7 +30,7 @@ abstract class PrismDatabase : RoomDatabase() {
                     PrismDatabase::class.java,
                     "prism_music_db"
                 )
-                    .fallbackToDestructiveMigration(false)
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

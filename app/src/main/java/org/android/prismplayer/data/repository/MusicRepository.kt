@@ -6,15 +6,19 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import org.android.prismplayer.data.local.StatsDao
+import org.android.prismplayer.data.dao.StatsDao
+import org.android.prismplayer.data.dao.LyricsDao
 import org.android.prismplayer.data.model.Album
+import org.android.prismplayer.data.model.LyricsEntity
 import org.android.prismplayer.data.model.PlayHistory
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.data.network.RetrofitClient
 import java.io.File
 
 class MusicRepository(
     private val context: Context,
-    private val statsDao: StatsDao
+    private val statsDao: StatsDao,
+    private val lyricsDao: LyricsDao
 ) {
 
     fun getAllSongs(): Flow<List<Song>> = statsDao.getAllSongs()
@@ -224,6 +228,41 @@ class MusicRepository(
         return "Unknown"
     }
 
+    suspend fun getCachedLyrics(songId: Long): LyricsEntity? {
+        return withContext(Dispatchers.IO) {
+            lyricsDao.getLyrics(songId)
+        }
+    }
+
+    suspend fun fetchLyrics(song: Song): LyricsEntity? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val durationSeconds = (song.duration / 1000).toInt()
+                val response = RetrofitClient.api.getLyrics(
+                    artistName = song.artist,
+                    trackName = song.title,
+                    albumName = song.albumName,
+                    duration = durationSeconds
+                )
+
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    val entity = LyricsEntity(
+                        songId = song.id,
+                        plainLyrics = body.plainLyrics,
+                        syncedLyrics = body.syncedLyrics
+                    )
+                    lyricsDao.saveLyrics(entity)
+                    return@withContext entity
+                } else {
+                    return@withContext null
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return@withContext null
+            }
+        }
+    }
 
     suspend fun updateSongIdAndMetadata(
         oldId: Long,

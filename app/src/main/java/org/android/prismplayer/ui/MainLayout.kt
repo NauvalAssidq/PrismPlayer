@@ -109,6 +109,7 @@ fun MainLayout(
     LaunchedEffect(allSongs) {
         if (allSongs.isNotEmpty()) {
             audioViewModel.setLibrary(allSongs)
+            audioViewModel.setRepository(homeViewModel.repository)
         }
     }
 
