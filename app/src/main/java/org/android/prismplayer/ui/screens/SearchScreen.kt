@@ -202,7 +202,7 @@ fun SearchBar(
                     text = "Search artists, songs...",
                     color = Color.White.copy(alpha = 0.35f),
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Normal
                 )
             }
 

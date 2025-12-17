@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.ContentUris
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
 import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
@@ -61,6 +62,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Equalizer State ---
     private var equalizer: Equalizer? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
     private val eqPrefs = EqPreferences(application)
     private val _eqBands = MutableStateFlow<List<EqBand>>(emptyList())
     val eqBands = _eqBands.asStateFlow()
@@ -340,6 +342,12 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             _eqEnabled.value = savedEnabledState
             loadPresets(equalizer?.numberOfBands?.toInt() ?: 5)
             loadEqBands(eq)
+            val enhancer = LoudnessEnhancer(audioSessionId)
+
+            // Audio gain enhancer
+            loudnessEnhancer = enhancer
+            enhancer.setTargetGain(0)
+            enhancer.enabled = savedEnabledState
         } catch (e: Exception) { e.printStackTrace() }
     }
 
@@ -373,8 +381,16 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleEq(isEnabled: Boolean) {
         equalizer?.enabled = isEnabled
+        loudnessEnhancer?.enabled = isEnabled
+
+        if (isEnabled) {
+            loudnessEnhancer?.setTargetGain(200)
+        } else {
+            loudnessEnhancer?.setTargetGain(0)
+        }
         _eqEnabled.value = isEnabled
         eqPrefs.isEqEnabled = isEnabled
+
     }
 
     private fun loadPresets(numBands: Int) {
@@ -410,6 +426,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         equalizer?.release()
+        loudnessEnhancer?.release()
         super.onCleared()
     }
 }

@@ -42,7 +42,6 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.flow.collectLatest
 import org.android.prismplayer.data.model.Song
 
-// --- ENTRY POINT (Logic Holder) ---
 @Composable
 fun EditTrackRoute(
     songId: Long,
@@ -52,7 +51,6 @@ fun EditTrackRoute(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // 1. Setup Permission Launcher HERE, inside the screen
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -81,17 +79,14 @@ fun EditTrackRoute(
         }
     }
 
-    // 3. Load Data
     LaunchedEffect(songId) {
         viewModel.loadSong(songId)
     }
 
-    // 4. Render UI based on State
     when (val state = uiState) {
         is EditUiState.Loading -> EditLoadingState()
         is EditUiState.Error -> EditErrorState(state.message, onRetry = { viewModel.loadSong(songId) }, onBack = onBack)
 
-        // Even if permission is requested, we stay in 'Content' state so the UI doesn't flicker/black out
         is EditUiState.Content -> {
             EditTrackScreen(
                 song = state.song,
@@ -102,7 +97,6 @@ fun EditTrackRoute(
     }
 }
 
-// --- UI COMPONENT (Stateless Form) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTrackScreen(
