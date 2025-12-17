@@ -18,8 +18,8 @@ android {
         applicationId = "org.android.prismplayer"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1001
-        versionName = "1.0.0-beta.1"
+        versionCode = 1002
+        versionName = "1.0.0-beta.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
