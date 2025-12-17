@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -79,6 +80,7 @@ fun FullPlayerScreen(
 
     var showQueue by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
+
 
     BackHandler(enabled = showQueue || showLyrics) {
         showQueue = false
@@ -378,7 +380,7 @@ fun FullPlayerScreen(
                 glowColor = glowColor,
                 onClose = { showQueue = false },
                 onRemove = onRemoveFromQueue,
-                onItemClick = onQueueItemClick as (QueueItem) -> Unit,
+                onItemClick = onQueueItemClick,
                 onMove = onQueueReorder,
             )
         }
@@ -389,22 +391,11 @@ fun FullPlayerScreen(
             exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 40.dp)
-                    .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                    .background(Color(0xFF121212))
-                    .clickable { showLyrics = false }
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dragAmount ->
-                            if (dragAmount > 20) showLyrics = false
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Lyrics Coming Soon", color = Color.White)
-            }
+            LyricSheet(
+                viewModel = audioViewModel,
+                glowColor = glowColor,
+                onClose = { showLyrics = false }
+            )
         }
     }
 }

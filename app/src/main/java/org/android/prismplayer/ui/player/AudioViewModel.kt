@@ -24,15 +24,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.EqBand
 import org.android.prismplayer.data.model.EqPreset
+import org.android.prismplayer.data.model.LyricsEntity
+import org.android.prismplayer.data.model.LyricsState
 import org.android.prismplayer.data.model.QueueItem
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.data.network.RetrofitClient
+import org.android.prismplayer.data.repository.MusicRepository
 import org.android.prismplayer.ui.service.PlaybackService
 import org.android.prismplayer.ui.utils.EqPreferences
+import org.android.prismplayer.ui.utils.LrcParser
+import org.android.prismplayer.ui.utils.LyricLine
 import java.util.Locale
 
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private var player: Player? = null
     private var librarySongs: List<Song> = emptyList()
+    private var repository: MusicRepository? = null
 
     // --- State Flows ---
     private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
@@ -60,7 +67,17 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private val _isAutoplayEnabled = MutableStateFlow(false)
     val isAutoplayEnabled: StateFlow<Boolean> = _isAutoplayEnabled.asStateFlow()
 
-    // --- Equalizer State ---
+    //Lyric Parser
+    private val _lyricsState = MutableStateFlow<LyricsState>(LyricsState.Idle)
+    val lyricState = _lyricsState.asStateFlow()
+    fun setRepository(repo: MusicRepository) {
+        this.repository = repo
+    }
+
+    private val _syncedLyrics = MutableStateFlow<List<LyricLine>>(emptyList())
+    val syncedLyrics = _syncedLyrics.asStateFlow()
+
+    //Equalizer State
     private var equalizer: Equalizer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val eqPrefs = EqPreferences(application)
@@ -158,11 +175,18 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun syncCurrentSongFromMediaItem(mediaItem: MediaItem?) {
         if (mediaItem == null) return
+
         val queueId = mediaItem.mediaId
         val item = _queue.value.find { it.queueId == queueId }
+
         if (item != null) {
+            val isNewSong = _currentSong.value?.id != item.song.id
             _currentSong.value = item.song
             _currentQueueId.value = item.queueId
+            if (isNewSong) {
+                _lyricsState.value = LyricsState.Idle
+                _syncedLyrics.value = emptyList()
+            }
         }
     }
 
@@ -226,7 +250,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Standard Player Controls ---
+    //Standard Player Controls
     fun togglePlayPause() {
         val p = player ?: return
         if (p.isPlaying) p.pause() else p.play()
@@ -296,7 +320,62 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Helpers ---
+    // Lyric Management
+    fun initializeLyrics(song: Song) {
+        viewModelScope.launch {
+            val repo = repository ?: return@launch
+            val cached = repo.getCachedLyrics(song.id)
+
+            if (cached != null) {
+                parseAndSetLyrics(cached)
+            } else {
+                _lyricsState.value = LyricsState.Idle
+                _syncedLyrics.value = emptyList()
+            }
+        }
+    }
+
+    fun fetchLyricsOnline() {
+        val song = _currentSong.value ?: return
+
+        viewModelScope.launch {
+            _lyricsState.value = LyricsState.Loading
+
+            val repo = repository
+            if (repo == null) {
+                _lyricsState.value = LyricsState.Error("Repo missing")
+                return@launch
+            }
+
+            val result = repo.fetchLyrics(song)
+
+            if (result != null) {
+                parseAndSetLyrics(result)
+            } else {
+                _lyricsState.value = LyricsState.Error("Lyrics not found")
+            }
+        }
+    }
+
+    // Helper to avoid duplicate code
+    private fun parseAndSetLyrics(entity: LyricsEntity) {
+        val parsedLines = LrcParser.parse(entity.syncedLyrics)
+        _syncedLyrics.value = parsedLines
+
+        if (parsedLines.isNotEmpty()) {
+            _lyricsState.value = LyricsState.Success(
+                staticLyrics = entity.plainLyrics ?: "No text lyrics",
+                isSynced = true
+            )
+        } else {
+            _lyricsState.value = LyricsState.Success(
+                staticLyrics = entity.plainLyrics ?: "No lyrics found",
+                isSynced = false
+            )
+        }
+    }
+
+    // Helpers
     private fun getMimeType(path: String): String {
         return when (path.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
             "mp3" -> "audio/mpeg"

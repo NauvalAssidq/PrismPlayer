@@ -99,6 +99,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.play.services.appsearch)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.material3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -136,4 +137,8 @@ dependencies {
     implementation(libs.accompanist.permissions.v0340)
     implementation("net.jthink:jaudiotagger:3.0.1") {
         exclude(group = "com.intellij", module = "annotations")
-    }}
+    }
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
+    implementation(libs.logging.interceptor)
+}

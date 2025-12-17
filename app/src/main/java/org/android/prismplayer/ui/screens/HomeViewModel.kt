@@ -27,7 +27,7 @@ data class HomeState(
 )
 
 class HomeViewModel(
-    private val repository: MusicRepository
+    val repository: MusicRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeState())
