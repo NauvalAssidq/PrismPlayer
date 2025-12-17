@@ -127,8 +127,6 @@ fun ArtistHeroHeader(
         )
     )
 
-
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -307,13 +305,12 @@ fun GlassAlbumCard(album: Album, onClick: () -> Unit) {
 }
 
 
-
 private fun Modifier.drawDarkOverlay(): Modifier = this.then(
     Modifier.background(
         Brush.verticalGradient(
             colors = listOf(
-                Color.Black.copy(0.3f),
-                Color.Black.copy(0.7f),
+                Color.Black.copy(0.6f),
+                Color.Black.copy(0.8f),
                 Color(0xFF050505)
             )
         )
