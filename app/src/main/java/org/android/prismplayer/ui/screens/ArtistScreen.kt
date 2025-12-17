@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -126,8 +127,6 @@ fun ArtistHeroHeader(
             Color.White.copy(alpha = 0.03f)
         )
     )
-
-
 
     Box(
         modifier = Modifier
@@ -307,18 +306,18 @@ fun GlassAlbumCard(album: Album, onClick: () -> Unit) {
 }
 
 
-
-private fun Modifier.drawDarkOverlay(): Modifier = this.then(
-    Modifier.background(
-        Brush.verticalGradient(
+private fun Modifier.drawDarkOverlay(): Modifier = this.drawWithContent {
+    drawContent()
+    drawRect(
+        brush = Brush.verticalGradient(
             colors = listOf(
-                Color.Black.copy(0.3f),
-                Color.Black.copy(0.7f),
+                Color.Black.copy(alpha = 0.6f),
+                Color.Black.copy(alpha = 0.8f),
                 Color(0xFF050505)
             )
         )
     )
-)
+}
 
 @Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable

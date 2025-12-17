@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -63,7 +65,13 @@ fun PrismNavBar(
         )
 
         Row(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.
+            fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { }
+                )
+            },
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -143,7 +151,7 @@ private fun NavBarItem(
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 100)
+@Preview(showBackground = false, widthDp = 360, heightDp = 100)
 @Composable
 fun PreviewPrismNavBar() {
     Box(
