@@ -1,3 +1,7 @@
+val keystorePath = providers.gradleProperty("KEYSTORE_PATH").orNull
+val keystorePass = providers.gradleProperty("KEYSTORE_PASSWORD").orNull
+val keyAliasVal  = providers.gradleProperty("KEY_ALIAS").orNull
+val keyPass      = providers.gradleProperty("KEY_PASSWORD").orNull
 
 plugins {
     alias(libs.plugins.android.application)
@@ -19,9 +23,26 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (!keystorePath.isNullOrBlank()
+            && !keystorePass.isNullOrBlank()
+            && !keyAliasVal.isNullOrBlank()
+            && !keyPass.isNullOrBlank()
+        ) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = keystorePass
+                keyAlias = keyAliasVal
+                keyPassword = keyPass
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -41,6 +62,25 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    tasks.register("renameReleaseApk") {
+        dependsOn("assembleRelease")
+        doLast {
+            val versionName = android.defaultConfig.versionName ?: "0.0.0"
+            val appName = "PrismPlayer"
+            val apkDir = file("$buildDir/outputs/apk/release")
+            val unsigned = File(apkDir, "app-release-unsigned.apk")
+            val signed = File(apkDir, "app-release.apk")
+            val input = when {
+                signed.exists() -> signed
+                unsigned.exists() -> unsigned
+                else -> error("No release APK found in: $apkDir")
+            }
+            val output = File(apkDir, "$appName-$versionName.apk")
+            input.copyTo(output, overwrite = true)
+            println("Created: ${output.absolutePath}")
+        }
     }
 }
 
