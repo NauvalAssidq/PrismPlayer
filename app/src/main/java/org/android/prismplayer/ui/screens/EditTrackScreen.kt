@@ -42,7 +42,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.flow.collectLatest
 import org.android.prismplayer.data.model.Song
-import org.android.prismplayer.ui.utils.SongArtHelper
 
 @Composable
 fun EditTrackRoute(
@@ -86,11 +85,23 @@ fun EditTrackRoute(
     when (val state = uiState) {
         is EditUiState.Loading -> EditLoadingState()
         is EditUiState.Error -> EditErrorState(state.message, onRetry = { viewModel.loadSong(songId) }, onBack = onBack)
+
         is EditUiState.Content -> {
             EditTrackScreen(
                 song = state.song,
                 onBack = onBack,
-                onSave = { updatedSong -> viewModel.saveSong(updatedSong) }
+                onSave = { title, artist, album, year, genre, track, artUri ->
+                    viewModel.onSaveClicked(
+                        originalSong = state.song,
+                        title = title,
+                        artist = artist,
+                        album = album,
+                        yearInput = year,
+                        genre = genre,
+                        trackInput = track,
+                        currentArtUri = artUri
+                    )
+                }
             )
         }
     }
@@ -101,31 +112,26 @@ fun EditTrackRoute(
 fun EditTrackScreen(
     song: Song,
     onBack: () -> Unit,
-    onSave: (Song) -> Unit
+    onSave: (String, String, String, String, String, String, String?) -> Unit
 ) {
-    // State
     var title by remember { mutableStateOf(song.title) }
     var artist by remember { mutableStateOf(song.artist) }
     var album by remember { mutableStateOf(song.albumName) }
     var year by remember { mutableStateOf(if (song.year == 0) "" else song.year.toString()) }
     var trackNumber by remember { mutableStateOf(if (song.trackNumber == 0) "" else song.trackNumber.toString()) }
     var genre by remember { mutableStateOf(song.genre) }
-
     var selectedImageUri by remember(song.id) {
         mutableStateOf("content://media/external/audio/media/${song.id}/albumart")
     }
-
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) selectedImageUri = uri.toString()
     }
-
     val glassBrush = Brush.verticalGradient(
         colors = listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.03f))
     )
     val glassBorder = Color.White.copy(alpha = 0.12f)
-
     val greenGlassBrush = Brush.verticalGradient(
         colors = listOf(Color(0xFF1DB954).copy(alpha = 0.25f), Color(0xFF1DB954).copy(alpha = 0.1f))
     )
@@ -139,13 +145,7 @@ fun EditTrackScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     modifier = Modifier.padding(top = 12.dp),
-                    title = {
-                        Text(
-                            text = "Edit Metadata",
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    },
+                    title = { Text("Edit Metadata", fontWeight = FontWeight.Bold, color = Color.White) },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = Color.Transparent,
                         titleContentColor = Color.White,
@@ -153,42 +153,29 @@ fun EditTrackScreen(
                     ),
                     navigationIcon = {
                         Box(
-                            modifier = Modifier
-                                .padding(start = 16.dp)
-                                .size(40.dp)
+                            modifier = Modifier.padding(start = 16.dp).size(40.dp)
                                 .clip(RoundedCornerShape(60.dp))
                                 .background(glassBrush)
                                 .border(1.dp, glassBorder, RoundedCornerShape(60.dp))
                                 .clickable(onClick = onBack),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Rounded.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Icon(Icons.Rounded.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                     }
                 )
             }
         ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(Modifier.height(16.dp))
 
                     Box(
-                        modifier = Modifier
-                            .size(260.dp)
+                        modifier = Modifier.size(260.dp)
                             .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF1DB954).copy(0.3f))
                             .clip(RoundedCornerShape(24.dp))
                             .background(Color(0xFF252525))
@@ -206,51 +193,26 @@ fun EditTrackScreen(
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
-                            Icon(
-                                Icons.Rounded.MusicNote,
-                                null,
-                                tint = Color.White.copy(0.1f),
-                                modifier = Modifier.size(100.dp).align(Alignment.Center)
-                            )
+                            Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(0.1f), modifier = Modifier.size(100.dp).align(Alignment.Center))
                         }
-
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(16.dp)
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF1DB954).copy(0.9f)),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).size(48.dp).clip(CircleShape).background(Color(0xFF1DB954).copy(0.9f)), contentAlignment = Alignment.Center) {
                             Icon(Icons.Rounded.Edit, null, tint = Color.Black, modifier = Modifier.size(22.dp))
                         }
                     }
 
                     Spacer(Modifier.height(32.dp))
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                         PrismTextField("Title", title, { title = it }, Icons.Rounded.MusicNote)
                         PrismTextField("Artist", artist, { artist = it }, Icons.Rounded.GraphicEq)
                         PrismTextField("Album", album, { album = it }, Icons.Rounded.Edit)
-
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Box(Modifier.weight(1f)) {
-                                PrismTextField("Year", year, { year = it }, Icons.Rounded.CalendarToday, KeyboardType.Number)
-                            }
-                            Box(Modifier.weight(1f)) {
-                                PrismTextField("Track #", trackNumber, { trackNumber = it }, Icons.Rounded.Numbers, KeyboardType.Number)
-                            }
+                            Box(Modifier.weight(1f)) { PrismTextField("Year", year, { year = it }, Icons.Rounded.CalendarToday, KeyboardType.Number) }
+                            Box(Modifier.weight(1f)) { PrismTextField("Track #", trackNumber, { trackNumber = it }, Icons.Rounded.Numbers, KeyboardType.Number) }
                         }
-
                         PrismTextField("Genre", genre, { genre = it })
                     }
-                    Spacer(Modifier.height(120.dp))
+                    Spacer(Modifier.height(100.dp))
                 }
 
                 Box(
@@ -269,52 +231,21 @@ fun EditTrackScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(54.dp)
-                                .clip(CircleShape)
+                            modifier = Modifier.weight(1f).height(54.dp).clip(CircleShape)
                                 .border(1.dp, glassBorder, RoundedCornerShape(60.dp))
-                                .background(glassBrush)
-                                .clickable(onClick = onBack),
+                                .background(glassBrush).clickable(onClick = onBack),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Cancel",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White
-                            )
+                            Text("Cancel", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = Color.White)
                         }
 
                         Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(54.dp)
-                                .clip(CircleShape)
-                                .background(greenGlassBrush)
-                                .border(1.dp, greenGlassBorder, CircleShape)
-                                .clickable(onClick = {
-                                    val artToSave = if (selectedImageUri != song.songArtUri && selectedImageUri != SongArtHelper.getUri(song.albumId).toString()) selectedImageUri else null
-
-                                    val updatedSong = song.copy(
-                                        title = title,
-                                        artist = artist,
-                                        albumName = album,
-                                        year = year.toIntOrNull() ?: 0,
-                                        genre = genre,
-                                        trackNumber = trackNumber.toIntOrNull() ?: 0,
-                                        songArtUri = artToSave
-                                    )
-                                    onSave(updatedSong)
-                                }),
+                            modifier = Modifier.weight(1f).height(54.dp).clip(CircleShape)
+                                .background(greenGlassBrush).border(1.dp, greenGlassBorder, CircleShape)
+                                .clickable(onClick = { onSave(title, artist, album, year, genre, trackNumber, selectedImageUri) }),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Save",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1DB954)
-                            )
+                            Text("Save", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Color(0xFF1DB954))
                         }
                     }
                 }
@@ -445,7 +376,7 @@ fun EditTrackScreenPreview() {
         EditTrackScreen(
             song = mockSong,
             onBack = {},
-            onSave = {}
+            onSave = { _, _, _, _, _, _, _ -> }
         )
     }
 }

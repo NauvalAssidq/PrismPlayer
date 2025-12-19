@@ -10,7 +10,7 @@ class PrismApplication : Application() {
     val repository by lazy {
         MusicRepository(
             context = this,
-            statsDao = database.statsDao(),
+            songDao = database.statsDao(),
             lyricsDao = database.lyricsDao()
         )
     }

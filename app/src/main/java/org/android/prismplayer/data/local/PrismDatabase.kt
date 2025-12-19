@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import org.android.prismplayer.data.dao.LyricsDao
-import org.android.prismplayer.data.dao.StatsDao
+import org.android.prismplayer.data.dao.SongDao
 import org.android.prismplayer.data.model.LyricsEntity // ✅ Import this
 import org.android.prismplayer.data.model.PlayHistory
 import org.android.prismplayer.data.model.Song
@@ -16,7 +16,7 @@ import org.android.prismplayer.data.model.Song
     exportSchema = false
 )
 abstract class PrismDatabase : RoomDatabase() {
-    abstract fun statsDao(): StatsDao
+    abstract fun statsDao(): SongDao
     abstract fun lyricsDao(): LyricsDao
 
     companion object {

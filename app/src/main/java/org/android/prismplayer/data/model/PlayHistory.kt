@@ -17,6 +17,7 @@ import androidx.room.PrimaryKey
     ],
     indices = [Index(value = ["songId"]), Index(value = ["timestamp"])]
 )
+
 data class PlayHistory(
     @PrimaryKey(autoGenerate = true) val historyId: Long = 0,
     val songId: Long,

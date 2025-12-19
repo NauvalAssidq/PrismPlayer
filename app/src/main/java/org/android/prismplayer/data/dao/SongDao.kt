@@ -10,7 +10,7 @@ import org.android.prismplayer.data.model.PlayHistory
 import org.android.prismplayer.data.model.Song
 
 @Dao
-interface StatsDao {
+interface SongDao {
 
     @Query("SELECT * FROM songs ORDER BY title ASC")
     fun getAllSongs(): Flow<List<Song>>
