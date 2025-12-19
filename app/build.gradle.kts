@@ -135,9 +135,7 @@ dependencies {
     implementation(libs.coil.compose.v260)
     implementation(libs.reorderable)
     implementation(libs.accompanist.permissions.v0340)
-    implementation("net.jthink:jaudiotagger:3.0.1") {
-        exclude(group = "com.intellij", module = "annotations")
-    }
+    implementation("io.github.kyant0:taglib:1.0.5")
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.logging.interceptor)

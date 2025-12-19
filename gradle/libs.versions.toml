@@ -29,6 +29,7 @@ roomVersion = "2.8.4"
 coreSplashscreen = "1.2.0"
 runtime = "1.10.0"
 foundationLayout = "1.10.0"
+taglib = "0.1.6"
 uiGeometry = "1.10.0"
 reorderable = "3.0.0"
 uiToolingPreview = "1.10.0"
@@ -86,6 +87,7 @@ play-services-appsearch = { group = "com.google.android.gms", name = "play-servi
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+taglib = { module = "com.github.Kyant0:taglib", version.ref = "taglib" }
 
 
 [plugins]

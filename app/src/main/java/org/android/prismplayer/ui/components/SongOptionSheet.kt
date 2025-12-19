@@ -86,9 +86,9 @@ fun SongOptionSheet(
                 ) {
                     if (!song.songArtUri.isNullOrBlank()) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
+                            model = ImageRequest.Builder(LocalContext.current)
                                 .data(song.songArtUri)
-                                .crossfade(true)
+                                .setParameter("t", System.currentTimeMillis())
                                 .build(),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,

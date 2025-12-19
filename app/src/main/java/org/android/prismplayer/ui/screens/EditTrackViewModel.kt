@@ -4,7 +4,6 @@ import android.app.RecoverableSecurityException
 import android.content.ContentUris
 import android.content.IntentSender
 import android.media.MediaScannerConnection
-import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.lifecycle.ViewModel
@@ -19,12 +18,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import org.android.prismplayer.PrismApplication
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.data.repository.MusicRepository
 import org.android.prismplayer.ui.utils.TagEditor
-import kotlin.coroutines.resume
 
 sealed class EditUiState {
     object Loading : EditUiState()
@@ -68,20 +65,17 @@ class EditTrackViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                TagEditor.writeTags(application, song, song.songArtUri)
-                val scannedUri = scanFileAndWait(song.path)
+                val success = TagEditor.writeTags(application, song, song.songArtUri)
 
-                if (scannedUri != null) {
-                    val newId = try { ContentUris.parseId(scannedUri) } catch (e: Exception) { song.id }
+                if (success) {
                     val timestamp = System.currentTimeMillis() / 1000
                     val updatedSong = song.copy(dateModified = timestamp)
-
-                    repository.updateSongIdAndMetadata(song.id, newId, updatedSong)
+                    repository.updateSongIdAndMetadata(song.id, song.id, updatedSong)
 
                     _eventChannel.send(EditEvent.SaveSuccess)
                     pendingSong = null
                 } else {
-                    _uiState.value = EditUiState.Error("Failed to scan file after save")
+                    _uiState.value = EditUiState.Error("Failed to write tags")
                 }
 
             } catch (securityException: SecurityException) {
@@ -101,12 +95,6 @@ class EditTrackViewModel(
     fun onPermissionGranted() {
         pendingSong?.let {
             saveSong(it)
-        }
-    }
-
-    private suspend fun scanFileAndWait(path: String): Uri? = suspendCancellableCoroutine { continuation ->
-        MediaScannerConnection.scanFile(application, arrayOf(path), null) { _, uri ->
-            if (continuation.isActive) continuation.resume(uri)
         }
     }
 

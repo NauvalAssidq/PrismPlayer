@@ -1,8 +1,10 @@
 package org.android.prismplayer.data.repository
 
 import android.content.Context
+import android.media.MediaScannerConnection
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -24,9 +26,24 @@ class MusicRepository(
     fun getAllSongs(): Flow<List<Song>> = statsDao.getAllSongs()
 
     suspend fun importSongsFromFolders(folderPaths: List<String>) = withContext(Dispatchers.IO) {
+        MediaScannerConnection.scanFile(
+            context,
+            folderPaths.flatMap { folder ->
+                File(folder).walkTopDown()
+                    .filter { it.isFile && it.extension.lowercase() in setOf("mp3", "m4a", "flac", "wav", "opus", "ogg", "aac") }
+                    .map { it.absolutePath }
+                    .toList()
+            }.toTypedArray(),
+            null,
+            null
+        )
+
+        delay(500)
+
         val songsToInsert = mutableListOf<Song>()
         val authorizedPaths = folderPaths.map { it.trimEnd('/') }
         val genreMap = HashMap<Long, String>()
+
         try {
             val genreProjection = arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME)
             context.contentResolver.query(
@@ -86,7 +103,7 @@ class MusicRepository(
                                 path = path,
                                 folderName = File(path).parentFile?.name ?: "Unknown",
                                 dateAdded = c.getLong(dateCol),
-                                songArtUri = "content://media/external/audio/albumart/${c.getLong(albumIdCol)}",
+                                songArtUri = "content://media/external/audio/media/${id}/albumart",
                                 year = if (yearCol != -1) c.getInt(yearCol) else 0,
                                 trackNumber = if (trackCol != -1) c.getInt(trackCol) else 0,
                                 dateModified = c.getLong(dateModCol),
