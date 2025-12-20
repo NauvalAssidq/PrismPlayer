@@ -29,7 +29,7 @@ fun AlbumGridItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f) // Keeps it square
+                .aspectRatio(1f)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color.White.copy(0.03f)) // Glassy placeholder
                 .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp))

@@ -1,7 +1,10 @@
 package org.android.prismplayer.ui.screens
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,10 +12,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,10 +23,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -46,7 +48,7 @@ fun SettingsScreen(
     SettingsContent(
         isScanning = isScanning,
         onBack = onBack,
-        onRescan = { if (!isScanning) viewModel.rescanLibrary() }, // optional: prevent double scan
+        onRescan = { if (!isScanning) viewModel.rescanLibrary() },
         onOpenEqualizer = onOpenEqualizer,
         onReselectFolders = onReselectFolders,
         bottomPadding = bottomPadding
@@ -63,153 +65,266 @@ fun SettingsContent(
     onReselectFolders: () -> Unit,
     bottomPadding: Dp
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF050505))
-    ) {
-        AuraBackground()
-
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                val glassBrush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.10f),
-                        Color.White.copy(alpha = 0.03f)
-                    )
-                )
-                val glassBorder = Color.White.copy(alpha = 0.12f)
-
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            Column {
                 CenterAlignedTopAppBar(
-                    modifier = Modifier.padding(top = 12.dp),
                     title = {
                         Text(
-                            text = "Settings",
+                            text = "SYSTEM_CONFIG",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    ),
                     navigationIcon = {
-                        Box(
-                            modifier = Modifier
-                                .padding(start = 16.dp)
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(60.dp))
-                                .background(glassBrush)
-                                .border(1.dp, glassBorder, RoundedCornerShape(60.dp))
-                                .clickable(onClick = onBack),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.Rounded.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                imageVector = Icons.Outlined.ArrowBack,
+                                contentDescription = "RETURN",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
                 )
+                Divider(color = Color.White.copy(0.1f))
             }
-        ) { padding ->
-            Column(
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(bottom = bottomPadding)
+        ) {
+            ConfigSectionHeader("AUDIO_PROCESSING")
+
+            ConfigItem(
+                icon = Icons.Outlined.GraphicEq,
+                label = "EQUALIZER",
+                description = "FREQUENCY_RESPONSE_TUNING",
+                onClick = onOpenEqualizer
+            )
+
+            Divider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+
+            ConfigSectionHeader("DATA_MANAGEMENT")
+
+            ConfigItem(
+                icon = Icons.Outlined.Sync,
+                label = "FORCE_RESCAN",
+                description = "UPDATE_INDEX_CACHE",
+                onClick = onRescan
+            )
+
+            Divider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+
+            ConfigItem(
+                icon = Icons.Outlined.FolderOpen,
+                label = "MOUNT_PATHS",
+                description = "CONFIGURE_STORAGE_ACCESS",
+                onClick = onReselectFolders
+            )
+
+            Divider(color = Color.White.copy(0.1f))
+
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(top = 16.dp, bottom = bottomPadding + 16.dp)
+                    .fillMaxWidth()
+                    .padding(vertical = 40.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Audio",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(0.4f),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-
-                SettingsItem(
-                    icon = Icons.Rounded.GraphicEq,
-                    title = "Equalizer",
-                    subtitle = "Adjust frequencies and bass",
-                    onClick = onOpenEqualizer
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Library",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(0.4f),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-
-                SettingsItem(
-                    icon = Icons.Rounded.Sync,
-                    title = "Rescan Library",
-                    subtitle = "Refresh your music list",
-                    onClick = onRescan
-                )
-
-                SettingsItem(
-                    icon = Icons.Rounded.FolderOpen,
-                    title = "Reselect Music Folders",
-                    subtitle = "Scan new folders for music",
-                    onClick = onReselectFolders
+                    text = "PRISM_OS v1.0 // BUILD_2024",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
+                    fontFamily = FontFamily.Monospace
                 )
             }
         }
 
         if (isScanning) {
-            ScanningDialog()
+            SystemProcessDialog()
         }
     }
 }
 
 @Composable
-fun ScanningDialog() {
+fun ConfigSectionHeader(title: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 24.dp, bottom = 8.dp, start = 24.dp, end = 24.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp
+        )
+    }
+}
+
+@Composable
+fun ConfigItem(
+    icon: ImageVector,
+    label: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(modifier = Modifier.width(20.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge, // Standard font for readability
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace, // Tech font for subtext
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f),
+                fontSize = 10.sp
+            )
+        }
+
+        Text(
+            text = ">>",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f)
+        )
+    }
+}
+
+@Composable
+fun SystemProcessDialog() {
+    val infiniteTransition = rememberInfiniteTransition(label = "status_light")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "alpha"
+    )
+
     Dialog(
-        onDismissRequest = { /* Prevent dismissal */ },
+        onDismissRequest = { /* Lock */ },
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
     ) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF181818)),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, Color.White.copy(0.08f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
-            modifier = Modifier.fillMaxWidth(0.9f)
+        Column(
+            modifier = Modifier
+                .width(320.dp)
+                .clip(RoundedCornerShape(2.dp)) // Sharp, technical corners
+                .background(Color(0xFF0F0F0F)) // Deep matte black
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(2.dp))
         ) {
             Row(
                 modifier = Modifier
-                    .padding(start = 22.dp, end = 32.dp, top = 24.dp, bottom = 24.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxWidth()
+                    .background(Color(0xFF1A1A1A)) // Lighter header strip
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(28.dp),
-                    color = Color(0xFF1DB954),
-                    trackColor = Color(0xFF1DB954).copy(alpha = 0.2f),
-                    strokeWidth = 3.dp
+                Text(
+                    text = "TASK_MANAGER // PID_99",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.width(20.dp))
-
-                Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Scanning Library",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.5.sp
-                        ),
-                        color = Color.White
+                        text = "BUSY",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .alpha(alpha)
+                            .background(MaterialTheme.colorScheme.secondary, CircleShape)
+                    )
+                }
+            }
+
+            Divider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                // Technical Label
+                Text(
+                    text = "> EXECUTING_INDEX_SCAN...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Updating local database references.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = MaterialTheme.colorScheme.secondary, // Red Accent
+                    trackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(
-                        text = "Updating your tracks...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(0.5f)
+                        text = "[ WAIT ]",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 8.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
+                    )
+                    Text(
+                        text = "--:--",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 8.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
                     )
                 }
             }
@@ -217,82 +332,18 @@ fun ScanningDialog() {
     }
 }
 
-@Composable
-fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(0.1f),
-                            Color.White.copy(0.03f)
-                        )
-                    )
-                )
-                .border(1.dp, Color.White.copy(0.12f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White.copy(0.7f)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(0.5f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun AuraBackground() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF1DB954).copy(alpha = 0.15f),
-                    Color.Transparent
-                ),
-                center = Offset(width * 0.5f, -100f),
-                radius = width * 1.3f
-            ),
-            center = Offset(width * 0.5f, -100f),
-            radius = width * 1.3f
-        )
-    }
-}
-
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 fun PreviewSettingsScreen() {
-    MaterialTheme {
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            background = Color(0xFF050505),
+            primary = Color.White,
+            secondary = Color(0xFFD71921),
+            onSurfaceVariant = Color.Gray,
+            outline = Color.White.copy(0.2f)
+        )
+    ) {
         SettingsContent(
             isScanning = false,
             onBack = {},

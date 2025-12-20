@@ -3,32 +3,51 @@ package org.android.prismplayer.ui.screens
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
-import android.widget.ImageView
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
-import org.android.prismplayer.R
+
+data class BootLog(val id: Int, val message: String, val status: String = "OK")
 
 @Composable
 fun SplashScreen(
@@ -36,210 +55,193 @@ fun SplashScreen(
     onPermissionsMissing: () -> Unit
 ) {
     val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "prism_intro")
+    val infiniteTransition = rememberInfiniteTransition(label = "system_idle")
+
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.3f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "pulse"
+    )
 
     val rotation by infiniteTransition.animateFloat(
-        initialValue = -6f,
-        targetValue = 6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4200, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(20000, easing = LinearEasing)),
         label = "rotation"
     )
 
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.55f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = EaseInOutQuad),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow"
-    )
-
-    val progress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "progress"
-    )
+    val bootLogs = remember { mutableStateListOf<BootLog>() }
 
     LaunchedEffect(Unit) {
-        delay(1000)
+        val sequence = listOf(
+            BootLog(1, "INIT_CORE_MODULES"),
+            BootLog(2, "MOUNT_FILE_SYSTEM"),
+            BootLog(3, "CHECK_PERMISSIONS", "WAIT"),
+            BootLog(4, "LOAD_UI_ENGINE")
+        )
+
+        sequence.forEachIndexed { index, log ->
+            delay(300L)
+            bootLogs.add(log)
+        }
+
+        delay(600)
+
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_AUDIO
         } else {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-        val granted = ContextCompat.checkSelfPermission(
+        val hasPermission = ContextCompat.checkSelfPermission(
             context,
             permission
         ) == PackageManager.PERMISSION_GRANTED
 
-        if (granted) onPermissionsGranted() else onPermissionsMissing()
+        if (hasPermission) {
+            onPermissionsGranted()
+        } else {
+            onPermissionsMissing()
+        }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(MaterialTheme.colorScheme.background) // Pitch Black
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val centerTop = Offset(size.width / 2, -120f)
-
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFF1DB954).copy(alpha = glowAlpha),
-                        Color.Transparent
-                    ),
-                    center = centerTop,
-                    radius = size.width * 1.4f
-                ),
-                center = centerTop,
-                radius = size.width * 1.4f
-            )
-        }
-
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(240.dp)
-            ) {
-                GlassCardCompat(
-                    modifier = Modifier
-                        .size(160.dp)
-                        .graphicsLayer {
-                            rotationZ = rotation - 12f
-                            alpha = 0.45f
-                        },
-                    color = Color.White
-                )
-
-                GlassCardCompat(
-                    modifier = Modifier
-                        .size(180.dp)
-                        .graphicsLayer {
-                            rotationZ = rotation
-                            shadowElevation = 60f
-                            spotShadowColor =
-                                if (Build.VERSION.SDK_INT >= 28)
-                                    Color(0xFF1DB954)
-                                else Color.Black
-                        },
-                    color = Color(0xFF1DB954),
-                    isHero = true
-                ) {
-                    AndroidView(
-                        modifier = Modifier.size(256.dp),
-                        factory = { ctx ->
-                            ImageView(ctx).apply {
-                                setImageResource(R.drawable.ic_launcher_foreground)
-                                scaleType = ImageView.ScaleType.FIT_CENTER
-                            }
-                        }
+            val step = 40.dp.toPx()
+            for (x in 0..size.width.toInt() step step.toInt()) {
+                for (y in 0..size.height.toInt() step step.toInt()) {
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.05f),
+                        radius = 1.dp.toPx(),
+                        center = Offset(x.toFloat(), y.toFloat())
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(56.dp))
-
-            Text(
-                text = "PRISM",
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 8.sp
-                ),
-                color = Color.White
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            Box(
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(2.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Color.White.copy(alpha = 0.12f))
-            ) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 64.dp, start = 24.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.3f)
-                        .offset(x = (120 * progress).dp - 40.dp)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color(0xFF1DB954),
-                                    Color.Transparent
-                                )
-                            )
-                        )
+                        .size(8.dp)
+                        .alpha(pulseAlpha)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondary) // Nothing Red
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "SYSTEM BOOT // SEQ_01",
+                    style = MaterialTheme.typography.labelSmall, // Mono Font
+                    color = MaterialTheme.colorScheme.secondary,
+                    letterSpacing = 2.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "PRISM OS v1.0",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Box(
+            modifier = Modifier.align(Alignment.Center),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(
+                modifier = Modifier
+                    .size(280.dp)
+                    .graphicsLayer { rotationZ = rotation }
+            ) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.2f),
+                    style = Stroke(
+                        width = 1.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(40f, 40f), 0f)
+                    )
+                )
+            }
+
+            Canvas(modifier = Modifier.size(240.dp)) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.1f),
+                    style = Stroke(width = 2.dp.toPx())
+                )
+            }
+
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "PRISM",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 4.sp
+                )
+                Text(
+                    text = "AUDIO_CORE",
+                    style = MaterialTheme.typography.labelSmall, // Mono Font
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                    letterSpacing = 4.sp,
+                    fontSize = 10.sp
                 )
             }
         }
-    }
-}
 
-
-@Composable
-fun GlassCardCompat(
-    modifier: Modifier = Modifier,
-    color: Color,
-    isHero: Boolean = false,
-    content: @Composable BoxScope.() -> Unit = {}
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(32.dp))
-            .background(Color(0xFF121212)) // Dark Glass Base
-            .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(if (isHero) 0.4f else 0.1f),
-                        Color.White.copy(0.05f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                ),
-                shape = RoundedCornerShape(32.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            color.copy(if (isHero) 0.1f else 0.03f),
-                            Color.Transparent
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(0f, Float.POSITIVE_INFINITY)
-                    )
-                )
+                .align(Alignment.BottomStart)
+                .padding(bottom = 64.dp, start = 24.dp)
+        ) {
+            bootLogs.forEach { log ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically { 20 } + fadeIn()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "> ${log.message}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "[${log.status}]",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if(log.status == "OK") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = "BUILD_2025.12",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 64.dp, end = 24.dp)
         )
-        content()
     }
 }
+
+fun Modifier.alpha(alpha: Float) = this.graphicsLayer(alpha = alpha)
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
-fun PreviewSplashScreen() {
-    MaterialTheme {
+fun PreviewNewSplash() {
+    org.android.prismplayer.ui.theme.PrismPlayerTheme {
         SplashScreen(onPermissionsGranted = {}, onPermissionsMissing = {})
     }
 }

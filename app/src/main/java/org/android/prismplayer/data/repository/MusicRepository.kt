@@ -59,6 +59,8 @@ class MusicRepository(
         return localSource.getSongById(id) ?: systemSource.fetchSingleSongFromSystem(id)
     }
 
+    fun getSongsByAlbumName(name: String): Flow<List<Song>> = localSource.getSongsByAlbumName(name)
+
     suspend fun updateSongIdAndMetadata(oldId: Long, finalId: Long, updatedSong: Song) {
         val finalSong = updatedSong.copy(
             id = finalId,

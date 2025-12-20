@@ -3,7 +3,6 @@ package org.android.prismplayer.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,19 +11,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,181 +52,114 @@ fun ManageFoldersScreen(
         }
     }
 
-    val glassBrush = Brush.verticalGradient(
-        colors = listOf(
-            Color.White.copy(alpha = 0.10f),
-            Color.White.copy(alpha = 0.03f)
-        )
-    )
-    val glassBorder = Color.White.copy(alpha = 0.12f)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF050505))
-    ) {
-        AuraBackground()
-
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
+    Scaffold(
+        containerColor = Color(0xFF050505),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            Column {
                 CenterAlignedTopAppBar(
-                    modifier = Modifier.padding(top = 12.dp),
                     title = {
                         Text(
-                            text = "Manage Library",
+                            text = "STORAGE_MOUNT",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    ),
                     navigationIcon = {
-                        Box(
-                            modifier = Modifier
-                                .padding(start = 16.dp)
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(60.dp))
-                                .background(glassBrush)
-                                .border(1.dp, glassBorder, RoundedCornerShape(60.dp))
-                                .clickable(onClick = onBack),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        IconButton(onClick = onBack) {
                             Icon(
-                                imageVector = Icons.Rounded.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                imageVector = Icons.Outlined.ArrowBack,
+                                contentDescription = "RETURN",
+                                tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color(0xFF050505)
+                    )
                 )
+                Divider(color = Color.White.copy(0.1f))
             }
-        ) { padding ->
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                // Small subtitle (matches Settings muted label vibe)
-                Text(
-                    text = "${folderList.size} folders active",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(0.55f),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
-                )
-
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    item {
-                        Text(
-                            text = "LIBRARY",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White.copy(0.4f),
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-
-                    items(folderList) { path ->
-                        FolderRowGlass(
-                            path = path,
-                            glassBrush = glassBrush,
-                            glassBorder = glassBorder,
-                            onRemove = { folderList = folderList - path }
-                        )
-                    }
-
-                    item {
-                        // Add new folder (glass)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(glassBrush)
-                                .border(1.dp, glassBorder, RoundedCornerShape(16.dp))
-                                .clickable { launcher.launch(null) }
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colors = listOf(
-                                                Color.White.copy(0.10f),
-                                                Color.White.copy(0.03f)
-                                            )
-                                        )
-                                    )
-                                    .border(1.dp, Color.White.copy(0.12f), RoundedCornerShape(50)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Add,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(0.85f),
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-
-                            Spacer(Modifier.width(16.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Add Storage Location",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = "Pick a folder to scan for music",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(0.5f)
-                                )
-                            }
-
-                            Icon(
-                                imageVector = Icons.Rounded.ChevronRight,
-                                contentDescription = null,
-                                tint = Color.White.copy(0.25f),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Bottom button (same as your green pill)
+        },
+        bottomBar = {
+            Column {
+                Divider(color = Color.White.copy(0.1f))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 18.dp)
+                        .background(Color(0xFF050505))
+                        .navigationBarsPadding()
+                        .padding(24.dp)
                 ) {
                     Button(
                         onClick = { onSave(folderList) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DB954)),
-                        shape = RoundedCornerShape(50),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp)
+                            .height(56.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
+                        Icon(Icons.Outlined.Sync, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(12.dp))
                         Text(
-                            text = "Rescan Library",
-                            color = Color.Black,
+                            text = "COMMIT_CHANGES",
+                            style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            letterSpacing = 1.sp
                         )
                     }
+                }
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Stats Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "MOUNTED_VOLUMES",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "[${folderList.size}]",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Existing Folders
+                items(folderList) { path ->
+                    MountPointRow(
+                        path = path,
+                        onRemove = { folderList = folderList - path }
+                    )
+                }
+
+                // Add New Button (Dashed Border)
+                item {
+                    DashedAddButton(onClick = { launcher.launch(null) })
                 }
             }
         }
@@ -227,108 +167,115 @@ fun ManageFoldersScreen(
 }
 
 @Composable
-private fun FolderRowGlass(
+fun MountPointRow(
     path: String,
-    glassBrush: Brush,
-    glassBorder: Color,
     onRemove: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(glassBrush)
-            .border(1.dp, glassBorder, RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.2f), RoundedCornerShape(4.dp))
+            .background(Color(0xFF111111), RoundedCornerShape(4.dp))
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(50))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(0.10f),
-                            Color.White.copy(0.03f)
-                        )
-                    )
-                )
-                .border(1.dp, Color.White.copy(0.12f), RoundedCornerShape(50)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.FolderOpen,
-                contentDescription = null,
-                tint = Color.White.copy(0.75f),
-                modifier = Modifier.size(22.dp)
-            )
-        }
+        Icon(
+            imageVector = Icons.Outlined.FolderOpen,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
+        )
 
         Spacer(Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = File(path).name.ifEmpty { "Root" },
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold
+                text = File(path).name.ifEmpty { "ROOT" }.uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = path,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(0.45f),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
 
-        Box(
-            modifier = Modifier
-                .size(30.dp)
-                .clip(RoundedCornerShape(24))
-                .background(Color.White.copy(0.06f))
-                .border(1.dp, Color.White.copy(0.10f), RoundedCornerShape(24))
-                .clickable(onClick = onRemove),
-            contentAlignment = Alignment.Center
-        ) {
+        IconButton(onClick = onRemove) {
             Icon(
-                imageVector = Icons.Rounded.Delete,
-                contentDescription = "Remove",
-                tint = Color(0xFFCF6679),
-                modifier = Modifier.size(18.dp)
+                imageVector = Icons.Outlined.Delete,
+                contentDescription = "UNMOUNT",
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(20.dp)
             )
         }
     }
 }
 
 @Composable
-private fun AuraBackground() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF1DB954).copy(alpha = 0.15f),
-                    Color.Transparent
-                ),
-                center = Offset(width * 0.5f, -100f),
-                radius = width * 1.3f
-            ),
-            center = Offset(width * 0.5f, -100f),
-            radius = width * 1.3f
-        )
+fun DashedAddButton(onClick: () -> Unit) {
+    val stroke = Stroke(
+        width = 2f,
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+    )
+    val color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .drawBehind {
+                drawRoundRect(
+                    color = color,
+                    style = stroke,
+                    cornerRadius = CornerRadius(4.dp.toPx())
+                )
+            }
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Outlined.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = "MOUNT_NEW_VOLUME",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+        }
     }
 }
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 fun PreviewManageFoldersScreen() {
-    MaterialTheme {
+    // Mock Theme for preview
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            background = Color(0xFF050505),
+            primary = Color.White,
+            secondary = Color(0xFFD71921),
+            error = Color(0xFFCF6679),
+            outline = Color.White.copy(0.2f),
+            onSurfaceVariant = Color.Gray
+        )
+    ) {
         ManageFoldersScreen(
             currentPaths = listOf(
                 "/storage/emulated/0/Music",
-                "/storage/emulated/0/Download"
+                "/storage/emulated/0/Download/Audio"
             ),
             onSave = {},
             onBack = {}

@@ -7,16 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,12 +17,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.ui.theme.PrismPlayerTheme
 import org.android.prismplayer.ui.utils.SongArtHelper
 
 @Composable
@@ -42,137 +38,227 @@ fun SongListItem(
     onClick: () -> Unit,
     onMoreClick: () -> Unit = {}
 ) {
-    val textColor = if (isActive) Color(0xFF1DB954) else Color.White
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
+    val nothingRed = Color(0xFFD71921)
+    val prismWhite = Color(0xFFFFFFFF)
+    val prismLightGrey = Color(0xFF808080)
+    val prismDarkGrey = Color(0xFF121212)
 
-    val artUri = SongArtHelper.getUri(song.id)
+    val textColor = if (isActive) nothingRed else prismWhite
+    val subTextColor = if (isActive) nothingRed.copy(0.7f) else prismLightGrey
+    val bgColor = if (isActive) prismDarkGrey.copy(0.5f) else Color.Transparent
+
+    val pulseAlpha = if (isActive && isPlaying) {
+        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+        val alpha by infiniteTransition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(600, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseAlpha"
+        )
+        alpha
+    } else {
+        1f
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(72.dp)
             .clickable(onClick = onClick)
-            .padding(
-                horizontal = if (index != null) 20.dp else 16.dp,
-                vertical = if (index != null) 12.dp else 8.dp
-            ),
+            .background(bgColor)
+            .padding(horizontal = 24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
         if (index != null) {
-            Box(
-                modifier = Modifier.width(32.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                if (isActive) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = Color(0xFF1DB954),
-                        modifier = Modifier
-                            .size(18.dp)
-                            .graphicsLayer { if (isPlaying) alpha = pulseAlpha }
-                    )
-                } else {
-                    Text(
-                        text = index.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(0.5f)
-                    )
-                }
+            Box(modifier = Modifier.width(32.dp)) {
+                Text(
+                    text = if (isActive) ">>" else String.format("%02d", index),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isActive) nothingRed else prismLightGrey.copy(0.5f),
+                    modifier = Modifier.graphicsLayer { alpha = if (isActive && isPlaying) pulseAlpha else 1f }
+                )
             }
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF252525))
-            ) {
-                if (!song.songArtUri.isNullOrBlank()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(song.songArtUri)
-                            .setParameter("t", System.currentTimeMillis())
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    if (isActive) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(0.6f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.GraphicEq,
-                                contentDescription = null,
-                                tint = Color(0xFF1DB954),
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .graphicsLayer { alpha = pulseAlpha }
-                            )
-                        }
-                    }
-                } else {
-                    Icon(
-                        imageVector = if (isActive) Icons.Rounded.GraphicEq else Icons.Rounded.MusicNote,
-                        contentDescription = null,
-                        tint = if (isActive) Color(0xFF1DB954) else Color.White.copy(0.2f),
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(24.dp)
-                            .graphicsLayer { if (isActive) alpha = pulseAlpha }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(16.dp))
         }
 
-        Column(modifier = Modifier.weight(1f)) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color(0xFF111111))
+        ) {
+            if (!song.songArtUri.isNullOrBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(
+                            SongArtHelper.getUri(song.id)
+                                .buildUpon()
+                                .appendQueryParameter("t", song.dateModified.toString())
+                                .build()
+                        )
+                        .crossfade(false)
+                        .size(96, 96)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = if (isActive) 0.5f else 1f }
+                )
+            } else {
+                Text(
+                    text = "N/A",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = 8.sp,
+                    color = prismLightGrey.copy(0.3f),
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            if (isActive) {
+                if (isPlaying) {
+                    AnimatedEqualizer(nothingRed)
+                } else {
+                    StaticEqualizer(nothingRed)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
                 text = song.title,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (index == null) Spacer(Modifier.height(4.dp))
 
-            Text(
-                text = song.artist,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(0.6f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = song.artist.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = subTextColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+
+                if (!isActive) {
+                    Text(
+                        text = " // ${formatDuration(song.duration)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = prismLightGrey.copy(0.4f)
+                    )
+                }
+            }
         }
 
-        if (showDuration) {
-            Spacer(Modifier.width(16.dp))
+        if (isActive) {
             Text(
-                text = formatDuration(song.duration),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isActive) Color(0xFF1DB954) else Color.White.copy(0.4f)
+                text = if (isPlaying) "RUNNING" else "PAUSED",
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 9.sp,
+                color = nothingRed,
+                modifier = Modifier.graphicsLayer { alpha = if (isPlaying) pulseAlpha else 1f }
             )
+        } else {
+            IconButton(onClick = onMoreClick) {
+                Icon(
+                    Icons.Rounded.MoreVert,
+                    null,
+                    tint = prismLightGrey,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
+    }
+}
 
-        IconButton(onClick = onMoreClick) {
-            Icon(
-                Icons.Rounded.MoreVert,
-                null,
-                tint = Color.White.copy(0.3f),
-                modifier = Modifier.size(20.dp)
+@Composable
+private fun AnimatedEqualizer(color: Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "eq")
+
+    val bar1 by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bar1"
+    )
+
+    val bar2 by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bar2"
+    )
+
+    val bar3 by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bar3"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight(bar1)
+                .background(color)
+        )
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight(bar2)
+                .background(color)
+        )
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight(bar3)
+                .background(color)
+        )
+    }
+}
+
+@Composable
+private fun StaticEqualizer(color: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        listOf(0.4f, 0.8f, 0.6f).forEach { level ->
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .fillMaxHeight(level)
+                    .background(color)
             )
         }
     }
@@ -183,42 +269,55 @@ private fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format("%d:%02d", minutes, seconds)
+    return String.format("%02d:%02d", minutes, seconds)
 }
 
 @Preview(showBackground = false)
 @Composable
 fun SongListItemPreview() {
-    MaterialTheme {
+    PrismPlayerTheme {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(Color(0xFF050505))
+                .background(Color.Black)
         ) {
-            SongListItem(
-                song = Song(
-                    id = 1L,
-                    title = "Starboy",
-                    artist = "The Weeknd",
-                    duration = 230_000L,
-                    albumName = "Starboy",
-                    albumId = 10L,
-                    path = "/storage/emulated/0/Music/TheWeeknd/Starboy.mp3",
-                    folderName = "Music",
-                    dateAdded = System.currentTimeMillis() / 1000,
-                    songArtUri = null,
-                    year = 2016,
-                    trackNumber = 1,
-                    genre = "Pop",
-                    dateModified = System.currentTimeMillis() / 1000
-                ),
-                isActive = true,
-                isPlaying = true,
-                index = 1,
-                showDuration = true,
-                onClick = {},
-                onMoreClick = {}
-            )
+            Column {
+                SongListItem(
+                    song = Song(
+                        id = 1L, title = "Starboy", artist = "The Weeknd", duration = 230_000L,
+                        albumName = "Starboy", albumId = 0, path = "", folderName = "",
+                        dateAdded = 0, songArtUri = "content://media/external/audio/albumart/1",
+                        year = 2016, trackNumber = 1, genre = "Pop", dateModified = 0L
+                    ),
+                    isActive = true,
+                    isPlaying = true,
+                    index = 1,
+                    onClick = {}
+                )
+                SongListItem(
+                    song = Song(
+                        id = 2L, title = "I Feel It Coming", artist = "The Weeknd", duration = 250_000L,
+                        albumName = "Starboy", albumId = 0, path = "", folderName = "",
+                        dateAdded = 0, songArtUri = null, year = 2016, trackNumber = 2,
+                        genre = "Pop", dateModified = 0L
+                    ),
+                    isActive = false,
+                    isPlaying = false,
+                    index = 2,
+                    onClick = {}
+                )
+                SongListItem(
+                    song = Song(
+                        id = 3L, title = "Party Monster", artist = "The Weeknd", duration = 245_000L,
+                        albumName = "Starboy", albumId = 0, path = "", folderName = "",
+                        dateAdded = 0, songArtUri = null, year = 2016, trackNumber = 3,
+                        genre = "Pop", dateModified = 0L
+                    ),
+                    isActive = true,
+                    isPlaying = false,
+                    index = 3,
+                    onClick = {}
+                )
+            }
         }
     }
 }

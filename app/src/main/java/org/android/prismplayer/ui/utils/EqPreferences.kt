@@ -19,6 +19,13 @@ class EqPreferences(context: Context) {
         prefs.edit().putInt("band_$bandId", level.toInt()).apply()
     }
 
+    fun saveLastPresetName(name: String) {
+        prefs.edit().putString("LAST_PRESET_NAME", name).apply()
+    }
+
+    fun getLastPresetName(): String {
+        return prefs.getString("LAST_PRESET_NAME", "Custom") ?: "Custom"
+    }
 
     fun saveCustomPresets(presets: List<EqPreset>) {
         // Serialization Format: "Name:Level1,Level2,Level3|Name2:Level1..."

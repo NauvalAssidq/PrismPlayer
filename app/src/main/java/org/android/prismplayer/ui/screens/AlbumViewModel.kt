@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import org.android.prismplayer.PrismApplication
 import org.android.prismplayer.data.repository.MusicRepository
+import org.android.prismplayer.data.source.LocalLibrarySource
 
 data class AlbumUiState(
     val albumName: String = "",
@@ -27,27 +28,24 @@ class AlbumViewModel(
     repository: MusicRepository
 ) : ViewModel() {
 
-    private val albumId: Long = checkNotNull(savedStateHandle["albumId"]) {
-        "albumId is required in SavedStateHandle"
+    private val albumName: String = checkNotNull(savedStateHandle["albumName"]) {
+        "albumName is required"
     }
 
     val uiState: StateFlow<AlbumUiState> =
-        repository.getSongsByAlbum(albumId)
+        repository.getSongsByAlbumName(albumName)
             .map { songs ->
                 if (songs.isNotEmpty()) {
-                    val first = songs.first()
+                    val representative = songs.firstOrNull { !it.songArtUri.isNullOrBlank() } ?: songs.first()
                     AlbumUiState(
-                        albumName = first.albumName,
-                        artistName = first.artist,
-                        artUri = first.songArtUri,
+                        albumName = representative.albumName,
+                        artistName = representative.artist,
+                        artUri = representative.songArtUri,
                         songs = songs,
                         isLoading = false
                     )
                 } else {
-                    AlbumUiState(
-                        songs = emptyList(),
-                        isLoading = false
-                    )
+                    AlbumUiState(songs = emptyList(), isLoading = false)
                 }
             }
             .stateIn(

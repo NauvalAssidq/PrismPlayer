@@ -2,54 +2,44 @@ package org.android.prismplayer.ui.screens
 
 import android.Manifest
 import android.os.Build
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 
-data class PermissionPageContent(
-    val step: Int,
-    val title: String,
-    val headline: String,
-    val description: String,
-    val buttonText: String,
-    val icon: ImageVector,
-    val color: Color
-)
+// --- THE OVERHAUL ---
+// Concept: "System Bootloader"
+// No more swiping pages. This is a single "Diagnostic Panel" where user activates modules.
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun PermissionScreen(onAllPermissionsGranted: () -> Unit) {
+
+    // --- LOGIC ---
     val storagePermission = rememberPermissionState(
         permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             Manifest.permission.READ_MEDIA_AUDIO
@@ -61,261 +51,261 @@ fun PermissionScreen(onAllPermissionsGranted: () -> Unit) {
         rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
     } else null
 
-    val currentStep by remember(storagePermission.status, notificationPermission?.status) {
+    // Check if system is ready (All modules online)
+    val isSystemReady by remember(storagePermission.status, notificationPermission?.status) {
         derivedStateOf {
-            when {
-                !storagePermission.status.isGranted -> 0 // Step 0: Storage
-                notificationPermission != null && !notificationPermission.status.isGranted -> 1 // Step 1: Notifications
-                else -> 2 // Step 2: Finished
-            }
+            storagePermission.status.isGranted &&
+                    (notificationPermission == null || notificationPermission.status.isGranted)
         }
     }
 
-    LaunchedEffect(currentStep) {
-        if (currentStep == 2) {
+    LaunchedEffect(isSystemReady) {
+        if (isSystemReady) {
             onAllPermissionsGranted()
         }
-    }
-
-    val content = if (currentStep == 0) {
-        PermissionPageContent(
-            step = 0,
-            title = "SETUP",
-            headline = "Import Local\nLibrary",
-            description = "Prism organizes your device storage into a beautiful, stats-driven experience.",
-            buttonText = "Sync Music",
-            icon = Icons.Rounded.Folder,
-            color = Color(0xFF1DB954) // Green
-        )
-    } else {
-        PermissionPageContent(
-            step = 1,
-            title = "ALERTS",
-            headline = "Enable\nPlayback Controls",
-            description = "Allow notifications to control music from your lock screen and status bar.",
-            buttonText = "Allow Access",
-            icon = Icons.Rounded.Notifications,
-            color = Color(0xFF9C27B0)
-        )
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF050505))
+            .background(MaterialTheme.colorScheme.background)
     ) {
+        // 1. Dotted Matrix Background (The "PCB Board" feel)
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-            val topColor = if (currentStep == 0) Color(0xFF1DB954) else Color(0xFF9C27B0)
-            val bottomColor = if (currentStep == 0) Color(0xFF9C27B0) else Color(0xFF1DB954)
-
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(topColor.copy(alpha = 0.15f), Color.Transparent),
-                    center = Offset(0f, 0f),
-                    radius = width * 1.5f
-                ),
-                center = Offset(0f, 0f),
-                radius = width * 1.5f
-            )
-
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(bottomColor.copy(alpha = 0.1f), Color.Transparent),
-                    center = Offset(width, height),
-                    radius = width * 1.2f
-                ),
-                center = Offset(width, height),
-                radius = width * 1.2f
-            )
+            val step = 40.dp.toPx()
+            for (x in 0..size.width.toInt() step step.toInt()) {
+                for (y in 0..size.height.toInt() step step.toInt()) {
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.05f),
+                        radius = 1.dp.toPx(),
+                        center = Offset(x.toFloat(), y.toFloat())
+                    )
+                }
+            }
         }
 
-        AnimatedContent(
-            targetState = content,
-            transitionSpec = { fadeIn(tween(500)) togetherWith fadeOut(tween(300)) },
-            label = "PermissionStep"
-        ) { page ->
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            // --- HEADER SECTION ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-
-                Spacer(modifier = Modifier.weight(0.15f))
-                Box(contentAlignment = Alignment.Center) {
-                    GlassCard(
-                        modifier = Modifier
-                            .size(200.dp)
-                            .graphicsLayer {
-                                rotationZ = -15f
-                                translationX = -40f
-                            }
-                            .alpha(0.4f),
-                        color = Color.White
-                    )
-
-                    GlassCard(
-                        modifier = Modifier
-                            .size(200.dp)
-                            .graphicsLayer {
-                                rotationZ = 15f
-                                translationX = 40f
-                            }
-                            .alpha(0.6f),
-                        color = page.color
-                    )
-
-                    GlassCard(
-                        modifier = Modifier
-                            .size(220.dp)
-                            .shadow(
-                                elevation = 50.dp,
-                                spotColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) page.color else Color.Black,
-                                shape = RoundedCornerShape(40.dp)
-                            ),
-                        color = Color.White,
-                        isHero = true
-                    ) {
-                        Icon(
-                            imageVector = page.icon,
-                            contentDescription = null,
-                            tint = page.color,
-                            modifier = Modifier.size(80.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(0.2f))
-
+                // "Brand" Tag
                 Text(
-                    text = page.title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = page.color,
-                    letterSpacing = 4.sp,
+                    text = "PRISM OS // v1.0",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Live Status Indicator
+                StatusBlinker(isReady = isSystemReady)
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // The Massive "Boot" Title
+            Text(
+                text = "SYSTEM\nCHECK",
+                style = MaterialTheme.typography.displayMedium, // Doto Font
+                color = MaterialTheme.colorScheme.primary,
+                lineHeight = 48.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Initialize required modules to mount the file system and audio engine.",
+                style = MaterialTheme.typography.bodyMedium, // Mono
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(0.8f)
+            )
+
+            Spacer(modifier = Modifier.height(60.dp))
+
+            // --- THE MODULE RACK ---
+            // Instead of pages, we list "Modules" that look like hardware slots.
+
+            Text(
+                text = "REQUIRED MODULES",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary, // Red
+                letterSpacing = 2.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Module 1: Storage
+            ModuleCard(
+                codeName = "MEM_READ_01",
+                description = "INTERNAL STORAGE ACCESS",
+                permissionState = storagePermission,
+                isRequired = true
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Module 2: Audio/Notifications
+            if (notificationPermission != null) {
+                ModuleCard(
+                    codeName = "SIG_OUT_02",
+                    description = "PLAYBACK CONTROLLER",
+                    permissionState = notificationPermission,
+                    isRequired = false // Technically optional but recommended
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // --- FOOTER / BOOT LOG ---
+            // Just decorative technical text to sell the vibe
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(16.dp))
+                BootLogLine("KERNEL", "INITIALIZED")
+                BootLogLine("UI_LAYER", "RENDER_OK")
+                BootLogLine("AUDIO_ENG", if (isSystemReady) "READY" else "WAITING...")
+            }
+        }
+    }
+}
+
+// --- COMPONENTS ---
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun ModuleCard(
+    codeName: String,
+    description: String,
+    permissionState: PermissionState,
+    isRequired: Boolean
+) {
+    val isGranted = permissionState.status.isGranted
+
+    // Animate between "Wireframe" (Off) and "Solid" (On)
+    val containerColor by animateColorAsState(
+        targetValue = if (isGranted) MaterialTheme.colorScheme.primary else Color.Transparent,
+        label = "color"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isGranted) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+        label = "text"
+    )
+    val borderColor = if (isGranted) Color.Transparent else MaterialTheme.colorScheme.outline
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(4.dp)) // Tech-sharp corners
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
+            .clickable(enabled = !isGranted) {
+                permissionState.launchPermissionRequest()
+            }
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = codeName,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = contentColor
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor.copy(alpha = 0.6f)
+                )
+            }
+
+            // The "Switch" or Status Indicator
+            if (isGranted) {
+                Text(
+                    text = "[ ONLINE ]",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor,
                     fontWeight = FontWeight.Bold
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = page.headline,
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontWeight = FontWeight.W900,
-                        letterSpacing = (-1).sp,
-                        lineHeight = 48.sp
-                    ),
-                    color = Color.White,
-                    textAlign = TextAlign.Center
+            } else {
+                // Blinking "CONNECT" prompt
+                val infiniteTransition = rememberInfiniteTransition(label = "blink")
+                val alpha by infiniteTransition.animateFloat(
+                    initialValue = 0.2f, targetValue = 1f,
+                    animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+                    label = "alpha"
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 Text(
-                    text = page.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(0.5f),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 22.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    text = "CONNECT >",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = alpha),
+                    fontWeight = FontWeight.Bold
                 )
-
-                Spacer(modifier = Modifier.weight(0.2f))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    Button(
-                        onClick = {
-                            if (page.step == 0) {
-                                storagePermission.launchPermissionRequest()
-                            } else {
-                                notificationPermission?.launchPermissionRequest()
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(60.dp)
-                            .shadow(
-                                elevation = 25.dp,
-                                spotColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) page.color else Color.Transparent,
-                                shape = RoundedCornerShape(20.dp)
-                            ),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = page.color,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text(
-                            text = page.buttonText,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Icon(Icons.Rounded.ArrowForward, null, modifier = Modifier.size(20.dp))
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
 }
 
 @Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    color: Color,
-    isHero: Boolean = false,
-    content: @Composable BoxScope.() -> Unit = {}
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(40.dp))
-            .background(Color(0xFF121212))
-            .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(if (isHero) 0.3f else 0.1f),
-                        Color.White.copy(0.05f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                ),
-                shape = RoundedCornerShape(40.dp)
-            ),
-        contentAlignment = Alignment.Center
-    ) {
+fun StatusBlinker(isReady: Boolean) {
+    val color = if (isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+    val infiniteTransition = rememberInfiniteTransition(label = "status")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
+        label = "alpha"
+    )
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = if (isReady) "SYSTEM READY" else "SYSTEM HALTED",
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            modifier = Modifier.padding(end = 8.dp)
+        )
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            color.copy(if (isHero) 0.08f else 0.02f),
-                            Color.Transparent
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(0f, Float.POSITIVE_INFINITY)
-                    )
-                )
+                .size(8.dp)
+                .alpha(if (isReady) 1f else alpha)
+                .background(color, CircleShape)
         )
-        content()
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
-fun PreviewPermissionScreen() {
-    MaterialTheme {
-        PermissionScreen(
-            onAllPermissionsGranted = {},
+fun BootLogLine(tag: String, status: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = tag,
+            style = MaterialTheme.typography.labelSmall, // Mono font
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
         )
+        Text(
+            text = status,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
+        )
+    }
+}
+
+@Preview
+@Composable
+fun PreviewOverhaul() {
+    org.android.prismplayer.ui.theme.PrismPlayerTheme {
+        PermissionScreen {}
     }
 }

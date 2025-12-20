@@ -1,7 +1,7 @@
 package org.android.prismplayer.ui.screens
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -11,26 +11,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.io.File
+import org.android.prismplayer.ui.theme.PrismPlayerTheme
 
+// Reuse the same data structure logic but for folders
 data class FolderItem(val name: String, val path: String, val count: Int, var isSelected: Boolean)
 
 @Composable
@@ -38,75 +33,95 @@ fun FolderSelectionScreen(
     folders: List<FolderItem>,
     onFinish: (List<String>) -> Unit
 ) {
+    // Local state for toggling
     var currentFolders by remember { mutableStateOf(folders) }
+
+    // Calculate system status
+    val mountedCount = currentFolders.count { it.isSelected }
+    val totalTracks = currentFolders.filter { it.isSelected }.sumOf { it.count }
+    val isReady = mountedCount > 0
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF050505))
+            .background(MaterialTheme.colorScheme.background)
     ) {
+        // 1. Same Dotted Matrix Background
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val width = size.width
-            val height = size.height
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF9C27B0).copy(0.15f), Color.Transparent),
-                    center = Offset(width, 0f),
-                    radius = width * 1.3f
-                ),
-                center = Offset(width, 0f),
-                radius = width * 1.3f
-            )
-
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(Color(0xFF1DB954).copy(0.1f), Color.Transparent),
-                    center = Offset(0f, height),
-                    radius = width * 1.2f
-                ),
-                center = Offset(0f, height),
-                radius = width * 1.2f
-            )
+            val step = 40.dp.toPx()
+            for (x in 0..size.width.toInt() step step.toInt()) {
+                for (y in 0..size.height.toInt() step step.toInt()) {
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.05f),
+                        radius = 1.dp.toPx(),
+                        center = Offset(x.toFloat(), y.toFloat())
+                    )
+                }
+            }
         }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp)
+                .padding(24.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
+            // --- HEADER SECTION (Identical Layout) ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "PRISM OS // STORAGE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
+                // Reusing the Status Blinker concept
+                StatusBlinker(isReady = isReady, readyText = "VOLUMES MOUNTED", waitingText = "NO MEDIA")
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Massive Title
             Text(
-                text = "SOURCES",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF1DB954),
-                letterSpacing = 4.sp,
-                fontWeight = FontWeight.Bold
+                text = "PARTITION\nMOUNT",
+                style = MaterialTheme.typography.displayMedium, // Doto Font
+                color = MaterialTheme.colorScheme.primary,
+                lineHeight = 48.sp
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Select Your\nFolders",
-                style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Black),
-                color = Color.White,
-                lineHeight = 44.sp
-            )
+
             Spacer(modifier = Modifier.height(16.dp))
+
             Text(
-                text = "We found ${folders.size} folders with audio files. Uncheck the ones you want to ignore (like WhatsApp Audio).",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(0.5f)
+                text = "Select storage partitions to mount. Unmounted volumes will be ignored by the audio engine.",
+                style = MaterialTheme.typography.bodyMedium, // Mono
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(0.9f)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // --- THE VOLUME RACK (List of "Modules") ---
+            Text(
+                text = "DETECTED VOLUMES [$mountedCount/${folders.size}]",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary,
+                letterSpacing = 2.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 100.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 20.dp)
             ) {
                 items(currentFolders) { folder ->
-                    FolderRow(
-                        item = folder,
+                    VolumeModuleCard(
+                        folder = folder,
                         onToggle = {
                             currentFolders = currentFolders.map {
                                 if (it.path == folder.path) it.copy(isSelected = !it.isSelected) else it
@@ -115,120 +130,157 @@ fun FolderSelectionScreen(
                     )
                 }
             }
-        }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(32.dp)
-        ) {
-            Button(
-                onClick = {
-                    val selectedPaths = currentFolders.filter { it.isSelected }.map { it.path }
-                    onFinish(selectedPaths)
-                },
-                modifier = Modifier
-                    .height(64.dp)
-                    .shadow(
-                        elevation = 20.dp,
-                        spotColor = Color(0xFF1DB954),
-                        shape = RoundedCornerShape(20.dp)
-                    ),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF1DB954),
-                    contentColor = Color.Black
-                ),
-                shape = RoundedCornerShape(20.dp),
-                contentPadding = PaddingValues(horizontal = 32.dp)
-            ) {
-                Text("Enter Prism", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.Rounded.ArrowForward, null)
+            // --- FOOTER / BOOT LOG ---
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Dynamic Boot Logs based on selection
+                BootLogLine("SCAN_TARGET", "${mountedCount}_VOLUMES")
+                BootLogLine("INDEX_EST", "${totalTracks}_TRACKS")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // The "Initialize" Button (Only visible if ready)
+                if (isReady) {
+                    Button(
+                        onClick = {
+                            onFinish(currentFolders.filter { it.isSelected }.map { it.path })
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(4.dp), // Sharp corners
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary, // Red Action Button
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text(
+                            "INITIALIZE SEQUENCE >",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun FolderRow(item: FolderItem, onToggle: () -> Unit) {
-    val borderColor by animateColorAsState(
-        targetValue = if (item.isSelected) Color(0xFF1DB954) else Color.White.copy(0.1f),
-        label = "border"
-    )
+fun VolumeModuleCard(
+    folder: FolderItem,
+    onToggle: () -> Unit
+) {
+    val isMounted = folder.isSelected
 
-    Row(
+    // Exact same animation logic as ModuleCard
+    val containerColor by animateColorAsState(
+        targetValue = if (isMounted) MaterialTheme.colorScheme.primary else Color.Transparent,
+        label = "color"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isMounted) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+        label = "text"
+    )
+    val borderColor = if (isMounted) Color.Transparent else MaterialTheme.colorScheme.outline
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF121212).copy(0.8f))
-            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .height(80.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
             .clickable { onToggle() }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(0.05f)),
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Rounded.Folder,
-                null,
-                tint = if(item.isSelected) Color.White else Color.White.copy(0.3f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                // Folder Name (The "Code Name")
+                Text(
+                    text = folder.name.uppercase(),
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = contentColor
+                )
+                // Path (The "Description")
+                Text(
+                    text = folder.path.replace("/storage/emulated/0/", "~/"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor.copy(alpha = 0.6f),
+                    maxLines = 1
+                )
+            }
+
+            // Status Indicator
+            if (isMounted) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "[ MOUNTED ]",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${folder.count} FILES",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor.copy(alpha = 0.6f),
+                        fontSize = 10.sp
+                    )
+                }
+            } else {
+                Text(
+                    text = "MOUNT >",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary, // Red prompt
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
-
-        Spacer(Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = if(item.isSelected) Color.White else Color.White.copy(0.4f)
-            )
-            Text(
-                text = "${item.count} tracks",
-                style = MaterialTheme.typography.labelMedium,
-                color = if(item.isSelected) Color(0xFF1DB954) else Color.White.copy(0.2f)
-            )
-        }
-
-        NeonCheckbox(checked = item.isSelected)
     }
 }
 
 @Composable
-fun NeonCheckbox(checked: Boolean) {
-    val color by animateColorAsState(if (checked) Color(0xFF1DB954) else Color.White.copy(0.1f))
-    val scale by animateFloatAsState(if (checked) 1f else 0.8f)
+fun StatusBlinker(isReady: Boolean, readyText: String, waitingText: String) {
+    val color = if (isReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+    val infiniteTransition = rememberInfiniteTransition(label = "status")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(tween(500), RepeatMode.Reverse),
+        label = "alpha"
+    )
 
-    Box(
-        modifier = Modifier
-            .size(24.dp)
-            .scale(scale)
-            .clip(CircleShape)
-            .background(if (checked) color else Color.Transparent)
-            .border(2.dp, color, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        if (checked) {
-            Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(16.dp))
-        }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = if (isReady) readyText else waitingText,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .alpha(if (isReady) 1f else alpha)
+                .background(color, CircleShape)
+        )
     }
 }
+
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 fun PreviewFolderSelect() {
     val mocks = listOf(
-        FolderItem("Downloads", "/path/dl", 142, true),
-        FolderItem("Music", "/path/music", 580, true),
-        FolderItem("WhatsApp Audio", "/path/wa", 12, false),
-        FolderItem("Telegram", "/path/tg", 5, false)
+        FolderItem("Music", "/storage/emulated/0/Music", 580, true),
+        FolderItem("Downloads", "/storage/emulated/0/Downloads", 142, false),
     )
-    MaterialTheme {
+    PrismPlayerTheme {
         FolderSelectionScreen(folders = mocks, onFinish = {})
     }
 }

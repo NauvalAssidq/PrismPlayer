@@ -12,24 +12,25 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -42,6 +43,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.flow.collectLatest
 import org.android.prismplayer.data.model.Song
+
+// [Previous EditTrackRoute, ViewModel integration code remains identical]
+// I will focus on the UI overhaul of EditTrackScreen and components.
 
 @Composable
 fun EditTrackRoute(
@@ -58,7 +62,7 @@ fun EditTrackRoute(
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             viewModel.onPermissionGranted()
         } else {
-            Toast.makeText(context, "Permission Denied", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "PERMISSION_DENIED", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -71,7 +75,7 @@ fun EditTrackRoute(
                     )
                 }
                 is EditEvent.SaveSuccess -> {
-                    Toast.makeText(context, "Saved Successfully", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "METADATA_UPDATED", Toast.LENGTH_SHORT).show()
                     onBack()
                 }
             }
@@ -123,253 +127,262 @@ fun EditTrackScreen(
     var selectedImageUri by remember(song.id) {
         mutableStateOf("content://media/external/audio/media/${song.id}/albumart")
     }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) selectedImageUri = uri.toString()
     }
-    val glassBrush = Brush.verticalGradient(
-        colors = listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.03f))
-    )
-    val glassBorder = Color.White.copy(alpha = 0.12f)
-    val greenGlassBrush = Brush.verticalGradient(
-        colors = listOf(Color(0xFF1DB954).copy(alpha = 0.25f), Color(0xFF1DB954).copy(alpha = 0.1f))
-    )
-    val greenGlassBorder = Color(0xFF1DB954).copy(alpha = 0.5f)
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF050505))) {
-        AuraBackground()
-
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
+    Scaffold(
+        containerColor = Color(0xFF0F0F0F),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            Column {
                 CenterAlignedTopAppBar(
-                    modifier = Modifier.padding(top = 12.dp),
-                    title = { Text("Edit Metadata", fontWeight = FontWeight.Bold, color = Color.White) },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    ),
+                    title = {
+                        Text(
+                            "METADATA_EDITOR",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     navigationIcon = {
-                        Box(
-                            modifier = Modifier.padding(start = 16.dp).size(40.dp)
-                                .clip(RoundedCornerShape(60.dp))
-                                .background(glassBrush)
-                                .border(1.dp, glassBorder, RoundedCornerShape(60.dp))
-                                .clickable(onClick = onBack),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Rounded.ArrowBack, "Back", tint = Color.White, modifier = Modifier.size(20.dp))
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Outlined.Close, "ABORT", tint = Color.White)
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color(0xFF0F0F0F)
+                    )
                 )
+                Divider(color = Color.White.copy(0.1f))
             }
-        ) { padding ->
-            Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-
-                Column(
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally
+        },
+        bottomBar = {
+            // COMMAND BAR
+            Column {
+                Divider(color = Color.White.copy(0.1f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF0F0F0F))
+                        .navigationBarsPadding()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Spacer(Modifier.height(16.dp))
-
+                    // CANCEL
                     Box(
-                        modifier = Modifier.size(260.dp)
-                            .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = Color(0xFF1DB954).copy(0.3f))
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color(0xFF252525))
-                            .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(24.dp))
-                            .clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .border(1.dp, Color.White.copy(0.2f), RoundedCornerShape(4.dp))
+                            .clickable(onClick = onBack),
+                        contentAlignment = Alignment.Center
                     ) {
-                        if (selectedImageUri.isNotBlank()) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(selectedImageUri)
-                                    .setParameter("last_modified", song.dateModified)
-                                    .build(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(0.1f), modifier = Modifier.size(100.dp).align(Alignment.Center))
-                        }
-                        Box(modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).size(48.dp).clip(CircleShape).background(Color(0xFF1DB954).copy(0.9f)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Edit, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-                        }
+                        Text("DISCARD", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(0.7f))
                     }
 
-                    Spacer(Modifier.height(32.dp))
-
-                    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                        PrismTextField("Title", title, { title = it }, Icons.Rounded.MusicNote)
-                        PrismTextField("Artist", artist, { artist = it }, Icons.Rounded.GraphicEq)
-                        PrismTextField("Album", album, { album = it }, Icons.Rounded.Edit)
-                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Box(Modifier.weight(1f)) { PrismTextField("Year", year, { year = it }, Icons.Rounded.CalendarToday, KeyboardType.Number) }
-                            Box(Modifier.weight(1f)) { PrismTextField("Track #", trackNumber, { trackNumber = it }, Icons.Rounded.Numbers, KeyboardType.Number) }
-                        }
-                        PrismTextField("Genre", genre, { genre = it })
+                    // SAVE
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                            .clickable(onClick = { onSave(title, artist, album, year, genre, trackNumber, selectedImageUri) }),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("WRITE_DATA", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                     }
-                    Spacer(Modifier.height(100.dp))
                 }
-
+            }
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+        ) {
+            // --- ARTWORK SECTION ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
+                        .size(180.dp)
+                        .border(1.dp, Color.White.copy(0.2f))
+                        .background(Color(0xFF050505))
+                        .clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(16.dp, CircleShape)
-                            .background(Color(0xF8181818), CircleShape)
-                            .border(1.dp, Color.White.copy(0.1f), CircleShape)
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.weight(1f).height(54.dp).clip(CircleShape)
-                                .border(1.dp, glassBorder, RoundedCornerShape(60.dp))
-                                .background(glassBrush).clickable(onClick = onBack),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("Cancel", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = Color.White)
-                        }
-
-                        Box(
-                            modifier = Modifier.weight(1f).height(54.dp).clip(CircleShape)
-                                .background(greenGlassBrush).border(1.dp, greenGlassBorder, CircleShape)
-                                .clickable(onClick = { onSave(title, artist, album, year, genre, trackNumber, selectedImageUri) }),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("Save", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = Color(0xFF1DB954))
-                        }
+                    if (selectedImageUri.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(selectedImageUri)
+                                .setParameter("last_modified", System.currentTimeMillis())
+                                .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().alpha(0.7f) // Slight dim for text visibility
+                        )
                     }
+
+                    // Edit Overlay
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .background(Color.Black.copy(0.6f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .border(1.dp, MaterialTheme.colorScheme.primary),
+                    ) {
+                        Text(
+                            "MODIFY_SOURCE",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Technical Corners
+                    CornerBrackets()
                 }
             }
+
+            Divider(color = Color.White.copy(0.1f))
+
+            // --- FORM FIELDS ---
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Text(
+                    "CORE_METADATA",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+
+                TechTextField("TITLE_TAG", title) { title = it }
+                TechTextField("ARTIST_TAG", artist) { artist = it }
+                TechTextField("ALBUM_TAG", album) { album = it }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Box(Modifier.weight(1f)) { TechTextField("YEAR_INT", year, KeyboardType.Number) { year = it } }
+                    Box(Modifier.weight(1f)) { TechTextField("TRACK_IDX", trackNumber, KeyboardType.Number) { trackNumber = it } }
+                }
+
+                TechTextField("GENRE_TAG", genre) { genre = it }
+            }
+
+            Spacer(Modifier.height(40.dp))
         }
     }
 }
 
 @Composable
-fun PrismTextField(
+fun TechTextField(
     label: String,
     value: String,
-    onValueChange: (String) -> Unit,
-    icon: ImageVector? = null,
-    keyboardType: KeyboardType = KeyboardType.Text
+    keyboardType: KeyboardType = KeyboardType.Text,
+    onValueChange: (String) -> Unit
 ) {
     Column {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(0.6f),
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+            color = Color.White.copy(0.5f),
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        TextField(
+        BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp))
-                .clip(RoundedCornerShape(16.dp)),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFF151515),
-                unfocusedContainerColor = Color(0xFF151515),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                cursorColor = Color(0xFF1DB954),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+            textStyle = TextStyle(
+                color = Color.White,
+                fontSize = 16.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Medium
             ),
-            trailingIcon = if (icon != null) {
-                { Icon(icon, null, tint = Color.White.copy(0.3f), modifier = Modifier.size(20.dp)) }
-            } else null,
-            singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 keyboardType = keyboardType,
                 imeAction = ImeAction.Next
             ),
-            textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp)
+            singleLine = true,
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF151515))
+                .border(1.dp, Color.White.copy(0.1f))
+                .padding(horizontal = 12.dp, vertical = 14.dp)
         )
     }
 }
 
 @Composable
+fun CornerBrackets() {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val length = 10.dp.toPx()
+        val stroke = 1.dp.toPx()
+        val color = Color.White
+        drawLine(color, Offset(0f, 0f), Offset(length, 0f), stroke)
+        drawLine(color, Offset(0f, 0f), Offset(0f, length), stroke)
+        drawLine(color, Offset(size.width, 0f), Offset(size.width - length, 0f), stroke)
+        drawLine(color, Offset(size.width, 0f), Offset(size.width, length), stroke)
+        drawLine(color, Offset(0f, size.height), Offset(length, size.height), stroke)
+        drawLine(color, Offset(0f, size.height), Offset(0f, size.height - length), stroke)
+        drawLine(color, Offset(size.width, size.height), Offset(size.width - length, size.height), stroke)
+        drawLine(color, Offset(size.width, size.height), Offset(size.width, size.height - length), stroke)
+    }
+}
+
+
+@Composable
 fun EditLoadingState() {
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF050505)), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(color = Color(0xFF1DB954), strokeWidth = 3.dp, modifier = Modifier.size(48.dp))
+            Text("ACCESSING_FILE...", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "Loading Metadata...", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(0.5f))
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
         }
     }
 }
 
 @Composable
-fun EditErrorState(
-    message: String,
-    onRetry: () -> Unit,
-    onBack: () -> Unit
-) {
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF050505)), contentAlignment = Alignment.Center) {
+fun EditErrorState(message: String, onRetry: () -> Unit, onBack: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-            Icon(Icons.Rounded.Warning, null, tint = Color(0xFFEF5350), modifier = Modifier.size(64.dp))
+            Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Failed to load song", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
+            Text("READ_FAILURE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(message, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(0.5f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text(message, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = Color.White.copy(0.5f))
             Spacer(modifier = Modifier.height(32.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedButton(onClick = onBack, border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(0.2f)), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)) { Text("Go Back") }
-                Button(onClick = onRetry, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DB954))) { Text("Retry", color = Color.Black) }
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("RETRY_CONNECTION", fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-@Composable
-private fun AuraBackground() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Color(0xFF1DB954).copy(alpha = 0.15f), Color.Transparent),
-                center = Offset(width * 0.5f, -100f),
-                radius = width * 1.3f
-            ),
-            center = Offset(width * 0.5f, -100f),
-            radius = width * 1.3f
-        )
-    }
-}
-
-@Preview(
-    showBackground = true,
-    backgroundColor = 0xFF050505,
-    heightDp = 1000
-)
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun EditTrackScreenPreview() {
     val mockSong = Song(
-        id = 1,
-        title = "Midnight City",
-        artist = "M83",
-        albumName = "Hurry Up, We're Dreaming",
-        albumId = 1,
-        duration = 240000,
-        path = "",
-        folderName = "Music",
-        dateAdded = 0L,
-        songArtUri = null,
-        year = 1993,
-        genre = "Rock",
-        trackNumber = 12
+        id = 1, title = "Midnight City", artist = "M83",
+        albumName = "Hurry Up", albumId = 1, duration = 240000,
+        path = "", folderName = "Music", dateAdded = 0L,
+        songArtUri = null, year = 2011, genre = "Rock", trackNumber = 12
     )
 
     MaterialTheme {

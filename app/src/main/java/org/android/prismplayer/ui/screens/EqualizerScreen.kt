@@ -5,63 +5,34 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.PowerSettingsNew
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.PowerSettingsNew
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.android.prismplayer.data.model.EqBand
 import org.android.prismplayer.data.model.EqPreset
+import org.android.prismplayer.ui.components.DeleteConfirmationDialog
 import org.android.prismplayer.ui.components.SavePresetDialog
 import org.android.prismplayer.ui.player.AudioViewModel
 
@@ -89,7 +60,8 @@ fun EqualizerScreen(
         onToggleEnabled = { viewModel.toggleEq(it) },
         onApplyPreset = { viewModel.applyPreset(it) },
         onSetBandLevel = { id, level -> viewModel.setEqBandLevel(id, level) },
-        onSavePreset = { name -> viewModel.saveCustomPreset(name) }
+        onSavePreset = { name -> viewModel.saveCustomPreset(name) },
+        onDeletePreset = { preset -> viewModel.deleteCustomPreset(preset) }
     )
 }
 
@@ -104,136 +76,134 @@ private fun EqualizerScreenContent(
     onToggleEnabled: (Boolean) -> Unit,
     onApplyPreset: (EqPreset) -> Unit,
     onSetBandLevel: (bandId: Short, level: Short) -> Unit,
-    onSavePreset: (String) -> Unit
+    onSavePreset: (String) -> Unit,
+    onDeletePreset: (EqPreset) -> Unit
 ) {
     var showSaveDialog by remember { mutableStateOf(false) }
+    var presetToDelete by remember { mutableStateOf<EqPreset?>(null) }
+    val defaultPresets = listOf("Flat", "Bass", "Vocal", "Treble")
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF050505))
-    ) {
-        AuraBackground()
-
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
+    Scaffold(
+        containerColor = Color(0xFF050505),
+        topBar = {
+            Column {
                 CenterAlignedTopAppBar(
-                    title = { Text("Equalizer", fontWeight = FontWeight.SemiBold) },
+                    title = {
+                        Text(
+                            "AUDIO_PROCESSOR",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
+                        containerColor = Color(0xFF050505)
                     ),
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Rounded.ArrowBack, null)
+                            Icon(Icons.Outlined.ArrowBack, "RETURN", tint = Color.White)
                         }
                     },
                     actions = {
-                        val accent = Color(0xFF1DB954)
-
-                        val backgroundBrush = if (isEnabled) {
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    accent.copy(alpha = 0.22f),
-                                    accent.copy(alpha = 0.10f)
-                                )
-                            )
-                        } else {
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.10f),
-                                    Color.White.copy(alpha = 0.03f)
-                                )
-                            )
-                        }
-
-                        val borderColor = if (isEnabled) {
-                            accent.copy(alpha = 0.45f)
-                        } else {
-                            Color.White.copy(alpha = 0.12f)
-                        }
-
+                        val powerColor = if (isEnabled) MaterialTheme.colorScheme.secondary else Color.White.copy(0.3f)
                         IconButton(
                             onClick = { onToggleEnabled(!isEnabled) },
                             modifier = Modifier
                                 .padding(end = 16.dp)
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(backgroundBrush)
-                                .border(1.dp, borderColor, CircleShape)
+                                .border(1.dp, powerColor, CircleShape)
+                                .size(32.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.PowerSettingsNew,
-                                contentDescription = null,
-                                tint = if (isEnabled) accent else Color.White.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp)
+                                imageVector = Icons.Outlined.PowerSettingsNew,
+                                contentDescription = "POWER",
+                                tint = powerColor,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
                 )
+                Divider(color = Color.White.copy(0.1f))
             }
-        ) { padding ->
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
             ) {
                 Text(
-                    text = "Presets",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(0.5f),
-                    modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 12.dp)
+                    text = "PRESET_CONFIG",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(start = 24.dp, bottom = 12.dp),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
                 )
 
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
-                        PresetChip(
-                            text = "New +",
+                        TechPresetChip(
+                            text = "+ NEW",
                             selected = false,
-                            isAction = true,
-                            onClick = { showSaveDialog = true }
+                            onClick = { showSaveDialog = true },
+                            isAction = true
                         )
                     }
 
                     items(presets) { preset ->
-                        PresetChip(
-                            text = preset.name,
+                        val isCustom = preset.name !in defaultPresets
+
+                        TechPresetChip(
+                            text = preset.name.uppercase(),
                             selected = preset.name == currentPresetName,
-                            onClick = { onApplyPreset(preset) }
+                            onClick = { onApplyPreset(preset) },
+                            onDelete = if (isCustom) { { presetToDelete = preset } } else null
                         )
                     }
                 }
+            }
 
-                Spacer(Modifier.height(40.dp))
+            Divider(color = Color.White.copy(0.05f))
 
-                if (bands.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF1DB954))
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(400.dp)
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        bands.forEach { band ->
-                            EqSliderItem(
-                                band = band,
-                                isEnabled = isEnabled,
-                                onValueChange = { level -> onSetBandLevel(band.id, level) }
-                            )
-                        }
+            Spacer(Modifier.height(24.dp))
+
+            if (bands.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "NO_SIGNAL",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(0.3f),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    bands.forEach { band ->
+                        TechFader(
+                            band = band,
+                            isEnabled = isEnabled,
+                            onValueChange = { level -> onSetBandLevel(band.id, level) }
+                        )
                     }
                 }
             }
+            Spacer(Modifier.height(48.dp))
         }
 
         if (showSaveDialog) {
@@ -245,77 +215,76 @@ private fun EqualizerScreenContent(
                 }
             )
         }
+
+        if (presetToDelete != null) {
+            DeleteConfirmationDialog(
+                presetName = presetToDelete!!.name,
+                onConfirm = {
+                    onDeletePreset(presetToDelete!!)
+                    presetToDelete = null
+                },
+                onDismiss = { presetToDelete = null }
+            )
+        }
     }
 }
 
-
 @Composable
-fun PresetChip(
+fun TechPresetChip(
     text: String,
     selected: Boolean,
     isAction: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDelete: (() -> Unit)? = null
 ) {
-    val accent = Color(0xFF1DB954)
+    val activeColor = MaterialTheme.colorScheme.secondary // RED
+    val inactiveColor = Color.White.copy(0.6f) // GRAY
+    val inactiveBorder = Color.White.copy(0.2f)
+    val borderColor = if (selected) activeColor else if (isAction) inactiveBorder else inactiveBorder
+    val textColor = if (selected) activeColor else if (isAction) Color.White else inactiveColor
+    val bgColor = if (selected) activeColor.copy(0.1f) else Color.Transparent
+    val iconColor = if (selected) activeColor else inactiveColor
 
-    val backgroundBrush = when {
-        selected -> {
-            Brush.verticalGradient(
-                colors = listOf(
-                    accent.copy(alpha = 0.22f),
-                    accent.copy(alpha = 0.10f)
-                )
-            )
-        }
-        isAction -> {
-            Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.10f),
-                    Color.White.copy(alpha = 0.05f)
-                )
-            )
-        }
-        else -> {
-            Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.10f),
-                    Color.White.copy(alpha = 0.03f)
-                )
-            )
-        }
-    }
-
-    val borderColor = when {
-        selected -> accent.copy(alpha = 0.45f)
-        else -> Color.White.copy(alpha = 0.12f)
-    }
-
-    val textColor = when {
-        selected -> accent
-        isAction -> Color.White.copy(alpha = 0.9f)
-        else -> Color.White
-    }
-
-    Box(
+    Row(
         modifier = Modifier
-            .clip(CircleShape)
-            .background(backgroundBrush)
-            .border(1.dp, borderColor, CircleShape)
+            .height(36.dp)
+            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
+            .background(bgColor, RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(4.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
         Text(
             text = text,
             color = textColor,
-            fontWeight = FontWeight.SemiBold,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace
         )
+
+        if (onDelete != null) {
+            Spacer(Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable { onDelete() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "DELETE",
+                    tint = iconColor,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+        }
     }
 }
 
-
 @Composable
-fun EqSliderItem(
+fun TechFader(
     band: EqBand,
     isEnabled: Boolean,
     onValueChange: (Short) -> Unit
@@ -324,38 +293,42 @@ fun EqSliderItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(48.dp)
     ) {
+        val dbValue = (band.level / 100)
         Text(
-            text = "${(band.level / 100)}dB",
-            color = if (isEnabled) Color.White else Color.White.copy(0.3f),
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-            fontWeight = FontWeight.Bold
+            text = if (dbValue > 0) "+${dbValue}dB" else "${dbValue}dB",
+            color = if (isEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(0.3f),
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 9.sp
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
-        VerticalSlider(
+        VerticalFaderTrack(
             value = band.level.toFloat(),
             min = band.minLevel.toFloat(),
             max = band.maxLevel.toFloat(),
             isEnabled = isEnabled,
             onValueChange = { onValueChange(it.toInt().toShort()) },
             modifier = Modifier
-                .height(260.dp)
-                .width(44.dp)
+                .height(300.dp)
+                .width(40.dp)
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
         Text(
             text = band.label,
             color = if (isEnabled) Color.White.copy(0.8f) else Color.White.copy(0.3f),
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium)
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp
         )
     }
 }
 
 @Composable
-fun VerticalSlider(
+fun VerticalFaderTrack(
     value: Float,
     min: Float,
     max: Float,
@@ -390,135 +363,77 @@ fun VerticalSlider(
     ) {
         val range = max - min
         val normalizedValue = ((value - min) / range).coerceIn(0f, 1f)
-
-        val barWidth = 4.dp.toPx()
-        val thumbSize = 14.dp.toPx()
-        val cornerRadius = CornerRadius(barWidth / 2)
-        val height = size.height
         val width = size.width
-
-        val activeColor = if (isEnabled) Color(0xFF1DB954) else Color(0xFF404040)
-        val inactiveColor = Color.White.copy(0.05f)
-
-        drawRoundRect(
-            color = inactiveColor,
-            topLeft = Offset((width - barWidth) / 2, 0f),
-            size = Size(barWidth, height),
-            cornerRadius = cornerRadius
+        val height = size.height
+        val centerX = width / 2
+        val zeroY = height * (1f - ((0 - min) / range))
+        drawLine(
+            color = Color.White.copy(0.1f),
+            start = Offset(0f, zeroY),
+            end = Offset(width, zeroY),
+            strokeWidth = 1.dp.toPx()
         )
 
-        val fillHeight = height * normalizedValue
-        val topPos = height - fillHeight
-
-        drawRoundRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(activeColor, activeColor.copy(alpha = 0.5f)),
-                startY = topPos,
-                endY = height
-            ),
-            topLeft = Offset((width - barWidth) / 2, topPos),
-            size = Size(barWidth, fillHeight),
-            cornerRadius = cornerRadius
+        drawLine(
+            color = Color.White.copy(0.1f),
+            start = Offset(centerX, 0f),
+            end = Offset(centerX, height),
+            strokeWidth = 2.dp.toPx()
         )
 
         val thumbY = height - (normalizedValue * height)
+        val thumbHeight = 12.dp.toPx()
+        val thumbWidth = 24.dp.toPx()
+
+        val thumbColor = if (isEnabled) Color.White else Color.White.copy(0.3f)
+
+        drawRect(
+            color = Color(0xFF050505),
+            topLeft = Offset(centerX - thumbWidth/2, thumbY - thumbHeight/2),
+            size = Size(thumbWidth, thumbHeight)
+        )
+
+        drawRect(
+            color = thumbColor,
+            topLeft = Offset(centerX - thumbWidth/2, thumbY - thumbHeight/2),
+            size = Size(thumbWidth, thumbHeight),
+            style = Stroke(width = 2.dp.toPx())
+        )
 
         if (isEnabled) {
-            drawCircle(
-                color = activeColor.copy(alpha = 0.2f),
-                radius = thumbSize * 1.5f,
-                center = Offset(width / 2, thumbY)
+            drawLine(
+                color = Color(0xFFD71921).copy(0.5f),
+                start = Offset(centerX, zeroY),
+                end = Offset(centerX, thumbY),
+                strokeWidth = 2.dp.toPx()
             )
         }
-
-        drawCircle(
-            color = if (isEnabled) Color.White else Color.White.copy(0.3f),
-            radius = thumbSize / 2,
-            center = Offset(width / 2, thumbY)
-        )
     }
-}
-
-@Composable
-private fun AuraBackground() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Color(0xFF1DB954).copy(alpha = 0.15f), Color.Transparent),
-                center = Offset(width * 0.5f, -100f),
-                radius = width * 1.3f
-            ),
-            center = Offset(width * 0.5f, -100f),
-            radius = width * 1.3f
-        )
-    }
-}
-
-
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
-@Composable
-private fun EqualizerScreenPreview_Enabled() {
-    val numBands = 5
-
-    val freqs = listOf(60, 230, 910, 3600, 14000)
-
-    val fakeBands = listOf(
-        EqBand(id = 0, level = 0,    minLevel = -1500, maxLevel = 1500, centerFreq = freqs[0]),
-        EqBand(id = 1, level = 500,  minLevel = -1500, maxLevel = 1500, centerFreq = freqs[1]),
-        EqBand(id = 2, level = -300, minLevel = -1500, maxLevel = 1500, centerFreq = freqs[2]),
-        EqBand(id = 3, level = 900,  minLevel = -1500, maxLevel = 1500, centerFreq = freqs[3]),
-        EqBand(id = 4, level = -700, minLevel = -1500, maxLevel = 1500, centerFreq = freqs[4]),
-    )
-
-    // Same presets logic you showed (but for Short list)
-    val flat = EqPreset("Flat", List(numBands) { 0.toShort() })
-    val bass = EqPreset("Bass", List(numBands) { if (it < 2) 600.toShort() else 0.toShort() })
-    val vocal = EqPreset("Vocal", List(numBands) { if (it in 1..3) 500.toShort() else (-200).toShort() })
-    val treble = EqPreset("Treble", List(numBands) { if (it > 3) 600.toShort() else 0.toShort() })
-
-    val fakePresets = listOf(flat, bass, vocal, treble)
-
-    EqualizerScreenContent(
-        bands = fakeBands,
-        isEnabled = true,
-        presets = fakePresets,
-        currentPresetName = "Bass",
-        onBack = {},
-        onToggleEnabled = {},
-        onApplyPreset = {},
-        onSetBandLevel = { _, _ -> },
-        onSavePreset = {}
-    )
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
-private fun EqualizerScreenPreview_Disabled() {
+private fun EqualizerPreview() {
     val numBands = 5
     val freqs = listOf(60, 230, 910, 3600, 14000)
-
     val fakeBands = freqs.mapIndexed { i, f ->
-        EqBand(
-            id = i.toShort(),
-            level = 0,
-            minLevel = -1500,
-            maxLevel = 1500,
-            centerFreq = f
+        EqBand(id = i.toShort(), level = (if(i==2) 0 else 500).toShort(), minLevel = -1500, maxLevel = 1500, centerFreq = f)
+    }
+    val flat = EqPreset("FLAT", emptyList())
+    val myCustom = EqPreset("MY_CUSTOM", emptyList())
+
+    MaterialTheme {
+        EqualizerScreenContent(
+            bands = fakeBands,
+            isEnabled = true,
+            presets = listOf(flat, myCustom),
+            currentPresetName = "MY_CUSTOM",
+            onBack = {},
+            onToggleEnabled = {},
+            onApplyPreset = {},
+            onSetBandLevel = { _, _ -> },
+            onSavePreset = {},
+            onDeletePreset = {}
         )
     }
-
-    val flat = EqPreset("Flat", List(numBands) { 0.toShort() })
-
-    EqualizerScreenContent(
-        bands = fakeBands,
-        isEnabled = false,
-        presets = listOf(flat),
-        currentPresetName = "Flat",
-        onBack = {},
-        onToggleEnabled = {},
-        onApplyPreset = {},
-        onSetBandLevel = { _, _ -> },
-        onSavePreset = {}
-    )
 }

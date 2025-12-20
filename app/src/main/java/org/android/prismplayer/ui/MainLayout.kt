@@ -33,6 +33,8 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.CustomBottomSheet
 import org.android.prismplayer.ui.components.PrismNavBar
@@ -45,7 +47,7 @@ import org.android.prismplayer.ui.screens.AlbumDetailScreen
 import org.android.prismplayer.ui.screens.AlbumViewModel
 import org.android.prismplayer.ui.screens.ArtistScreen
 import org.android.prismplayer.ui.screens.ArtistViewModel
-import org.android.prismplayer.ui.screens.EqualizerScreen // Make sure this is imported
+import org.android.prismplayer.ui.screens.EqualizerScreen
 import org.android.prismplayer.ui.screens.HomeScreen
 import org.android.prismplayer.ui.screens.HomeViewModel
 import org.android.prismplayer.ui.screens.LibraryScreen
@@ -81,16 +83,20 @@ fun MainLayout(
     var optionsState by remember { mutableStateOf<Pair<Song, SheetContext>?>(null) }
     val searchQuery by homeViewModel.searchQuery.collectAsState()
     val searchResults by homeViewModel.searchResults.collectAsState()
+
+    // CHANGE 1: Use String for Album Name instead of Long ID
     var selectedArtist by rememberSaveable { mutableStateOf<String?>(null) }
-    var selectedAlbumId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var selectedAlbumName by rememberSaveable { mutableStateOf<String?>(null) }
+
     var isEqualizerOpen by rememberSaveable { mutableStateOf(false) }
-    val globalBottomPadding = if (currentSong != null) 146.dp else 84.dp
+    val globalBottomPadding = if (currentSong != null) 178.dp else 88.dp
     val allSongs by homeViewModel.allSongs.collectAsState()
+    val backdrop = rememberLayerBackdrop()
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                val activity = context as? android.app.Activity
+                val activity = context as? Activity
                 val intent = activity?.intent
 
                 if (intent?.getBooleanExtra("OPEN_FULL_PLAYER", false) == true) {
@@ -115,9 +121,11 @@ fun MainLayout(
 
     BackHandler(enabled = isFullPlayerOpen) { isFullPlayerOpen = false }
     BackHandler(enabled = !isFullPlayerOpen && isEqualizerOpen) { isEqualizerOpen = false }
-    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumId != null) { selectedAlbumId = null }
-    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumId == null && selectedArtist != null) { selectedArtist = null }
-    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumId == null && selectedArtist == null && currentTab != PrismTab.HOME) { currentTab = PrismTab.HOME }
+
+    // CHANGE 2: Update BackHandlers for Album Name
+    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName != null) { selectedAlbumName = null }
+    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedArtist != null) { selectedArtist = null }
+    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedArtist == null && currentTab != PrismTab.HOME) { currentTab = PrismTab.HOME }
 
     Scaffold(
         containerColor = Color(0xFF050505),
@@ -125,7 +133,7 @@ fun MainLayout(
         bottomBar = {}
     ) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize().layerBackdrop(backdrop)) {
                 when (currentTab) {
                     PrismTab.HOME -> HomeScreen(
                         state = homeState,
@@ -144,22 +152,29 @@ fun MainLayout(
                             libraryTabIndex = 2
                             currentTab = PrismTab.LIBRARY
                         },
-                        onAlbumClick = { selectedAlbumId = it },
+                        // CHANGE 3: Pass album title (name) instead of ID
+                        onAlbumClick = { selectedAlbumName = it },
                         onSongMoreClick = { song -> optionsState = song to SheetContext.HOME },
                         onSettingsClick = { currentTab = PrismTab.SETTING },
                         bottomPadding = globalBottomPadding,
-
                     )
 
                     PrismTab.SEARCH -> SearchScreen(
                         query = searchQuery,
                         results = searchResults,
                         onQueryChange = { homeViewModel.onSearchQueryChanged(it) },
-                        onSongClick = { song -> audioViewModel.playSong(song, searchResults.songs) },
-                        onAlbumClick = { selectedAlbumId = it },
+                        onSongClick = { song ->
+                            audioViewModel.playSong(
+                                song,
+                                searchResults.songs
+                            )
+                        },
+                        onAlbumClick = { selectedAlbumName = it },
                         onArtistClick = { selectedArtist = it },
                         onSongMoreClick = { song -> optionsState = song to SheetContext.SEARCH },
-                        bottomPadding = globalBottomPadding
+                        bottomPadding = globalBottomPadding,
+                        currentSong = currentSong,
+                        isPlaying = isPlaying
                     )
 
                     PrismTab.LIBRARY -> LibraryScreen(
@@ -168,7 +183,7 @@ fun MainLayout(
                         currentSong = currentSong,
                         isPlaying = isPlaying,
                         onSongClick = { song, list -> audioViewModel.playSong(song, list) },
-                        onAlbumClick = { selectedAlbumId = it },
+                        onAlbumClick = { selectedAlbumName = it },
                         onArtistClick = { selectedArtist = it },
                         onSongMoreClick = { song -> optionsState = song to SheetContext.LIBRARY },
                         bottomPadding = globalBottomPadding,
@@ -207,7 +222,8 @@ fun MainLayout(
                     isPlaying = isPlaying,
                     onBack = { selectedArtist = null },
                     onSongClick = { song, list -> audioViewModel.playSong(song, list) },
-                    onAlbumClick = { selectedAlbumId = it },
+                    // CHANGE 6: Pass album title (name) instead of ID in ArtistScreen
+                    onAlbumClick = { selectedAlbumName = it },
                     onShufflePlay = { list ->
                         if (list.isNotEmpty()) audioViewModel.playSong(
                             list.shuffled().first(), list.shuffled()
@@ -218,29 +234,31 @@ fun MainLayout(
                 )
             }
 
-            if (selectedAlbumId != null) {
+            // CHANGE 7: Logic for Album Detail Screen based on NAME
+            if (selectedAlbumName != null) {
                 val owner = LocalViewModelStoreOwner.current
                 val defaultExtras = (owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
                     ?: CreationExtras.Empty
 
                 val albumViewModel: AlbumViewModel = viewModel(
-                    key = "album_$selectedAlbumId",
+                    key = "album_$selectedAlbumName", // Key by Name
                     factory = AlbumViewModel.Factory,
                     extras = MutableCreationExtras(defaultExtras).apply {
-                        set(DEFAULT_ARGS_KEY, bundleOf("albumId" to selectedAlbumId))
+                        // Pass albumName instead of albumId
+                        set(DEFAULT_ARGS_KEY, bundleOf("albumName" to selectedAlbumName))
                     }
                 )
                 val albumState by albumViewModel.uiState.collectAsState()
 
                 AlbumDetailScreen(
-                    albumId = selectedAlbumId!!,
+                    albumId = 0L, // ID is irrelevant for fetching now, pass 0 or a dummy
                     albumName = albumState.albumName,
                     artistName = albumState.artistName,
                     artUri = albumState.artUri,
                     songs = albumState.songs,
                     currentSong = currentSong,
                     isPlaying = isPlaying,
-                    onBack = { selectedAlbumId = null },
+                    onBack = { selectedAlbumName = null },
                     onPlayAlbum = { list -> audioViewModel.playSong(list.first(), list) },
                     onSongClick = { song, list -> audioViewModel.playSong(song, list) },
                     onSongMoreClick = { song -> optionsState = song to SheetContext.ALBUM },
@@ -308,16 +326,16 @@ fun MainLayout(
                         onAddToPlaylist = { optionsState = null },
                         onGoToAlbum = if (source != SheetContext.ALBUM) {
                             {
-                                val albumId = song.albumId
+                                val albumName = song.albumName // CHANGE 8: Use Name
                                 optionsState = null
-                                selectedAlbumId = albumId
+                                selectedAlbumName = albumName
                             }
                         } else null,
                         onGoToArtist = if (source != SheetContext.ARTIST) {
                             {
                                 val artistName = song.artist
                                 optionsState = null
-                                selectedAlbumId = null
+                                selectedAlbumName = null
                                 selectedArtist = artistName
                             }
                         } else null,
@@ -368,8 +386,8 @@ fun MainLayout(
                         onTabSelected = {
                             currentTab = it
                             selectedArtist = null
-                            selectedAlbumId = null
-                        }
+                            selectedAlbumName = null
+                        },
                     )
                 }
             }

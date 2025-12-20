@@ -7,7 +7,6 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Pause
@@ -17,16 +16,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import coil.compose.AsyncImage
 import coil.imageLoader
@@ -48,7 +49,6 @@ fun MiniPlayer(
 ) {
     val context = LocalContext.current
 
-    // Extract Color Logic
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(song.songArtUri) {
         bitmap = null
@@ -70,97 +70,112 @@ fun MiniPlayer(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 0.dp)
-            .height(60.dp)
-            .shadow(12.dp, RoundedCornerShape(12.dp), spotColor = Color.Black)
-            .clip(RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .height(68.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        backgroundColor,
-                        Color(0xFF181818)
+                        backgroundColor.copy(alpha = 0.9f),
+                        Color(0xFF121212)
                     )
                 )
             )
-            .border(1.dp, Color.White.copy(0.05f), RoundedCornerShape(12.dp))
+            .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(8.dp))
             .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(end = 12.dp), // Tighter right padding
+                .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 3. FIXED IMAGE SIZE: Fits perfectly inside 60dp height
-            AsyncImage(
-                model = song.songArtUri,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+            Box(
                 modifier = Modifier
-                    .size(60.dp) // Full height of the player
-                    .aspectRatio(1f)
-                    .background(Color(0xFF202020))
-            )
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFF0A0A0A))
+                    .border(1.dp, Color.White.copy(0.15f), RoundedCornerShape(4.dp))
+            ) {
+                AsyncImage(
+                    model = song.songArtUri,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(if (bitmap == null) 0.5f else 1f)
+                )
+
+                if (bitmap == null) {
+                    Text(
+                        text = "NO_SIG",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 8.sp,
+                        color = Color.White.copy(0.3f),
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 4. REFINED TYPOGRAPHY
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = song.title,
-                    style = MaterialTheme.typography.bodyMedium, // Smaller than bodyLarge
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee()
                 )
                 Text(
-                    text = song.artist,
-                    style = MaterialTheme.typography.bodySmall, // Smaller than bodyMedium
+                    text = song.artist.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace, // Tech font
                     color = Color.White.copy(0.7f),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    letterSpacing = 0.5.sp
                 )
             }
 
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(32.dp)
+                    .background(Color.White.copy(0.15f))
+            )
+
+            Spacer(modifier = Modifier.width(4.dp))
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 IconButton(
                     onClick = onTogglePlay,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color.White, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying)
-                                Icons.Rounded.Pause
-                            else
-                                Icons.Rounded.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
 
                 IconButton(
                     onClick = onSkipNext,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         Icons.Rounded.SkipNext,
                         null,
-                        tint = Color.White.copy(0.9f),
-                        modifier = Modifier.size(22.dp)
+                        tint = Color.White.copy(0.5f),
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
@@ -171,9 +186,9 @@ fun MiniPlayer(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(1.5.dp),
+                .height(2.dp),
             color = Color.White,
-            trackColor = Color.Transparent,
+            trackColor = Color.White.copy(0.1f),
             drawStopIndicator = {}
         )
     }
@@ -200,7 +215,7 @@ fun PreviewMiniPlayer() {
     Box(modifier = Modifier.padding(16.dp)) {
         MiniPlayer(
             song = mockSong,
-            isPlaying = true,
+            isPlaying = false,
             progress = 0.45f,
             onTogglePlay = {},
             onClick = {}

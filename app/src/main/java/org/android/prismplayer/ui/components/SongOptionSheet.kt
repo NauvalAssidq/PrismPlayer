@@ -1,17 +1,14 @@
 package org.android.prismplayer.ui.components
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,14 +17,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.ui.utils.SongArtHelper
 
 @Composable
 fun SongOptionSheet(
@@ -41,166 +41,206 @@ fun SongOptionSheet(
     onEdit: (() -> Unit)? = null,
     onShare: (() -> Unit)? = null
 ) {
-    val context = LocalContext.current
-
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-            .background(Color(0xFF151515))
-            .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+            .background(Color(0xFF0F0F0F))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(0.15f),
+                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+            )
+            .padding(bottom = bottomPadding)
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(bottom = bottomPadding)
+                .height(26.dp)
+                .background(Color(0xFF151515)),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(5) {
+                    Box(
+                        modifier = Modifier
+                            .width(16.dp)
+                            .height(1.dp)
+                            .background(Color.White.copy(0.2f))
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(color = Color.White.copy(0.1f))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
+                    .size(64.dp)
+                    .border(1.dp, Color.White.copy(0.2f))
+                    .background(Color(0xFF050505))
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(0.2f))
-                )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF252525))
-                        .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(8.dp))
-                ) {
-                    if (!song.songArtUri.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(song.songArtUri)
-                                .setParameter("t", System.currentTimeMillis())
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Icon(
-                            Icons.Rounded.MusicNote,
-                            null,
-                            tint = Color.White.copy(0.2f),
-                            modifier = Modifier.align(Alignment.Center)
+                if (!song.songArtUri.isNullOrBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(
+                                SongArtHelper.getUri(song.id)
+                                    .buildUpon()
+                                    .appendQueryParameter("t", song.dateModified.toString())
+                                    .build()
+                            )
+                            .crossfade(false)
+                            .size(96, 96)
+                            .build(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            "NO_SIG",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 8.sp,
+                            color = Color.White.copy(0.3f)
                         )
                     }
                 }
-
-                Column(
-                    modifier = Modifier
-                        .padding(start = 16.dp)
-                        .weight(1f)
-                ) {
-                    Text(
-                        text = song.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = song.artist,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(0.6f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
             }
 
-            HorizontalDivider(
-                color = Color.White.copy(0.08f),
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-            )
+            Spacer(modifier = Modifier.width(16.dp))
 
-            if (onPlayNext != null) OptionItem(Icons.Rounded.PlaylistPlay, "Play Next", onPlayNext)
-            if (onAddToQueue != null) OptionItem(Icons.Rounded.Queue, "Add to Queue", onAddToQueue)
-            if (onAddToPlaylist != null) OptionItem(Icons.Rounded.PlaylistAdd, "Add to Playlist", onAddToPlaylist)
-
-            if (onGoToAlbum != null) OptionItem(Icons.Rounded.Album, "Go to Album", onGoToAlbum)
-            if (onGoToArtist != null) OptionItem(Icons.Rounded.Person, "Go to Artist", onGoToArtist)
-
-            if (onEdit != null || onShare != null) {
-                HorizontalDivider(
-                    color = Color.White.copy(0.08f),
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                )
-                if (onEdit != null) OptionItem(Icons.Rounded.Edit, "Edit Info", onEdit)
-                if (onShare != null) OptionItem(Icons.Rounded.Share, "Share", onShare)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                MetadataLine("TITLE", song.title.uppercase())
+                MetadataLine("ARTIST", song.artist.uppercase())
+                MetadataLine("LENGTH", formatDurationTech(song.duration))
             }
         }
+
+        HorizontalDivider(color = Color.White.copy(0.1f))
+
+        if (onPlayNext != null) CommandRow("PRIORITY_NEXT", Icons.Outlined.PlaylistPlay, onPlayNext)
+        if (onAddToQueue != null) CommandRow("ENQUEUE", Icons.Outlined.Queue, onAddToQueue)
+        if (onAddToPlaylist != null) CommandRow("ADD_TO_PLAYLIST", Icons.Outlined.PlaylistAdd, onAddToPlaylist)
+        if (onPlayNext != null || onAddToQueue != null) {
+            HorizontalDivider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+        }
+
+        if (onGoToAlbum != null) CommandRow("OPEN_ALBUM", Icons.Outlined.Album, onGoToAlbum)
+        if (onGoToArtist != null) CommandRow("OPEN_ARTIST", Icons.Outlined.Person, onGoToArtist)
+
+        if (onEdit != null || onShare != null) {
+            HorizontalDivider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+        }
+
+        if (onEdit != null) CommandRow("MODIFY_TAGS", Icons.Outlined.Edit, onEdit)
+        if (onShare != null) CommandRow("TRANSMIT", Icons.Outlined.Share, onShare)
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+// --- SUB-COMPONENTS ---
+
+@Composable
+private fun MetadataLine(label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "$label: ",
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+            color = Color.White.copy(0.4f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary, // Theme Accent
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
 @Composable
-private fun OptionItem(
+private fun CommandRow(
+    label: String,
     icon: ImageVector,
-    text: String,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(56.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White.copy(0.8f),
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(20.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(0.7f),
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp,
+                color = Color.White.copy(0.9f)
+            )
+        }
+
         Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White.copy(0.9f)
+            text = ">>",
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 10.sp,
+            color = Color.White.copy(0.2f)
         )
     }
 }
 
-@Preview(showBackground = false)
+@SuppressLint("DefaultLocale")
+private fun formatDurationTech(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format("%02d:%02d", minutes, seconds)
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
 @Composable
 fun SongOptionSheetPreview() {
-    MaterialTheme{
-        val mockSongs = Song(
-            id = 1,
-            title = "Midnight City",
-            artist = "M83",
-            albumName = "Hurry Up, We're Dreaming",
-            albumId = 0,
-            duration = 240_000L,
-            path = "",
-            folderName = "Music",
-            dateAdded = 0L,
-            songArtUri = null,
-            year = 1993,
-            genre = "Rock",
-            trackNumber = 12
-        )
-        
+    val mockSong = Song(
+        id = 1,
+        title = "Midnight City",
+        artist = "M83",
+        albumName = "Hurry Up, We're Dreaming",
+        albumId = 0,
+        duration = 240_000L,
+        path = "",
+        folderName = "Music",
+        dateAdded = 0L,
+        songArtUri = null,
+        year = 1993,
+        genre = "Rock",
+        trackNumber = 12
+    )
+
+    MaterialTheme {
         SongOptionSheet(
-            song = mockSongs,
-            bottomPadding = 60.dp,
+            song = mockSong,
             onPlayNext = {},
             onAddToQueue = {},
             onAddToPlaylist = {},

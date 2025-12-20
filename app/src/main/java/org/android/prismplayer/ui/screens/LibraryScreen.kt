@@ -1,6 +1,6 @@
 package org.android.prismplayer.ui.screens
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,23 +13,30 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.Album
 import org.android.prismplayer.data.model.Song
-import org.android.prismplayer.ui.components.AlbumGridItem
 import org.android.prismplayer.ui.components.ArtistListItem
 import org.android.prismplayer.ui.components.SongListItem
 
@@ -40,7 +47,7 @@ fun LibraryScreen(
     songs: List<Song>,
     isPlaying: Boolean,
     onSongClick: (Song, List<Song>) -> Unit,
-    onAlbumClick: (Long) -> Unit,
+    onAlbumClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit,
     onArtistClick: (String) -> Unit,
     bottomPadding: Dp,
@@ -52,6 +59,8 @@ fun LibraryScreen(
         pageCount = { 3 }
     )
     val scope = rememberCoroutineScope()
+
+    // Data Processing (Kept efficient)
     val albums = remember(songs) {
         songs
             .groupBy { "${it.albumName.trim()}|${it.artist.trim()}" }
@@ -81,60 +90,75 @@ fun LibraryScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF050505))
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        AuraBackground()
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            Text(
-                text = "Your Library",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
-            )
+            // --- HEADER ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp)
+            ) {
+                Text(
+                    text = "DATABASE_VIEWER",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = "LOCAL_LIBRARY",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 32.sp
+                )
+            }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 24.dp)
+                    .height(48.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFF0A0A0A)),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                LibraryChip(
-                    text = "Songs",
-                    selected = pagerState.currentPage == 0
-                ) { scope.launch { pagerState.animateScrollToPage(0) } }
-
-                LibraryChip(
-                    text = "Albums",
-                    selected = pagerState.currentPage == 1
-                ) { scope.launch { pagerState.animateScrollToPage(1) } }
-
-                LibraryChip(
-                    text = "Artists",
-                    selected = pagerState.currentPage == 2
-                ) { scope.launch { pagerState.animateScrollToPage(2) } }
+                TabSegment("SONGS", pagerState.currentPage == 0, modifier = Modifier.weight(1f)) {
+                    scope.launch { pagerState.animateScrollToPage(0) }
+                }
+                VerticalDivider()
+                TabSegment("ALBUMS", pagerState.currentPage == 1, modifier = Modifier.weight(1f)) {
+                    scope.launch { pagerState.animateScrollToPage(1) }
+                }
+                VerticalDivider()
+                TabSegment("ARTISTS", pagerState.currentPage == 2, modifier = Modifier.weight(1f)) {
+                    scope.launch { pagerState.animateScrollToPage(2) }
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(24.dp))
 
+            Divider(color = Color.White.copy(0.1f))
+
+            // --- PAGER CONTENT ---
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> {
+                    0 -> { // SONGS LIST
                         if (songs.isEmpty()) {
-                            EmptyStateMessage("No songs found")
+                            EmptyStateMessage("NO_AUDIO_FILES_DETECTED")
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(bottom = bottomPadding),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(songs) { song ->
+                                items(songs, key = { it.id }) { song ->
                                     val isCurrent = currentSong?.id == song.id
                                     SongListItem(
                                         song = song,
@@ -143,31 +167,29 @@ fun LibraryScreen(
                                         onClick = { onSongClick(song, songs) },
                                         onMoreClick = { onSongMoreClick(song) }
                                     )
+                                    Divider(color = Color.White.copy(0.1f))
                                 }
                             }
                         }
                     }
 
-                    1 -> {
+                    1 -> { // ALBUMS GRID
                         if (albums.isEmpty()) {
-                            EmptyStateMessage("No albums found")
+                            EmptyStateMessage("NO_DATA_BLOCKS_FOUND")
                         } else {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(2),
                                 contentPadding = PaddingValues(
-                                    start = 20.dp,
-                                    end = 20.dp,
-                                    top = 0.dp,
-                                    bottom = bottomPadding
+                                    start = 24.dp, end = 24.dp, top = 24.dp, bottom = bottomPadding
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(albums) { song ->
-                                    AlbumGridItem(
+                                items(albums, key = { it.id }) { song ->
+                                    RawAlbumGridItem(
                                         song = song,
-                                        onClick = { onAlbumClick(song.albumId) }
+                                        onClick = { onAlbumClick(song.albumName) }
                                     )
                                 }
                             }
@@ -176,13 +198,13 @@ fun LibraryScreen(
 
                     2 -> {
                         if (artists.isEmpty()) {
-                            EmptyStateMessage("No artists found")
+                            EmptyStateMessage("NO_ARTIST_METADATA")
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(bottom = bottomPadding),
                                 modifier = Modifier.fillMaxSize()
                             ) {
-                                items(artists) { artistName ->
+                                items(artists, key = { it }) { artistName ->
                                     val imageUri = remember(artistName) {
                                         songs.firstOrNull { it.artist == artistName }?.songArtUri
                                     }
@@ -192,6 +214,8 @@ fun LibraryScreen(
                                         imageUri = imageUri,
                                         onClick = { onArtistClick(artistName) }
                                     )
+
+                                    Divider(color = Color.White.copy(0.1f))
                                 }
                             }
                         }
@@ -202,71 +226,27 @@ fun LibraryScreen(
     }
 }
 
-@Composable
-private fun AuraBackground() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(
-                    Color(0xFF1DB954).copy(alpha = 0.15f),
-                    Color.Transparent
-                ),
-                center = Offset(width * 0.5f, -100f),
-                radius = width * 1.3f
-            ),
-            center = Offset(width * 0.5f, -100f),
-            radius = width * 1.3f
-        )
-    }
-}
+// --- COMPONENTS ---
 
 @Composable
-fun LibraryChip(
+fun TabSegment(
     text: String,
-    selected: Boolean,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val accent = Color(0xFF1DB954)
-
-    val backgroundBrush = if (selected) {
-        Brush.verticalGradient(
-            colors = listOf(
-                accent.copy(alpha = 0.22f),
-                accent.copy(alpha = 0.10f)
-            )
-        )
-    } else {
-        Brush.verticalGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.10f),
-                Color.White.copy(alpha = 0.03f)
-            )
-        )
-    }
-
-    val borderColor = if (selected) {
-        accent.copy(alpha = 0.45f)
-    } else {
-        Color.White.copy(alpha = 0.12f)
-    }
-
-    val textColor = if (selected) accent else Color.White
-
     Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(backgroundBrush)
-            .border(1.dp, borderColor, CircleShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp)
+        modifier = modifier
+            .fillMaxHeight()
+            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            color = textColor,
-            fontWeight = FontWeight.SemiBold,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -277,47 +257,90 @@ fun EmptyStateMessage(message: String) {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = message, color = Color.White.copy(0.3f))
+        Text(
+            text = "ERROR // $message",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error
+        )
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
-fun LibraryScreenPreview() {
+fun RawAlbumGridItem(song: Song, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
+        // Square Wireframe Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
+                .background(Color(0xFF111111))
+        ) {
+            if (!song.songArtUri.isNullOrBlank()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(song.songArtUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    Icons.Rounded.Album,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(32.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Text(
+            text = song.albumName.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = song.artist.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 10.sp
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LibraryPreview() {
     val mockSongs = listOf(
-        Song(
-            1, "Midnight City", "M83", "Hurry Up, We're Dreaming", 1, 240000, "", "", 0, null,
-            year = 1,
-            trackNumber = 1,
-            genre = "Pop",
-        ),
-        Song(
-            2, "Starboy", "The Weeknd", "Starboy", 2, 200000, "", "", 0, null,
-            year = 1,
-            trackNumber = 1,
-            genre = "Pop",
-        ),
-        Song(3, "Reunion", "M83", "Hurry Up, We're Dreaming", 1, 210000, "", "", 0, null, year = 1, trackNumber = 1, genre = "Pop",)
+        Song(1, "Midnight City", "M83", "Hurry Up", 1, 240000, "", "", 0, null, 2011, 1, "Rock")
     )
-
-    val mockAlbums = listOf(
-        Album(1, "Hurry Up, We're Dreaming", "M83", null, 1, 2011),
-        Album (2, "Starboy", "The Weeknd", null, 2, 2016)
-    )
-
-    val state = HomeState(false, mockSongs, mockAlbums, null)
+    val state = HomeState(false, mockSongs, emptyList(), null)
 
     MaterialTheme {
         LibraryScreen(
-            songs = mockSongs,
             state = state,
-            currentSong = mockSongs[0],
-            isPlaying = true,
+            currentSong = null,
+            songs = mockSongs,
+            isPlaying = false,
             onSongClick = { _, _ -> },
             onAlbumClick = {},
             onSongMoreClick = {},
             onArtistClick = {},
-            bottomPadding = 120.dp,
+            bottomPadding = 80.dp,
             onPageChanged = {}
         )
     }

@@ -1,19 +1,28 @@
 package org.android.prismplayer.ui.components
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,6 +36,14 @@ fun SavePresetDialog(
 ) {
     var text by remember { mutableStateOf("") }
 
+    // Blinking status light animation (Matches SystemProcessDialog)
+    val infiniteTransition = rememberInfiniteTransition(label = "status_light")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "alpha"
+    )
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -34,72 +51,132 @@ fun SavePresetDialog(
             dismissOnClickOutside = true
         )
     ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF181818)
-            ),
-            shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, Color.White.copy(0.08f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
-            modifier = Modifier.fillMaxWidth(0.9f)
+        // Container: A rigid "Terminal Window" (Exact match)
+        Column(
+            modifier = Modifier
+                .width(320.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color(0xFF0F0F0F))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(2.dp))
         ) {
-            Column(
+            // 1. HEADER STRIP
+            Row(
                 modifier = Modifier
-                    .padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .fillMaxWidth()
+                    .background(Color(0xFF1A1A1A))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Save Preset",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
-                    ),
-                    color = Color.White
+                    text = "CONFIG_WRITE // NEW_ENTRY",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                OutlinedTextField(
+                // Live Status Indicator
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "INPUT_REQ",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .alpha(alpha)
+                            .background(MaterialTheme.colorScheme.secondary, CircleShape)
+                    )
+                }
+            }
+
+            Divider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+
+            // 2. INPUT AREA
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                // Technical Label
+                Text(
+                    text = "> ENTER_PRESET_ID:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Input Field (Dark Well)
+                BasicTextField(
                     value = text,
                     onValueChange = { text = it },
-                    label = { Text("Preset Name") },
+                    textStyle = TextStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { if (text.isNotBlank()) onSave(text) }
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFF151515),
-                        unfocusedContainerColor = Color(0xFF151515),
-                        focusedBorderColor = Color(0xFF1DB954),
-                        unfocusedBorderColor = Color.White.copy(0.18f),
-                        focusedLabelColor = Color(0xFF1DB954),
-                        unfocusedLabelColor = Color.White.copy(0.5f),
-                        cursorColor = Color(0xFF1DB954),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    )
+                    decorationBox = { innerTextField ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF050505)) // Darker well
+                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.2f))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            innerTextField()
+                        }
+                    }
                 )
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 3. FOOTER ACTIONS (Text Links)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color.White.copy(0.6f)
-                        )
-                    ) {
-                        Text("Cancel")
-                    }
+                    Text(
+                        text = "[ ABORT ]",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f),
+                        modifier = Modifier
+                            .clickable { onDismiss() }
+                            .padding(8.dp)
+                    )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(Modifier.width(12.dp))
 
-                    TextButton(
-                        onClick = { if (text.isNotBlank()) onSave(text) },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color(0xFF1DB954)
-                        )
-                    ) {
-                        Text("Save")
-                    }
+                    Text(
+                        text = "[ EXECUTE ]",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (text.isNotBlank()) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
+                        modifier = Modifier
+                            .clickable(enabled = text.isNotBlank()) { onSave(text) }
+                            .padding(8.dp)
+                    )
                 }
             }
         }
@@ -109,12 +186,21 @@ fun SavePresetDialog(
 @Preview(showBackground = false)
 @Composable
 fun SavePresetDialogPreview() {
-    MaterialTheme {
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = Color.White,
+            secondary = Color(0xFFD71921),
+            outline = Color.White.copy(0.5f),
+            onSurface = Color.White,
+            onSurfaceVariant = Color.Gray,
+            onPrimary = Color.White
+        )
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF050505))
-            .blur(20.dp)
+                .background(Color.Black.copy(0.8f)),
+            contentAlignment = Alignment.Center
         ) {
             SavePresetDialog(
                 onDismiss = {},
@@ -123,4 +209,3 @@ fun SavePresetDialogPreview() {
         }
     }
 }
-

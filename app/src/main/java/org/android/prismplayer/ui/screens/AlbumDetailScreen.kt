@@ -5,56 +5,35 @@ import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import coil.compose.AsyncImage
 import coil.imageLoader
@@ -65,6 +44,7 @@ import org.android.prismplayer.ui.components.SongListItem
 import org.android.prismplayer.ui.utils.PrismaColorUtils
 import org.android.prismplayer.ui.utils.rememberImmersiveColor
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlbumDetailScreen(
     albumId: Long,
@@ -79,10 +59,10 @@ fun AlbumDetailScreen(
     onSongClick: (Song, List<Song>) -> Unit,
     onSongMoreClick: (Song) -> Unit,
     bottomPadding: Dp
-
-    ) {
+) {
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+
     LaunchedEffect(artUri) {
         if (!artUri.isNullOrEmpty()) {
             val request = ImageRequest.Builder(context)
@@ -98,87 +78,88 @@ fun AlbumDetailScreen(
 
     val rawColor = rememberImmersiveColor(bitmap)
 
-    val backgroundColor by animateColorAsState(
-        targetValue = remember(rawColor) { PrismaColorUtils.adjustForBackground(rawColor) },
-        animationSpec = tween(1000),
-        label = "bgGlow"
-    )
-
     val accentColor by animateColorAsState(
-        targetValue = remember(rawColor) { PrismaColorUtils.adjustForAccent(rawColor) },
+        targetValue = remember(rawColor) {
+            val base = PrismaColorUtils.adjustForAccent(rawColor)
+            if (base.luminance() < 0.3f) {
+                base.copy(alpha = 0.9f).compositeOver(Color.White)
+            } else {
+                base
+            }
+        },
         animationSpec = tween(1000),
         label = "accentGlow"
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF050505))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(550.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            backgroundColor.copy(alpha = 0.7f),
-                            backgroundColor.copy(alpha = 0.2f),
-                            Color.Transparent
+    Scaffold(
+        containerColor = Color(0xFF050505),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            Column {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            "ARCHIVE_VIEWER",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp,
+                            color = MaterialTheme.colorScheme.primary
                         )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Outlined.ArrowBack, "RETURN", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { }) {
+                            Icon(Icons.Outlined.MoreVert, "OPTIONS", tint = Color.White)
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color(0xFF050505)
                     )
                 )
-        )
-
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                Row(
-                    modifier = Modifier
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier
-                            .background(Color.Black.copy(0.2f), CircleShape)
-                            .size(40.dp)
-                    ) {
-                        Icon(Icons.Rounded.ArrowBack, null, tint = Color.White)
-                    }
-                    IconButton(
-                        onClick = { },
-                        modifier = Modifier
-                            .background(Color.Black.copy(0.2f), CircleShape)
-                            .size(40.dp)
-                    ) {
-                        Icon(Icons.Rounded.MoreVert, null, tint = Color.White)
-                    }
-                }
+                Divider(color = Color.White.copy(0.1f))
             }
-        ) { padding ->
+        }
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.15f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
             LazyColumn(
                 contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding(),
-                    bottom = bottomPadding
-                ),                modifier = Modifier.fillMaxSize()
+                    top = padding.calculateTopPadding() + 24.dp,
+                    bottom = bottomPadding + 24.dp
+                ),
+                modifier = Modifier.fillMaxSize()
             ) {
                 item {
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp, bottom = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(horizontal = 24.dp)
+                            .height(IntrinsicSize.Min) // Allow dynamic height for text
                     ) {
+                        // Artwork Container
                         Box(
                             modifier = Modifier
-                                .size(220.dp)
-                                .shadow(40.dp, RoundedCornerShape(16.dp), spotColor = accentColor)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF202020))
+                                .size(140.dp)
+                                .border(1.dp, Color.White.copy(0.2f))
+                                .background(Color(0xFF0A0A0A))
+                                .padding(4.dp)
                         ) {
                             if (artUri != null) {
                                 AsyncImage(
@@ -188,69 +169,115 @@ fun AlbumDetailScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
+
+                            // Holographic Overlay
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(
+                                                Color.White.copy(0.1f),
+                                                Color.Transparent
+                                            ),
+                                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                                            end = androidx.compose.ui.geometry.Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                                        )
+                                    )
+                            )
                         }
 
-                        Spacer(Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.width(20.dp))
 
-                        Text(
-                            text = albumName,
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 32.dp)
-                        )
-                        Text(
-                            text = artistName,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White.copy(0.6f),
-                            textAlign = TextAlign.Center
-                        )
-                        Text(
-                            text = "${songs.size} Songs • ${calculateTotalDuration(songs)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(0.4f),
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-
-                        Spacer(Modifier.height(24.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        // Metadata Column
+                        Column(
+                            verticalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .weight(1f)
                         ) {
-                            Button(
-                                onClick = { onPlayAlbum(songs) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF1DB954),
-                                    contentColor = Color.Black
-                                ),
-                                contentPadding = PaddingValues(
-                                    start = 12.dp,
-                                    end = 24.dp,
-                                    top = 16.dp,
-                                    bottom = 16.dp
-                                ),
-                                modifier = Modifier.height(50.dp)
-                            ) {
-                                Icon(Icons.Rounded.PlayArrow, null, modifier = Modifier.size(32.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Play", fontWeight = FontWeight.Bold)
-                            }
+                            // Album Title (Header)
+                            MetadataField(
+                                label = "ALBUM_ID",
+                                value = albumName.uppercase(),
+                                isHeader = true
+                            )
 
-                            IconButton(
-                                onClick = { onPlayAlbum(songs.shuffled()) },
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .background(Color.White.copy(0.1f), CircleShape)
-                            ) {
-                                Icon(Icons.Rounded.Shuffle, null, tint = Color.White)
+                            Spacer(Modifier.height(8.dp))
+
+                            // Details
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                MetadataField("ARTIST_KEY", artistName.uppercase(), color = accentColor)
+                                MetadataField("FILE_COUNT", "${songs.size} TRACKS")
+                                MetadataField("TOTAL_LEN", calculateTotalDuration(songs))
                             }
                         }
                     }
                 }
 
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { onPlayAlbum(songs) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            shape = RoundedCornerShape(2.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = accentColor,
+                                contentColor = Color.Black
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Icon(Icons.Outlined.PlayArrow, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("INITIALIZE", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(52.dp)
+                                .height(52.dp)
+                                .border(1.dp, Color.White.copy(0.2f), RoundedCornerShape(2.dp))
+                                .clickable { onPlayAlbum(songs.shuffled()) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Outlined.Shuffle,
+                                null,
+                                tint = Color.White.copy(0.8f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+
+                    Divider(color = Color.White.copy(0.1f), modifier = Modifier.padding(bottom = 8.dp))
+                }
+
                 itemsIndexed(songs) { index, song ->
                     val isActive = currentSong?.id == song.id
+
+                    if (index == 0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                "TRACK_MANIFEST",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(0.3f),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
                     SongListItem(
                         song = song,
                         isActive = isActive,
@@ -260,30 +287,80 @@ fun AlbumDetailScreen(
                         onClick = { onSongClick(song, songs) },
                         onMoreClick = { onSongMoreClick(song) }
                     )
-                }
 
-                item { Spacer(Modifier.height(120.dp)) }
+                    Divider(color = Color.White.copy(0.05f))
+                }
             }
         }
     }
 }
 
+@Composable
+fun MetadataField(label: String, value: String, isHeader: Boolean = false, color: Color = Color.White) {
+    if (isHeader) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(0.3f),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 8.sp,
+                letterSpacing = 1.sp
+            )
+            // Adjusted for potentially long titles
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.ExtraBold,
+                color = color,
+                maxLines = 3, // Allowed 3 lines for split albums with long names
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 22.sp
+            )
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(0.4f),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp,
+                modifier = Modifier.width(80.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .width(1.dp)
+                    .height(10.dp)
+                    .background(Color.White.copy(0.1f))
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = color,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
 
 private fun calculateTotalDuration(songs: List<Song>): String {
     val totalSeconds = songs.sumOf { it.duration } / 1000
     val minutes = totalSeconds / 60
-    return "${minutes} min"
+    return "${minutes} MIN"
 }
 
-@SuppressLint("DefaultLocale")
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%d:%02d", minutes, seconds)
-}
-
-@androidx.compose.ui.tooling.preview.Preview(
+@Preview(
     showBackground = true,
     backgroundColor = 0xFF050505,
     heightDp = 800
@@ -291,17 +368,15 @@ private fun formatDuration(ms: Long): String {
 @Composable
 fun PreviewAlbumDetail() {
     val mockSongs = listOf(
-        Song(1, "Midnight City", "M83", "Hurry Up, We're Dreaming", 1, 240000, "", "", 0, null, year = 1, trackNumber = 1, genre = "Pop"),
-        Song(2, "Wait", "M83", "Hurry Up, We're Dreaming", 1, 180000, "", "", 0, null, year = 1, trackNumber = 1, genre = "Pop"),
-        Song(3, "Reunion", "M83", "Hurry Up, We're Dreaming", 1, 210000, "", "", 0, null, year = 1, trackNumber = 1, genre = "Pop"),
-        Song(4, "Steve McQueen", "M83", "Hurry Up, We're Dreaming", 1, 200000, "", "", 0, null, year = 1, trackNumber = 1, genre = "Pop")
+        Song(1, "Grenade", "Bruno Mars", "Doo-Wops & Hooligans", 1, 240000, "", "", 0, null, 2010, 1, "Pop"),
+        Song(2, "The Lazy Song", "Bruno Mars", "Doo-Wops & Hooligans", 2, 180000, "", "", 0, null, 2010, 2, "Pop")
     )
 
     MaterialTheme {
         AlbumDetailScreen(
             albumId = 1,
-            albumName = "Hurry Up, We're Dreaming",
-            artistName = "M83",
+            albumName = "Doo-Wops & Hooligans",
+            artistName = "Bruno Mars",
             artUri = null,
             songs = mockSongs,
             currentSong = mockSongs[0],

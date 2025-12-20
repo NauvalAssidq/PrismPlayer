@@ -20,6 +20,8 @@ class LocalLibrarySource(private val songDao: SongDao) {
 
     fun getSongsByAlbum(albumId: Long): Flow<List<Song>> = songDao.getSongsByAlbum(albumId)
 
+    fun getSongsByAlbumName(name: String): Flow<List<Song>> = songDao.getSongsByAlbumName(name)
+
     suspend fun getSongById(id: Long): Song? = songDao.getSongById(id)
 
     suspend fun refreshLibrary(songs: List<Song>) {
@@ -49,22 +51,24 @@ class LocalLibrarySource(private val songDao: SongDao) {
             songs
                 .groupBy { it.albumName.trim() }
                 .map { (name, groupedSongs) ->
-                    val first = groupedSongs.first()
-                    // Determine main artist (handle compilations)
+
+                    val representative = groupedSongs.firstOrNull { !it.songArtUri.isNullOrBlank() }
+                        ?: groupedSongs.first()
+
                     val mainArtist = groupedSongs
                         .groupingBy { it.artist }
                         .eachCount()
-                        .maxByOrNull { it.value }?.key ?: first.artist
+                        .maxByOrNull { it.value }?.key ?: representative.artist
 
                     val bestYear = groupedSongs.map { it.year }
                         .filter { it > 0 }
                         .maxOrNull() ?: 0
 
                     Album(
-                        id = first.albumId,
+                        id = representative.albumId,
                         title = name.ifBlank { "Unknown Album" },
                         artist = mainArtist,
-                        coverUri = first.songArtUri,
+                        coverUri = representative.songArtUri,
                         songCount = groupedSongs.size,
                         year = bestYear
                     )

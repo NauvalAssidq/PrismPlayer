@@ -5,28 +5,29 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.ManageSearch
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import org.android.prismplayer.ui.theme.PrismPlayerTheme
 
 enum class PrismTab {
     HOME, SEARCH, LIBRARY, SETTING
@@ -40,62 +41,55 @@ fun PrismNavBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, bottom = 18.dp, top = 6.dp)
-            .height(60.dp)
-            .shadow(
-                elevation = 30.dp,
-                spotColor = Color.Black.copy(0.5f),
-                shape = RoundedCornerShape(14.dp)
+            .padding(start = 14.dp, end = 14.dp, bottom = 24.dp, top = 8.dp)
+            .height(64.dp)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(8.dp)
             )
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF121212).copy(alpha = 0.95f))
-            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF0F0F0F))
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(0.03f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
         Row(
-            modifier = Modifier.
-            fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { }
-                )
-            },
-            horizontalArrangement = Arrangement.SpaceAround,
+            modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             NavBarItem(
-                icon = Icons.Rounded.Home,
+                icon = Icons.Outlined.Dashboard,
+                label = "DASH",
                 isSelected = currentTab == PrismTab.HOME,
+                modifier = Modifier.weight(1f),
                 onClick = { onTabSelected(PrismTab.HOME) }
             )
 
+            VerticalSeparator()
+
             NavBarItem(
-                icon = Icons.Rounded.Search,
+                icon = Icons.Outlined.ManageSearch,
+                label = "FIND",
                 isSelected = currentTab == PrismTab.SEARCH,
+                modifier = Modifier.weight(1f),
                 onClick = { onTabSelected(PrismTab.SEARCH) }
             )
 
+            VerticalSeparator()
+
             NavBarItem(
-                icon = Icons.Rounded.LibraryMusic,
+                icon = Icons.Outlined.Dns,
+                label = "DATA",
                 isSelected = currentTab == PrismTab.LIBRARY,
+                modifier = Modifier.weight(1f),
                 onClick = { onTabSelected(PrismTab.LIBRARY) }
             )
 
+            VerticalSeparator()
+
             NavBarItem(
-                icon = Icons.Rounded.Settings,
+                icon = Icons.Outlined.Tune,
+                label = "CONF",
                 isSelected = currentTab == PrismTab.SETTING,
+                modifier = Modifier.weight(1f),
                 onClick = { onTabSelected(PrismTab.SETTING) }
             )
         }
@@ -105,61 +99,80 @@ fun PrismNavBar(
 @Composable
 private fun NavBarItem(
     icon: ImageVector,
+    label: String,
     isSelected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val iconColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF1DB954) else Color.White.copy(0.4f),
-        label = "color"
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.secondary else Color.Transparent,
+        label = "bg"
     )
-
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1f,
-        label = "scale"
+    val contentColor by animateColorAsState(
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
+        label = "content"
     )
-
-    val interactionSource = remember { MutableInteractionSource() }
+    val scale by animateFloatAsState(if (isSelected) 0.95f else 1f, label = "press")
 
     Box(
-        modifier = Modifier
-            .size(64.dp)
-            .scale(scale)
+        modifier = modifier
+            .fillMaxHeight()
             .clickable(
-                interactionSource = interactionSource,
+                interactionSource = remember { MutableInteractionSource() },
                 indication = null
-            ) { onClick() },
+            ) { onClick() }
+            .background(backgroundColor),
         contentAlignment = Alignment.Center
     ) {
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .shadow(
-                        elevation = 20.dp,
-                        spotColor = Color(0xFF1DB954),
-                        shape = RoundedCornerShape(8.dp)
-                    )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.scale(scale)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
             )
         }
-
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = iconColor,
-            modifier = Modifier.size(28.dp)
-        )
     }
 }
 
-@Preview(showBackground = false, widthDp = 360, heightDp = 100)
 @Composable
-fun PreviewPrismNavBar() {
+fun VerticalSeparator() {
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF050505)),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        PrismNavBar(currentTab = PrismTab.HOME, onTabSelected = {})
+            .width(1.dp)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+    )
+}
+
+@Preview(showBackground = false, widthDp = 400, heightDp = 100)
+@Composable
+fun PreviewPrismNavBar() {
+    PrismPlayerTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            PrismNavBar(
+                currentTab = PrismTab.HOME,
+                onTabSelected = {}
+            )
+        }
     }
 }

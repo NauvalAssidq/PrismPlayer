@@ -1,13 +1,16 @@
 package org.android.prismplayer.ui.utils
 
-import android.R.attr.id
 import android.content.ContentUris
 import android.net.Uri
 
 object SongArtHelper {
-    private val ART_CONTENT_URI = Uri.parse("content://media/external/audio/media/$id/albumart")
+    private val BASE_MEDIA_URI = Uri.parse("content://media/external/audio/media")
 
-    fun getUri(albumId: Long): Uri {
-        return ContentUris.withAppendedId(ART_CONTENT_URI, albumId)
+    fun getUri(songId: Long): Uri {
+        // Result: content://media/external/audio/media/{songId}/albumart
+        return ContentUris.withAppendedId(BASE_MEDIA_URI, songId)
+            .buildUpon()
+            .appendPath("albumart")
+            .build()
     }
 }

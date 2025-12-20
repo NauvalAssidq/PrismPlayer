@@ -33,6 +33,9 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE albumId = :albumId")
     fun getSongsByAlbum(albumId: Long): Flow<List<Song>>
 
+    @Query("SELECT * FROM songs WHERE albumName = :name")
+    fun getSongsByAlbumName(name: String): Flow<List<Song>>
+
     @Update
     suspend fun updateSong(song: Song)
 

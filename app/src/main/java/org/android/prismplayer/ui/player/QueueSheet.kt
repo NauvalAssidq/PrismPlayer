@@ -6,46 +6,31 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.DragIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import org.android.prismplayer.data.model.QueueItem
@@ -65,6 +50,8 @@ fun QueueSheet(
     onItemClick: (QueueItem) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+
+    // Logic to separate history from "Next Up"
     val (historySize, nextUpList) = remember(queue, currentSong.id) {
         val currentIndex = queue.indexOfFirst { it.song.id == currentSong.id }
         if (currentIndex == -1) {
@@ -81,17 +68,20 @@ fun QueueSheet(
         val globalFrom = from.index + historySize
         val globalTo = to.index + historySize
         onMove(globalFrom, globalTo)
-
         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
     }
 
-    Box(
+    // THE CONTAINER: A "System Panel" sliding up
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 40.dp)
-            .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            .background(Color(0xFF121212))
-            .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+            .padding(top = 48.dp) // Gap from top
+            .background(Color(0xFF0F0F0F)) // Deep matte black
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(0.15f),
+                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp) // Technical corners
+            )
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->
                     if (dragAmount > 20) {
@@ -100,128 +90,239 @@ fun QueueSheet(
                 }
             }
     ) {
+        // 1. HEADER GRIP
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
-                .background(Brush.verticalGradient(listOf(glowColor.copy(0.15f), Color.Transparent)))
-        )
-
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onClose() }
-                    .padding(vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(Modifier.width(40.dp).height(4.dp).clip(CircleShape).background(Color.White.copy(0.2f)))
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Next Up", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = Color.White)
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            if (nextUpList.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("End of playlist", color = Color.White.copy(0.3f))
+                .height(32.dp)
+                .background(Color(0xFF151515))
+                .clickable { onClose() }, // Click header to close
+            contentAlignment = Alignment.Center
+        ) {
+            // "Grip Texture"
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .width(24.dp)
+                            .height(2.dp)
+                            .background(Color.White.copy(0.2f))
+                    )
                 }
-            } else {
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    itemsIndexed(items = nextUpList, key = { _, item -> item.queueId }) { index, item ->
+            }
+        }
 
-                        ReorderableItem(reorderableState, key = item.queueId) { isDragging ->
-                            val elevationPx by animateFloatAsState(
-                                targetValue = if (isDragging) 8.dp.value else 0f,
-                                label = "elevationPx"
+        Divider(color = Color.White.copy(0.1f))
+
+        // 2. TITLE BAR
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "SEQUENCE_EDITOR",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = "NEXT_UP_QUEUE",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Text(
+                text = "[${nextUpList.size}]",
+                style = MaterialTheme.typography.labelMedium,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Divider(color = Color.White.copy(0.1f))
+
+        // 3. THE LIST
+        if (nextUpList.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "SEQUENCE_EMPTY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        } else {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 80.dp)
+            ) {
+                itemsIndexed(items = nextUpList, key = { _, item -> item.queueId }) { index, item ->
+
+                    ReorderableItem(reorderableState, key = item.queueId) { isDragging ->
+
+                        // Interaction State
+                        val scale by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
+                        val bgColor = if (isDragging) Color(0xFF1A1A1A) else Color.Transparent
+                        val borderColor = if (isDragging) MaterialTheme.colorScheme.secondary else Color.Transparent
+
+                        // THE ROW ITEM
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(72.dp)
+                                .zIndex(if (isDragging) 1f else 0f)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    shadowElevation = if (isDragging) 8.dp.toPx() else 0f
+                                }
+                                .background(bgColor)
+                                .border(1.dp, borderColor) // Highlight border on drag
+                                .clickable { onItemClick(item) }
+                                .padding(horizontal = 24.dp), // Strict horizontal padding
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+
+                            // 1. DRAG HANDLE (Technical)
+                            Icon(
+                                imageVector = Icons.Outlined.DragHandle,
+                                contentDescription = "REORDER",
+                                tint = if (isDragging) MaterialTheme.colorScheme.secondary else Color.White.copy(0.2f),
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .draggableHandle() // The touch target
                             )
 
-                            Modifier.graphicsLayer {
-                                shadowElevation = elevationPx
-                            }
-                            val scale by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
+                            Spacer(Modifier.width(16.dp))
 
-                            Row(
+                            // 2. ARTWORK (Tiny Chip)
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(80.dp)
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .zIndex(if (isDragging) 1f else 0f) // Keep dragged item on top
-                                    .graphicsLayer {
-                                        scaleX = scale
-                                        scaleY = scale
-                                        shadowElevation = elevationPx
-                                        shape = RoundedCornerShape(12.dp)
-                                        clip = true
-                                    }
-                                    .background(if (isDragging) Color(0xFF252525) else Color.Transparent)
-                                    .border(1.dp, if (isDragging) Color.White.copy(0.1f) else Color.Transparent, RoundedCornerShape(12.dp))
-                                    .clickable { onItemClick(item) }
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .size(40.dp)
+                                    .border(1.dp, Color.White.copy(0.2f))
+                                    .background(Color(0xFF050505))
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.DragIndicator,
-                                    contentDescription = "Reorder",
-                                    tint = if (isDragging) Color.White else Color.White.copy(0.2f),
-                                    modifier = Modifier
-                                        .padding(end = 12.dp)
-                                        .size(24.dp)
-                                        .draggableHandle()
-                                )
-
                                 AsyncImage(
                                     model = item.song.songArtUri,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(0xFF202020))
+                                    modifier = Modifier.fillMaxSize()
                                 )
-
-                                Spacer(Modifier.width(12.dp))
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = item.song.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = item.song.artist,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(0.6f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                IconButton(
-                                    onClick = { onRemove(item.song) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(Icons.Rounded.Close, null, tint = Color.White.copy(0.3f), modifier = Modifier.size(20.dp))
-                                }
                             }
+
+                            Spacer(Modifier.width(16.dp))
+
+                            // 3. METADATA
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = item.song.title,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isDragging) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = item.song.artist.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            // 4. REMOVE ACTION
+                            IconButton(
+                                onClick = { onRemove(item.song) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "REMOVE",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        // Technical Divider (only when not dragging to avoid visual glitch)
+                        if (!isDragging) {
+                            Divider(
+                                color = Color.White.copy(0.05f),
+                                modifier = Modifier.padding(start = 64.dp) // Indented divider
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+fun QueueSheetPreview() {
+    val now = System.currentTimeMillis()
+    val mockCurrentSong = Song(
+        id = 1,
+        title = "Midnight City",
+        artist = "M83",
+        albumName = "Hurry Up",
+        albumId = 0,
+        duration = 240000,
+        path = "",
+        folderName = "",
+        dateAdded = 0,
+        songArtUri = null,
+        year = 2011,
+        trackNumber = 1,
+        genre = "Pop",
+        dateModified = now
+    )
+
+    val mockQueue = listOf(
+        QueueItem(
+            queueId = "1",
+            song = Song(2, "Starboy", "The Weeknd", "Starboy", 0, 200000, "", "", 0, null, 2016, 1, "Pop", now),
+        ),
+        QueueItem(
+            queueId = "2",
+            song = Song(3, "Blinding Lights", "The Weeknd", "After Hours", 0, 200000, "", "", 0, null, 2020, 1, "Pop", now),
+        ),
+        QueueItem(
+            queueId = "3",
+            song = Song(4, "Wait", "M83", "Hurry Up", 0, 200000, "", "", 0, null, 2011, 1, "Pop", now),
+        )
+    )
+
+    MaterialTheme(
+        colorScheme = darkColorScheme(
+            primary = Color.White,
+            secondary = Color(0xFFD71921),
+            onSurface = Color.White,
+            onSurfaceVariant = Color.Gray,
+            background = Color.Black
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            QueueSheet(
+                queue = mockQueue,
+                currentSong = mockCurrentSong,
+                glowColor = Color(0xFFD71921),
+                onClose = {},
+                onRemove = {},
+                onMove = { _, _ -> },
+                onItemClick = {}
+            )
         }
     }
 }

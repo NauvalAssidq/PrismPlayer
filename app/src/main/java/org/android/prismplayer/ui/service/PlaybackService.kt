@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -12,6 +13,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import org.android.prismplayer.MainActivity
 import org.android.prismplayer.R
+import org.android.prismplayer.ui.utils.AudioSessionHolder
 
 class PlaybackService : MediaSessionService() {
 
@@ -31,6 +33,14 @@ class PlaybackService : MediaSessionService() {
             .setAudioAttributes(audioAttributes, true)
             .setHandleAudioBecomingNoisy(true)
             .build()
+
+        AudioSessionHolder.updateSessionId(player.audioSessionId)
+
+        player.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                AudioSessionHolder.updateSessionId(audioSessionId)
+            }
+        })
 
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP

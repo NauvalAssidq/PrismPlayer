@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 import org.android.prismplayer.ui.MainLayout
 import org.android.prismplayer.ui.player.AudioViewModel
 import org.android.prismplayer.ui.screens.*
+import org.android.prismplayer.ui.theme.PrismPlayerTheme
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -41,7 +42,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
         )
         setContent {
-            MaterialTheme {
+            PrismPlayerTheme {
                 PrismNavigation()
             }
         }

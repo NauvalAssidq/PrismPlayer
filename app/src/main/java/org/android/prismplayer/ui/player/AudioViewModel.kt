@@ -31,6 +31,7 @@ import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.data.network.RetrofitClient
 import org.android.prismplayer.data.repository.MusicRepository
 import org.android.prismplayer.ui.service.PlaybackService
+import org.android.prismplayer.ui.utils.AudioSessionHolder
 import org.android.prismplayer.ui.utils.EqPreferences
 import org.android.prismplayer.ui.utils.LrcParser
 import org.android.prismplayer.ui.utils.LyricLine
@@ -102,13 +103,25 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 val controller = controllerFuture.get()
                 player = controller
                 setupPlayerListener(controller)
+                syncQueueFromController(controller)
 
                 _isPlaying.value = controller.isPlaying
                 _repeatMode.value = controller.repeatMode
                 _isShuffleEnabled.value = controller.shuffleModeEnabled
                 controller.currentMediaItem?.let { syncCurrentSongFromMediaItem(it) }
 
-                setupEqualizer(0)
+                val currentSessionId = AudioSessionHolder.sessionId.value
+                if (currentSessionId != 0) {
+                    setupEqualizer(currentSessionId)
+                } else {
+                    viewModelScope.launch {
+                        AudioSessionHolder.sessionId.collect { id ->
+                            if (id != 0) setupEqualizer(id)
+                        }
+                    }
+                }
+
+                _currentPresetName.value = eqPrefs.getLastPresetName()
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -188,6 +201,39 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 _syncedLyrics.value = emptyList()
             }
         }
+    }
+
+    private fun syncQueueFromController(controller: MediaController) {
+        val restoredQueue = mutableListOf<QueueItem>()
+        for (i in 0 until controller.mediaItemCount) {
+            val mediaItem = controller.getMediaItemAt(i)
+            val songId = mediaItem.requestMetadata.mediaUri?.lastPathSegment?.toLongOrNull() ?: 0L
+            val cachedSong = librarySongs.find { it.id == songId }
+
+            val song = if (cachedSong != null) {
+                cachedSong
+            } else {
+                Song(
+                    id = songId,
+                    title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown",
+                    artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown",
+                    albumName = mediaItem.mediaMetadata.albumTitle?.toString() ?: "",
+                    songArtUri = mediaItem.mediaMetadata.artworkUri?.toString(),
+                    path = mediaItem.requestMetadata.mediaUri?.toString() ?: "",
+                    duration = 0L,
+
+                    albumId = 0L,
+                    folderName = "",
+                    dateAdded = 0L,
+                    year = mediaItem.mediaMetadata.recordingYear ?: 0,
+                    trackNumber = mediaItem.mediaMetadata.trackNumber ?: 0,
+                    genre = mediaItem.mediaMetadata.genre?.toString() ?: "",
+                    dateModified = 0L
+                )
+            }
+            restoredQueue.add(QueueItem(queueId = mediaItem.mediaId, song = song))
+        }
+        _queue.value = restoredQueue
     }
 
     fun playSong(song: Song, contextList: List<Song> = emptyList()) {
@@ -445,7 +491,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         _eqBands.value = bands
     }
 
-    fun setEqBandLevel(bandId: Short, level: Short) {
+    private fun updateBandLevelInternal(bandId: Short, level: Short) {
         val currentBands = _eqBands.value.toMutableList()
         val index = currentBands.indexOfFirst { it.id == bandId }
         if (index != -1) {
@@ -455,6 +501,14 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         eqPrefs.saveBandLevel(bandId, level)
         viewModelScope.launch(Dispatchers.IO) {
             try { equalizer?.setBandLevel(bandId, level) } catch (e: Exception) { e.printStackTrace() }
+        }
+    }
+
+    fun setEqBandLevel(bandId: Short, level: Short) {
+        updateBandLevelInternal(bandId, level)
+        if (_currentPresetName.value != "Custom") {
+            _currentPresetName.value = "Custom"
+            eqPrefs.saveLastPresetName("Custom")
         }
     }
 
@@ -485,22 +539,46 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     fun saveCustomPreset(name: String) {
         val currentLevels = _eqBands.value.map { it.level }
         val newPreset = EqPreset(name, currentLevels)
-        val updatedList = _presets.value + newPreset
-        _presets.value = updatedList
+        val currentList = _presets.value.toMutableList()
+        currentList.removeAll { it.name == name }
+        currentList.add(newPreset)
+
+        _presets.value = currentList
         _currentPresetName.value = name
+
+        eqPrefs.saveLastPresetName(name)
+
         val defaultNames = setOf("Flat", "Bass", "Vocal", "Treble")
-        val customPresetsOnly = updatedList.filter { it.name !in defaultNames }
+        val customPresetsOnly = currentList.filter { it.name !in defaultNames }
         eqPrefs.saveCustomPresets(customPresetsOnly)
     }
 
+
+
     fun applyPreset(preset: EqPreset) {
         _currentPresetName.value = preset.name
+        eqPrefs.saveLastPresetName(preset.name)
+
         preset.bandLevels.forEachIndexed { index, level ->
             if (index < _eqBands.value.size) {
                 val bandId = _eqBands.value[index].id
-                setEqBandLevel(bandId, level)
+                updateBandLevelInternal(bandId, level)
             }
         }
+    }
+
+    fun deleteCustomPreset(preset: EqPreset) {
+        val defaultNames = setOf("Flat", "Bass", "Vocal", "Treble")
+        if (preset.name in defaultNames) return // Don't delete defaults
+        val currentList = _presets.value.toMutableList()
+        currentList.remove(preset)
+        _presets.value = currentList
+        if (_currentPresetName.value == preset.name) {
+            _currentPresetName.value = "Custom"
+            eqPrefs.saveLastPresetName("Custom")
+        }
+        val customPresetsOnly = currentList.filter { it.name !in defaultNames }
+        eqPrefs.saveCustomPresets(customPresetsOnly)
     }
 
     override fun onCleared() {
