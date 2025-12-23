@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -141,7 +142,7 @@ fun SettingsContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "PRISM_OS v1.0 // BUILD_2024",
+                    text = "PRISM v1.0.0-BETA.2 // BUILD_2025",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
                     fontFamily = FontFamily.Monospace

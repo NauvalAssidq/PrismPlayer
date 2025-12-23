@@ -13,6 +13,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import org.android.prismplayer.MainActivity
 import org.android.prismplayer.R
+import org.android.prismplayer.ui.player.manager.EqManager
 import org.android.prismplayer.ui.utils.AudioSessionHolder
 
 class PlaybackService : MediaSessionService() {
@@ -35,6 +36,15 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         AudioSessionHolder.updateSessionId(player.audioSessionId)
+        EqManager.setupEqualizer(applicationContext, player.audioSessionId)
+
+        player.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                AudioSessionHolder.updateSessionId(audioSessionId)
+                EqManager.release()
+                EqManager.setupEqualizer(applicationContext, audioSessionId)
+            }
+        })
 
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -87,6 +97,7 @@ class PlaybackService : MediaSessionService() {
             release()
             mediaSession = null
         }
+        EqManager.release()
         super.onDestroy()
     }
 }

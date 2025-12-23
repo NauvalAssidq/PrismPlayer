@@ -41,6 +41,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import org.android.prismplayer.data.model.Album
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.ui.components.AlbumCard
 import org.android.prismplayer.ui.components.SongListItem
 import org.android.prismplayer.ui.utils.PrismaColorUtils
 import org.android.prismplayer.ui.utils.rememberImmersiveColor
@@ -102,7 +103,7 @@ fun ArtistScreen(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp,
-                            color = accentColor // Using dynamic accent color for the title
+                            color = MaterialTheme.colorScheme.onSecondary
                         )
                     },
                     navigationIcon = {
@@ -182,7 +183,13 @@ fun ArtistScreen(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 items(state.albums) { album ->
-                                    RawAlbumCard(album, onClick = { onAlbumClick(album.title) })
+                                    AlbumCard(
+                                        title = album.title,
+                                        artist = album.artist,
+                                        coverUri = album.coverUri,
+                                        onClick = { onAlbumClick(album.title) },
+                                        fixedWidth = 140.dp
+                                    )
                                 }
                             }
                         }

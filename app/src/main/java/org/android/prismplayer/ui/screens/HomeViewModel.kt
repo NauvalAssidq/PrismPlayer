@@ -23,7 +23,9 @@ data class HomeState(
     val isLoading: Boolean = true,
     val songs: List<Song> = emptyList(),
     val albums: List<Album> = emptyList(),
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val totalSongCount: Int = 0,
+    val totalAlbumCount: Int = 0
 )
 
 class HomeViewModel(
@@ -84,13 +86,16 @@ class HomeViewModel(
         viewModelScope.launch {
             combine(
                 repository.getQuickPlaySongs(),
-                allAlbums
-            ) { songs, albums ->
+                allAlbums,
+                allSongs
+            ) { songs, albums, fullSongList ->
                 HomeState(
                     isLoading = false,
                     songs = songs,
                     albums = albums.take(10),
-                    errorMessage = if (songs.isEmpty() && albums.isEmpty()) "No music found." else null
+                    errorMessage = if (songs.isEmpty() && albums.isEmpty()) "No music found." else null,
+                    totalSongCount = fullSongList.size,
+                    totalAlbumCount = albums.size
                 )
             }
                 .catch { exception ->

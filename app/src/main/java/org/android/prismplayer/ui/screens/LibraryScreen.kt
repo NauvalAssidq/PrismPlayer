@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.AudioFile
+import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +40,7 @@ import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.Album
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.ui.components.AlbumCard
 import org.android.prismplayer.ui.components.ArtistListItem
 import org.android.prismplayer.ui.components.SongListItem
 
@@ -60,7 +64,6 @@ fun LibraryScreen(
     )
     val scope = rememberCoroutineScope()
 
-    // Data Processing (Kept efficient)
     val albums = remember(songs) {
         songs
             .groupBy { "${it.albumName.trim()}|${it.artist.trim()}" }
@@ -127,15 +130,34 @@ fun LibraryScreen(
                     .background(Color(0xFF0A0A0A)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TabSegment("SONGS", pagerState.currentPage == 0, modifier = Modifier.weight(1f)) {
+                TabSegment(
+                    text = "SONGS",
+                    icon = Icons.Rounded.Audiotrack,
+                    isSelected = pagerState.currentPage == 0,
+                    modifier = Modifier.weight(1f)
+                ) {
                     scope.launch { pagerState.animateScrollToPage(0) }
                 }
-                VerticalDivider()
-                TabSegment("ALBUMS", pagerState.currentPage == 1, modifier = Modifier.weight(1f)) {
+
+                VerticalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+
+                TabSegment(
+                    text = "ALBUMS",
+                    icon = Icons.Rounded.Album,
+                    isSelected = pagerState.currentPage == 1,
+                    modifier = Modifier.weight(1f)
+                ) {
                     scope.launch { pagerState.animateScrollToPage(1) }
                 }
-                VerticalDivider()
-                TabSegment("ARTISTS", pagerState.currentPage == 2, modifier = Modifier.weight(1f)) {
+
+                VerticalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+
+                TabSegment(
+                    text = "ARTISTS",
+                    icon = Icons.Rounded.Person,
+                    isSelected = pagerState.currentPage == 2,
+                    modifier = Modifier.weight(1f)
+                ) {
                     scope.launch { pagerState.animateScrollToPage(2) }
                 }
             }
@@ -144,13 +166,12 @@ fun LibraryScreen(
 
             Divider(color = Color.White.copy(0.1f))
 
-            // --- PAGER CONTENT ---
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> { // SONGS LIST
+                    0 -> {
                         if (songs.isEmpty()) {
                             EmptyStateMessage("NO_AUDIO_FILES_DETECTED")
                         } else {
@@ -173,7 +194,7 @@ fun LibraryScreen(
                         }
                     }
 
-                    1 -> { // ALBUMS GRID
+                    1 -> {
                         if (albums.isEmpty()) {
                             EmptyStateMessage("NO_DATA_BLOCKS_FOUND")
                         } else {
@@ -187,9 +208,12 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(albums, key = { it.id }) { song ->
-                                    RawAlbumGridItem(
-                                        song = song,
-                                        onClick = { onAlbumClick(song.albumName) }
+                                    AlbumCard(
+                                        title = song.albumName,
+                                        artist = song.artist,
+                                        coverUri = song.songArtUri,
+                                        onClick = { onAlbumClick(song.albumName) },
+                                        fixedWidth = null
                                     )
                                 }
                             }
@@ -226,28 +250,43 @@ fun LibraryScreen(
     }
 }
 
-// --- COMPONENTS ---
 
 @Composable
 fun TabSegment(
     text: String,
+    icon: ImageVector,
     isSelected: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
+
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+            .background(backgroundColor)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = contentColor
+            )
+        }
     }
 }
 
@@ -265,62 +304,63 @@ fun EmptyStateMessage(message: String) {
     }
 }
 
-@Composable
-fun RawAlbumGridItem(song: Song, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-    ) {
-        // Square Wireframe Box
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
-                .background(Color(0xFF111111))
-        ) {
-            if (!song.songArtUri.isNullOrBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(song.songArtUri)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    Icons.Rounded.Album,
-                    null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(32.dp)
-                )
-            }
-        }
+//Deprecated but might be useful in the future for debugging
 
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = song.albumName.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = song.artist.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            fontSize = 10.sp
-        )
-    }
-}
+//@Composable
+//fun RawAlbumGridItem(song: Song, onClick: () -> Unit) {
+//    Column(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .clickable { onClick() }
+//    ) {
+//        Box(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .aspectRatio(1f)
+//                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
+//                .background(Color(0xFF111111))
+//        ) {
+//            if (!song.songArtUri.isNullOrBlank()) {
+//                AsyncImage(
+//                    model = ImageRequest.Builder(LocalContext.current)
+//                        .data(song.songArtUri)
+//                        .crossfade(true)
+//                        .build(),
+//                    contentDescription = null,
+//                    contentScale = ContentScale.Crop,
+//                    modifier = Modifier.fillMaxSize()
+//                )
+//            } else {
+//                Icon(
+//                    Icons.Rounded.Album,
+//                    null,
+//                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+//                    modifier = Modifier
+//                        .align(Alignment.Center)
+//                        .size(32.dp)
+//                )
+//            }
+//        }
+//
+//        Spacer(Modifier.height(8.dp))
+//
+//        Text(
+//            text = song.albumName.uppercase(),
+//            style = MaterialTheme.typography.labelMedium,
+//            color = MaterialTheme.colorScheme.primary,
+//            maxLines = 1,
+//            overflow = TextOverflow.Ellipsis
+//        )
+//        Text(
+//            text = song.artist.uppercase(),
+//            style = MaterialTheme.typography.labelSmall,
+//            color = MaterialTheme.colorScheme.onSurfaceVariant,
+//            maxLines = 1,
+//            overflow = TextOverflow.Ellipsis,
+//            fontSize = 10.sp
+//        )
+//    }
+//}
 
 @Preview(showBackground = true)
 @Composable

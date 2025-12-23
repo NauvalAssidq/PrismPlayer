@@ -63,12 +63,6 @@ fun SplashScreen(
         label = "pulse"
     )
 
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(20000, easing = LinearEasing)),
-        label = "rotation"
-    )
-
     val bootLogs = remember { mutableStateListOf<BootLog>() }
 
     LaunchedEffect(Unit) {
@@ -107,21 +101,8 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Pitch Black
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val step = 40.dp.toPx()
-            for (x in 0..size.width.toInt() step step.toInt()) {
-                for (y in 0..size.height.toInt() step step.toInt()) {
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.05f),
-                        radius = 1.dp.toPx(),
-                        center = Offset(x.toFloat(), y.toFloat())
-                    )
-                }
-            }
-        }
-
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -133,19 +114,19 @@ fun SplashScreen(
                         .size(8.dp)
                         .alpha(pulseAlpha)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondary) // Nothing Red
+                        .background(MaterialTheme.colorScheme.secondary)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "SYSTEM BOOT // SEQ_01",
-                    style = MaterialTheme.typography.labelSmall, // Mono Font
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.secondary,
                     letterSpacing = 2.sp
                 )
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "PRISM OS v1.0",
+                text = "PRISM v1.0.0-beta.1",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -155,20 +136,6 @@ fun SplashScreen(
             modifier = Modifier.align(Alignment.Center),
             contentAlignment = Alignment.Center
         ) {
-            Canvas(
-                modifier = Modifier
-                    .size(280.dp)
-                    .graphicsLayer { rotationZ = rotation }
-            ) {
-                drawCircle(
-                    color = Color.White.copy(alpha = 0.2f),
-                    style = Stroke(
-                        width = 1.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(40f, 40f), 0f)
-                    )
-                )
-            }
-
             Canvas(modifier = Modifier.size(240.dp)) {
                 drawCircle(
                     color = Color.White.copy(alpha = 0.1f),
@@ -185,7 +152,7 @@ fun SplashScreen(
                 )
                 Text(
                     text = "AUDIO_CORE",
-                    style = MaterialTheme.typography.labelSmall, // Mono Font
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                     letterSpacing = 4.sp,
                     fontSize = 10.sp
