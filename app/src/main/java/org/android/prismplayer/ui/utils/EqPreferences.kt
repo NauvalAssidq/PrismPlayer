@@ -15,6 +15,30 @@ class EqPreferences(context: Context) {
         return prefs.getInt("band_$bandId", defaultLevel.toInt()).toShort()
     }
 
+    fun saveBassLevel(level: Short) {
+        prefs.edit().putInt("BASS_LEVEL", level.toInt()).apply()
+    }
+
+    fun getBassLevel(): Short {
+        return prefs.getInt("BASS_LEVEL", 0).toShort()
+    }
+
+    fun saveVirtLevel(level: Short) {
+        prefs.edit().putInt("VIRT_LEVEL", level.toInt()).apply()
+    }
+
+    fun getVirtLevel(): Short {
+        return prefs.getInt("VIRT_LEVEL", 0).toShort()
+    }
+
+    fun saveGainLevel(level: Int) {
+        prefs.edit().putInt("GAIN_LEVEL", level).apply()
+    }
+
+    fun getGainLevel(): Int {
+        return prefs.getInt("GAIN_LEVEL", 0)
+    }
+
     fun saveBandLevel(bandId: Short, level: Short) {
         prefs.edit().putInt("band_$bandId", level.toInt()).apply()
     }
@@ -28,7 +52,6 @@ class EqPreferences(context: Context) {
     }
 
     fun saveCustomPresets(presets: List<EqPreset>) {
-        // Serialization Format: "Name:Level1,Level2,Level3|Name2:Level1..."
         val serialized = presets.joinToString("|") { preset ->
             val levelsString = preset.bandLevels.joinToString(",")
             "${preset.name}:$levelsString"

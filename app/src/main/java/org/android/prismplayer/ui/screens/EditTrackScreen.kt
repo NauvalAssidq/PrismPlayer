@@ -10,25 +10,59 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -41,11 +75,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.Song
-
-// [Previous EditTrackRoute, ViewModel integration code remains identical]
-// I will focus on the UI overhaul of EditTrackScreen and components.
+import org.android.prismplayer.ui.theme.PrismPlayerTheme
 
 @Composable
 fun EditTrackRoute(
@@ -134,9 +168,12 @@ fun EditTrackScreen(
         if (uri != null) selectedImageUri = uri.toString()
     }
 
+    val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
+
     Scaffold(
+        modifier = Modifier.imePadding(),
         containerColor = Color(0xFF0F0F0F),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Column {
                 CenterAlignedTopAppBar(
@@ -158,22 +195,23 @@ fun EditTrackScreen(
                         containerColor = Color(0xFF0F0F0F)
                     )
                 )
-                Divider(color = Color.White.copy(0.1f))
+                HorizontalDivider(color = Color.White.copy(0.1f))
             }
         },
         bottomBar = {
-            // COMMAND BAR
-            Column {
-                Divider(color = Color.White.copy(0.1f))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0F0F0F))
+            ) {
+                HorizontalDivider(color = Color.White.copy(0.1f))
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF0F0F0F))
-                        .navigationBarsPadding()
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // CANCEL
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -182,19 +220,30 @@ fun EditTrackScreen(
                             .clickable(onClick = onBack),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("DISCARD", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(0.7f))
+                        Text(
+                            "DISCARD",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Color.White.copy(0.7f)
+                        )
                     }
 
-                    // SAVE
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                            .clickable(onClick = { onSave(title, artist, album, year, genre, trackNumber, selectedImageUri) }),
+                            .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(4.dp))
+                            .clickable(onClick = {
+                                focusManager.clearFocus()
+                                onSave(title, artist, album, year, genre, trackNumber, selectedImageUri)
+                            }),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("WRITE_DATA", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                        Text(
+                            "WRITE_DATA",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondary
+                        )
                     }
                 }
             }
@@ -204,9 +253,8 @@ fun EditTrackScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
-            // --- ARTWORK SECTION ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -218,7 +266,11 @@ fun EditTrackScreen(
                         .size(180.dp)
                         .border(1.dp, Color.White.copy(0.2f))
                         .background(Color(0xFF050505))
-                        .clickable { imagePickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+                        .clickable {
+                            imagePickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
                 ) {
                     if (selectedImageUri.isNotBlank()) {
                         AsyncImage(
@@ -228,11 +280,10 @@ fun EditTrackScreen(
                                 .build(),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().alpha(0.7f) // Slight dim for text visibility
+                            modifier = Modifier.fillMaxSize().alpha(0.7f)
                         )
                     }
 
-                    // Edit Overlay
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
@@ -248,14 +299,12 @@ fun EditTrackScreen(
                         )
                     }
 
-                    // Technical Corners
                     CornerBrackets()
                 }
             }
 
-            Divider(color = Color.White.copy(0.1f))
+            HorizontalDivider(color = Color.White.copy(0.1f))
 
-            // --- FORM FIELDS ---
             Column(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -266,19 +315,56 @@ fun EditTrackScreen(
                     color = MaterialTheme.colorScheme.secondary
                 )
 
-                TechTextField("TITLE_TAG", title) { title = it }
-                TechTextField("ARTIST_TAG", artist) { artist = it }
-                TechTextField("ALBUM_TAG", album) { album = it }
+                TechTextField(
+                    label = "TITLE_TAG",
+                    value = title,
+                    onValueChange = { title = it },
+                    onDone = { focusManager.clearFocus() }
+                )
+                TechTextField(
+                    label = "ARTIST_TAG",
+                    value = artist,
+                    onValueChange = { artist = it },
+                    onDone = { focusManager.clearFocus() }
+                )
+                TechTextField(
+                    label = "ALBUM_TAG",
+                    value = album,
+                    onValueChange = { album = it },
+                    onDone = { focusManager.clearFocus() }
+                )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Box(Modifier.weight(1f)) { TechTextField("YEAR_INT", year, KeyboardType.Number) { year = it } }
-                    Box(Modifier.weight(1f)) { TechTextField("TRACK_IDX", trackNumber, KeyboardType.Number) { trackNumber = it } }
+                    Box(Modifier.weight(1f)) {
+                        TechTextField(
+                            label = "YEAR_INT",
+                            value = year,
+                            keyboardType = KeyboardType.Number,
+                            onValueChange = { year = it },
+                            onDone = { focusManager.clearFocus() }
+                        )
+                    }
+                    Box(Modifier.weight(1f)) {
+                        TechTextField(
+                            label = "TRACK_IDX",
+                            value = trackNumber,
+                            keyboardType = KeyboardType.Number,
+                            onValueChange = { trackNumber = it },
+                            onDone = { focusManager.clearFocus() }
+                        )
+                    }
                 }
 
-                TechTextField("GENRE_TAG", genre) { genre = it }
+                TechTextField(
+                    label = "GENRE_TAG",
+                    value = genre,
+                    onValueChange = { genre = it },
+                    imeAction = ImeAction.Done,
+                    onDone = { focusManager.clearFocus() }
+                )
             }
-
-            Spacer(Modifier.height(40.dp))
+            // Just a little bottom spacing inside the scroll view
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -288,9 +374,29 @@ fun TechTextField(
     label: String,
     value: String,
     keyboardType: KeyboardType = KeyboardType.Text,
-    onValueChange: (String) -> Unit
+    imeAction: ImeAction = ImeAction.Next,
+    onValueChange: (String) -> Unit,
+    onDone: () -> Unit = {}
 ) {
-    Column {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+    val interactionSource = remember { MutableInteractionSource() }
+
+    val isFocused by interactionSource.collectIsFocusedAsState()
+
+    LaunchedEffect(isFocused) {
+        if (isFocused) {
+            // Wait briefly for the keyboard animation to start/finish so boundaries update
+            delay(300)
+            coroutineScope.launch {
+                bringIntoViewRequester.bringIntoView()
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier.bringIntoViewRequester(bringIntoViewRequester)
+    ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
@@ -312,10 +418,15 @@ fun TechTextField(
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 keyboardType = keyboardType,
-                imeAction = ImeAction.Next
+                imeAction = imeAction
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { onDone() },
+                onNext = { }
             ),
             singleLine = true,
             cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
+            interactionSource = interactionSource,
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFF151515))
@@ -342,27 +453,58 @@ fun CornerBrackets() {
     }
 }
 
-
 @Composable
 fun EditLoadingState() {
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)),
+        contentAlignment = Alignment.Center
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("ACCESSING_FILE...", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "ACCESSING_FILE...",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.primary
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.secondary,
+                strokeWidth = 2.dp,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
 
 @Composable
 fun EditErrorState(message: String, onRetry: () -> Unit, onBack: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
-            Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(48.dp))
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Warning,
+                null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(48.dp)
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            Text("READ_FAILURE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+            Text(
+                "READ_FAILURE",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.error
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(message, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, color = Color.White.copy(0.5f))
+            Text(
+                message,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                color = Color.White.copy(0.5f)
+            )
             Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = onRetry,
@@ -379,13 +521,23 @@ fun EditErrorState(message: String, onRetry: () -> Unit, onBack: () -> Unit) {
 @Composable
 fun EditTrackScreenPreview() {
     val mockSong = Song(
-        id = 1, title = "Midnight City", artist = "M83",
-        albumName = "Hurry Up", albumId = 1, duration = 240000,
-        path = "", folderName = "Music", dateAdded = 0L,
-        songArtUri = null, year = 2011, genre = "Rock", trackNumber = 12
+        id = 1,
+        title = "Midnight City",
+        artist = "M83",
+        albumName = "Hurry Up",
+        albumId = 1,
+        duration = 240000,
+        path = "",
+        folderName = "Music",
+        dateAdded = 0L,
+        songArtUri = null,
+        year = 2011,
+        genre = "Rock",
+        trackNumber = 12,
+        dateModified = 0L
     )
 
-    MaterialTheme {
+    PrismPlayerTheme {
         EditTrackScreen(
             song = mockSong,
             onBack = {},

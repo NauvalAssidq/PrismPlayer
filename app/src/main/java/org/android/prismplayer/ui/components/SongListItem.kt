@@ -100,7 +100,7 @@ fun SongListItem(
                                 .build()
                         )
                         .crossfade(false)
-                        .size(96, 96)
+                        .size(108, 108)
                         .build(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,

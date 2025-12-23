@@ -22,6 +22,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -33,8 +36,16 @@ import androidx.compose.ui.unit.sp
 import org.android.prismplayer.data.model.EqBand
 import org.android.prismplayer.data.model.EqPreset
 import org.android.prismplayer.ui.components.DeleteConfirmationDialog
+import org.android.prismplayer.ui.components.KnobComponent
 import org.android.prismplayer.ui.components.SavePresetDialog
 import org.android.prismplayer.ui.player.AudioViewModel
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
+
+private val ColorPrimaryRed = Color(0xFFD71921)
+private val ColorGrid = Color(0xFF1A1A1A)
+private val ColorBackground = Color(0xFF050505)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,26 +53,34 @@ fun EqualizerScreen(
     viewModel: AudioViewModel,
     onBack: () -> Unit
 ) {
-    LaunchedEffect(Unit) {
-        viewModel.setupEqualizer(0)
-    }
+    LaunchedEffect(Unit) { viewModel.setupEqualizer(0) }
 
     val bands by viewModel.eqBands.collectAsState()
     val isEnabled by viewModel.eqEnabled.collectAsState()
     val presets by viewModel.presets.collectAsState()
     val currentPresetName by viewModel.currentPresetName.collectAsState()
 
+    val bassBoost by viewModel.bassStrength.collectAsState()
+    val virtualizer by viewModel.virtStrength.collectAsState()
+    val loudnessGain by viewModel.gainStrength.collectAsState()
+
     EqualizerScreenContent(
         bands = bands,
         isEnabled = isEnabled,
         presets = presets,
         currentPresetName = currentPresetName,
+        bassBoost = bassBoost,
+        virtualizer = virtualizer,
+        loudnessGain = loudnessGain,
         onBack = onBack,
         onToggleEnabled = { viewModel.toggleEq(it) },
         onApplyPreset = { viewModel.applyPreset(it) },
         onSetBandLevel = { id, level -> viewModel.setEqBandLevel(id, level) },
         onSavePreset = { name -> viewModel.saveCustomPreset(name) },
-        onDeletePreset = { preset -> viewModel.deleteCustomPreset(preset) }
+        onDeletePreset = { preset -> viewModel.deleteCustomPreset(preset) },
+        onBassChange = { viewModel.setBassStrength(it) },
+        onVirtChange = { viewModel.setVirtStrength(it) },
+        onGainChange = { viewModel.setGainStrength(it) }
     )
 }
 
@@ -72,19 +91,25 @@ private fun EqualizerScreenContent(
     isEnabled: Boolean,
     presets: List<EqPreset>,
     currentPresetName: String?,
+    bassBoost: Float,
+    virtualizer: Float,
+    loudnessGain: Float,
     onBack: () -> Unit,
     onToggleEnabled: (Boolean) -> Unit,
     onApplyPreset: (EqPreset) -> Unit,
     onSetBandLevel: (bandId: Short, level: Short) -> Unit,
     onSavePreset: (String) -> Unit,
-    onDeletePreset: (EqPreset) -> Unit
+    onDeletePreset: (EqPreset) -> Unit,
+    onBassChange: (Float) -> Unit,
+    onVirtChange: (Float) -> Unit,
+    onGainChange: (Float) -> Unit
 ) {
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<EqPreset?>(null) }
     val defaultPresets = listOf("Flat", "Bass", "Vocal", "Treble")
 
     Scaffold(
-        containerColor = Color(0xFF050505),
+        containerColor = ColorBackground,
         topBar = {
             Column {
                 CenterAlignedTopAppBar(
@@ -94,11 +119,11 @@ private fun EqualizerScreenContent(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 2.sp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.onSecondary
                         )
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(0xFF050505)
+                        containerColor = ColorBackground
                     ),
                     navigationIcon = {
                         IconButton(onClick = onBack) {
@@ -106,7 +131,7 @@ private fun EqualizerScreenContent(
                         }
                     },
                     actions = {
-                        val powerColor = if (isEnabled) MaterialTheme.colorScheme.secondary else Color.White.copy(0.3f)
+                        val powerColor = if (isEnabled) ColorPrimaryRed else Color.White.copy(0.3f)
                         IconButton(
                             onClick = { onToggleEnabled(!isEnabled) },
                             modifier = Modifier
@@ -132,20 +157,12 @@ private fun EqualizerScreenContent(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp)
             ) {
-                Text(
-                    text = "PRESET_CONFIG",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(start = 24.dp, bottom = 12.dp),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -158,10 +175,8 @@ private fun EqualizerScreenContent(
                             isAction = true
                         )
                     }
-
                     items(presets) { preset ->
                         val isCustom = preset.name !in defaultPresets
-
                         TechPresetChip(
                             text = preset.name.uppercase(),
                             selected = preset.name == currentPresetName,
@@ -172,24 +187,31 @@ private fun EqualizerScreenContent(
                 }
             }
 
-            Divider(color = Color.White.copy(0.05f))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .padding(horizontal = 24.dp)
+                    .border(1.dp, ColorGrid, RoundedCornerShape(4.dp))
+                    .background(Color(0xFF080808))
+            ) {
+                WaveformGraph(
+                    bands = bands,
+                    isEnabled = isEnabled,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             Spacer(Modifier.height(24.dp))
 
             if (bands.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "NO_SIGNAL",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(0.3f),
-                        fontFamily = FontFamily.Monospace
-                    )
+                Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                    Text("NO_SIGNAL", color = Color.White.copy(0.3f))
                 }
             } else {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -203,29 +225,126 @@ private fun EqualizerScreenContent(
                     }
                 }
             }
-            Spacer(Modifier.height(48.dp))
+
+            Spacer(Modifier.height(32.dp))
+
+            Divider(color = Color.White.copy(0.05f))
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                KnobComponent(
+                    label = "SUB_BASS",
+                    value = bassBoost,
+                    isEnabled = isEnabled,
+                    size = 80.dp,
+                    onValueChange = onBassChange
+                )
+                KnobComponent(
+                    label = "STEREO",
+                    value = virtualizer,
+                    isEnabled = isEnabled,
+                    size = 80.dp,
+                    onValueChange = onVirtChange
+                )
+                KnobComponent(
+                    label = "GAIN",
+                    value = loudnessGain,
+                    isEnabled = isEnabled,
+                    size = 80.dp,
+                    onValueChange = onGainChange
+                )
+            }
+        }
+    }
+
+    if (showSaveDialog) {
+        SavePresetDialog(onDismiss = { showSaveDialog = false }, onSave = { showSaveDialog = false; onSavePreset(it) })
+    }
+    if (presetToDelete != null) {
+        DeleteConfirmationDialog(presetName = presetToDelete!!.name, onConfirm = { onDeletePreset(presetToDelete!!); presetToDelete = null }, onDismiss = { presetToDelete = null })
+    }
+}
+
+@Composable
+fun WaveformGraph(
+    bands: List<EqBand>,
+    isEnabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier.clip(RoundedCornerShape(4.dp))) {
+        val width = size.width
+        val height = size.height
+        val centerY = height / 2
+
+        val barCount = 60
+        val barWidth = width / barCount
+
+        for (i in 0 until barCount) {
+            val x = i * barWidth
+            val distanceFromCenter = Math.abs(i - barCount/2f) / (barCount/2f)
+            val randomAmp = Random.nextFloat() * (1f - distanceFromCenter) * height * 0.8f
+
+            drawLine(
+                color = Color.White.copy(alpha = if(isEnabled) 0.15f else 0.05f),
+                start = Offset(x, centerY - (randomAmp/2)),
+                end = Offset(x, centerY + (randomAmp/2)),
+                strokeWidth = barWidth * 0.6f,
+                cap = StrokeCap.Round
+            )
         }
 
-        if (showSaveDialog) {
-            SavePresetDialog(
-                onDismiss = { showSaveDialog = false },
-                onSave = { name ->
-                    onSavePreset(name)
-                    showSaveDialog = false
+        if (bands.isNotEmpty()) {
+            val path = Path()
+            val stepX = width / (bands.size + 1)
+
+            val points = bands.mapIndexed { index, band ->
+                val x = stepX * (index + 1)
+                val normalized = (band.level - band.minLevel).toFloat() / (band.maxLevel - band.minLevel)
+                val y = height - (normalized * height)
+                Offset(x, y)
+            }
+
+            if (points.isNotEmpty()) {
+                path.moveTo(0f, points.first().y)
+                path.lineTo(points.first().x, points.first().y)
+
+                for (i in 0 until points.size - 1) {
+                    val p1 = points[i]
+                    val p2 = points[i + 1]
+                    val cx1 = (p1.x + p2.x) / 2
+                    val cy1 = p1.y
+                    val cx2 = (p1.x + p2.x) / 2
+                    val cy2 = p2.y
+                    path.cubicTo(cx1, cy1, cx2, cy2, p2.x, p2.y)
                 }
-            )
+
+                path.lineTo(width, points.last().y)
+
+                drawPath(
+                    path = path,
+                    color = if(isEnabled) ColorPrimaryRed.copy(0.2f) else Color.Transparent,
+                    style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                )
+                drawPath(
+                    path = path,
+                    color = if(isEnabled) ColorPrimaryRed else Color.White.copy(0.1f),
+                    style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
         }
 
-        if (presetToDelete != null) {
-            DeleteConfirmationDialog(
-                presetName = presetToDelete!!.name,
-                onConfirm = {
-                    onDeletePreset(presetToDelete!!)
-                    presetToDelete = null
-                },
-                onDismiss = { presetToDelete = null }
-            )
-        }
+        drawLine(
+            color = Color.White.copy(0.1f),
+            start = Offset(0f, centerY),
+            end = Offset(width, centerY),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+        )
     }
 }
 
@@ -237,8 +356,8 @@ fun TechPresetChip(
     onClick: () -> Unit,
     onDelete: (() -> Unit)? = null
 ) {
-    val activeColor = MaterialTheme.colorScheme.secondary // RED
-    val inactiveColor = Color.White.copy(0.6f) // GRAY
+    val activeColor = ColorPrimaryRed
+    val inactiveColor = Color.White.copy(0.6f)
     val inactiveBorder = Color.White.copy(0.2f)
     val borderColor = if (selected) activeColor else if (isAction) inactiveBorder else inactiveBorder
     val textColor = if (selected) activeColor else if (isAction) Color.White else inactiveColor
@@ -296,7 +415,7 @@ fun TechFader(
         val dbValue = (band.level / 100)
         Text(
             text = if (dbValue > 0) "+${dbValue}dB" else "${dbValue}dB",
-            color = if (isEnabled) MaterialTheme.colorScheme.primary else Color.White.copy(0.3f),
+            color = if (isEnabled) ColorPrimaryRed else Color.White.copy(0.3f),
             style = MaterialTheme.typography.labelSmall,
             fontFamily = FontFamily.Monospace,
             fontSize = 9.sp
@@ -311,7 +430,7 @@ fun TechFader(
             isEnabled = isEnabled,
             onValueChange = { onValueChange(it.toInt().toShort()) },
             modifier = Modifier
-                .height(300.dp)
+                .height(200.dp)
                 .width(40.dp)
         )
 
@@ -367,12 +486,6 @@ fun VerticalFaderTrack(
         val height = size.height
         val centerX = width / 2
         val zeroY = height * (1f - ((0 - min) / range))
-        drawLine(
-            color = Color.White.copy(0.1f),
-            start = Offset(0f, zeroY),
-            end = Offset(width, zeroY),
-            strokeWidth = 1.dp.toPx()
-        )
 
         drawLine(
             color = Color.White.copy(0.1f),
@@ -384,15 +497,13 @@ fun VerticalFaderTrack(
         val thumbY = height - (normalizedValue * height)
         val thumbHeight = 12.dp.toPx()
         val thumbWidth = 24.dp.toPx()
-
         val thumbColor = if (isEnabled) Color.White else Color.White.copy(0.3f)
 
         drawRect(
-            color = Color(0xFF050505),
+            color = ColorBackground,
             topLeft = Offset(centerX - thumbWidth/2, thumbY - thumbHeight/2),
             size = Size(thumbWidth, thumbHeight)
         )
-
         drawRect(
             color = thumbColor,
             topLeft = Offset(centerX - thumbWidth/2, thumbY - thumbHeight/2),
@@ -402,7 +513,7 @@ fun VerticalFaderTrack(
 
         if (isEnabled) {
             drawLine(
-                color = Color(0xFFD71921).copy(0.5f),
+                color = ColorPrimaryRed.copy(0.5f),
                 start = Offset(centerX, zeroY),
                 end = Offset(centerX, thumbY),
                 strokeWidth = 2.dp.toPx()
@@ -413,27 +524,42 @@ fun VerticalFaderTrack(
 
 @Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
-private fun EqualizerPreview() {
+private fun PrismEqualizerPreview() {
     val numBands = 5
     val freqs = listOf(60, 230, 910, 3600, 14000)
     val fakeBands = freqs.mapIndexed { i, f ->
-        EqBand(id = i.toShort(), level = (if(i==2) 0 else 500).toShort(), minLevel = -1500, maxLevel = 1500, centerFreq = f)
+        val level = when(i) {
+            0 -> 800
+            1 -> 400
+            2 -> 0
+            3 -> 500
+            4 -> 1000
+            else -> 0
+        }
+        EqBand(id = i.toShort(), level = level.toShort(), minLevel = -1500, maxLevel = 1500, centerFreq = f)
     }
+
     val flat = EqPreset("FLAT", emptyList())
-    val myCustom = EqPreset("MY_CUSTOM", emptyList())
+    val myCustom = EqPreset("CYBER_BASS", emptyList())
 
     MaterialTheme {
         EqualizerScreenContent(
             bands = fakeBands,
             isEnabled = true,
             presets = listOf(flat, myCustom),
-            currentPresetName = "MY_CUSTOM",
+            currentPresetName = "CYBER_BASS",
+            bassBoost = 0.75f,
+            virtualizer = 0.3f,
+            loudnessGain = 0.5f,
             onBack = {},
             onToggleEnabled = {},
             onApplyPreset = {},
             onSetBandLevel = { _, _ -> },
             onSavePreset = {},
-            onDeletePreset = {}
+            onDeletePreset = {},
+            onBassChange = {},
+            onVirtChange = {},
+            onGainChange = {}
         )
     }
 }

@@ -2,97 +2,62 @@ package org.android.prismplayer.ui.player
 
 import android.app.Application
 import android.content.ComponentName
-import android.content.ContentUris
-import android.media.audiofx.Equalizer
-import android.media.audiofx.LoudnessEnhancer
-import android.provider.MediaStore
-import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.android.prismplayer.data.model.EqBand
 import org.android.prismplayer.data.model.EqPreset
-import org.android.prismplayer.data.model.LyricsEntity
-import org.android.prismplayer.data.model.LyricsState
 import org.android.prismplayer.data.model.QueueItem
 import org.android.prismplayer.data.model.Song
-import org.android.prismplayer.data.network.RetrofitClient
 import org.android.prismplayer.data.repository.MusicRepository
+import org.android.prismplayer.ui.player.manager.LyricsManager
+import org.android.prismplayer.ui.player.manager.QueueManager
+import org.android.prismplayer.ui.player.manager.EqManager
 import org.android.prismplayer.ui.service.PlaybackService
-import org.android.prismplayer.ui.utils.AudioSessionHolder
-import org.android.prismplayer.ui.utils.EqPreferences
-import org.android.prismplayer.ui.utils.LrcParser
-import org.android.prismplayer.ui.utils.LyricLine
-import java.util.Locale
 
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
+
+    // --- Managers ---
+    private val queueManager = QueueManager()
+    private val lyricsManager = LyricsManager()
+
+    // --- Player Reference ---
     private var player: Player? = null
-    private var librarySongs: List<Song> = emptyList()
-    private var repository: MusicRepository? = null
+    private var isSeeking = false
 
-    // --- State Flows ---
-    private val _queue = MutableStateFlow<List<QueueItem>>(emptyList())
-    val queue: StateFlow<List<QueueItem>> = _queue.asStateFlow()
+    // --- State Delegation (UI observes these) ---
+    val queue = queueManager.queue
+    val currentSong = queueManager.currentSong
+    val isPlaying = queueManager.isPlaying
+    val repeatMode = queueManager.repeatMode
+    val isShuffleEnabled = queueManager.isShuffleEnabled
+    val isAutoplayEnabled = queueManager.isAutoplayEnabled
 
-    private val _currentQueueId = MutableStateFlow<String?>(null)
+    val eqBands = EqManager.eqBands
+    val eqEnabled = EqManager.eqEnabled
+    val presets = EqManager.presets
+    val currentPresetName = EqManager.currentPresetName
+    val bassStrength = EqManager.bassStrength
+    val virtStrength = EqManager.virtStrength
+    val gainStrength = EqManager.gainStrength
 
-    private val _currentSong = MutableStateFlow<Song?>(null)
-    val currentSong: StateFlow<Song?> = _currentSong.asStateFlow()
+    val lyricState = lyricsManager.lyricsState
+    val syncedLyrics = lyricsManager.syncedLyrics
 
-    private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
-
+    // --- Progress State (Kept in VM for loop efficiency) ---
     private val _progress = MutableStateFlow(0f)
     val progress: StateFlow<Float> = _progress.asStateFlow()
 
     private val _currentTime = MutableStateFlow(0L)
     val currentTime: StateFlow<Long> = _currentTime.asStateFlow()
-
-    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
-
-    private val _isShuffleEnabled = MutableStateFlow(false)
-    val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
-    private val _isAutoplayEnabled = MutableStateFlow(false)
-    val isAutoplayEnabled: StateFlow<Boolean> = _isAutoplayEnabled.asStateFlow()
-
-    //Lyric Parser
-    private val _lyricsState = MutableStateFlow<LyricsState>(LyricsState.Idle)
-    val lyricState = _lyricsState.asStateFlow()
-    fun setRepository(repo: MusicRepository) {
-        this.repository = repo
-    }
-
-    private val _syncedLyrics = MutableStateFlow<List<LyricLine>>(emptyList())
-    val syncedLyrics = _syncedLyrics.asStateFlow()
-
-    //Equalizer State
-    private var equalizer: Equalizer? = null
-    private var loudnessEnhancer: LoudnessEnhancer? = null
-    private val eqPrefs = EqPreferences(application)
-    private val _eqBands = MutableStateFlow<List<EqBand>>(emptyList())
-    val eqBands = _eqBands.asStateFlow()
-    private val _eqEnabled = MutableStateFlow(false)
-    val eqEnabled = _eqEnabled.asStateFlow()
-    private val _presets = MutableStateFlow<List<EqPreset>>(emptyList())
-    val presets = _presets.asStateFlow()
-    private val _currentPresetName = MutableStateFlow("Custom")
-    val currentPresetName = _currentPresetName.asStateFlow()
-
-    private var isSeeking = false
-    private var progressJob: Job? = null
 
     init {
         val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
@@ -103,25 +68,10 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 val controller = controllerFuture.get()
                 player = controller
                 setupPlayerListener(controller)
-                syncQueueFromController(controller)
 
-                _isPlaying.value = controller.isPlaying
-                _repeatMode.value = controller.repeatMode
-                _isShuffleEnabled.value = controller.shuffleModeEnabled
-                controller.currentMediaItem?.let { syncCurrentSongFromMediaItem(it) }
-
-                val currentSessionId = AudioSessionHolder.sessionId.value
-                if (currentSessionId != 0) {
-                    setupEqualizer(currentSessionId)
-                } else {
-                    viewModelScope.launch {
-                        AudioSessionHolder.sessionId.collect { id ->
-                            if (id != 0) setupEqualizer(id)
-                        }
-                    }
-                }
-
-                _currentPresetName.value = eqPrefs.getLastPresetName()
+                queueManager.syncQueueFromController(controller)
+                queueManager.syncPlayerState(controller)
+                controller.currentMediaItem?.let { queueManager.syncCurrentSong(it) }
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -140,188 +90,77 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setLibrary(songs: List<Song>) {
-        librarySongs = songs
+    // --- Configuration ---
+    fun setRepository(repo: MusicRepository) {
+        lyricsManager.setRepository(repo)
     }
 
+    fun setLibrary(songs: List<Song>) {
+        queueManager.setLibrary(songs)
+    }
+
+    // --- Listener ---
     private fun setupPlayerListener(player: Player) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _isPlaying.value = isPlaying
+                queueManager.syncPlayerState(player)
             }
+
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                syncCurrentSongFromMediaItem(mediaItem)
-                if (_isAutoplayEnabled.value) {
-                    autoPlay()
+                queueManager.syncCurrentSong(mediaItem)
+
+                // Lyrics reset on song change
+                val song = queueManager.currentSong.value
+                if (song != null) {
+                    lyricsManager.initializeLyrics(song, viewModelScope)
+                } else {
+                    lyricsManager.reset()
                 }
+
+                queueManager.checkAutoPlay(player)
             }
+
             override fun onRepeatModeChanged(repeatMode: Int) {
-                _repeatMode.value = repeatMode
+                queueManager.syncPlayerState(player)
             }
+
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                _isShuffleEnabled.value = shuffleModeEnabled
+                queueManager.syncPlayerState(player)
             }
-            override fun onPlaybackStateChanged(state: Int) { }
         })
     }
 
-    private fun autoPlay() {
-        val p = player ?: return
-        val currentQ = _queue.value
-        if (currentQ.isEmpty() || librarySongs.isEmpty()) return
-        val currentIndex = p.currentMediaItemIndex
-        val threshold = currentQ.size - 2
+    // --- Forwarded Actions ---
 
-        if (currentIndex >= threshold) {
-            val currentId = _currentSong.value?.id
-            val candidates = librarySongs.filter { it.id != currentId }
-
-            if (candidates.isNotEmpty()) {
-                val batchSize = currentQ.size.coerceIn(5, 50)
-                val newSongs = candidates.shuffled().take(batchSize)
-                val newItems = newSongs.map { QueueItem(song = it) }
-                _queue.value = currentQ + newItems
-                p.addMediaItems(newItems.map { it.toMediaItem() })
-            }
-        }
-    }
-
-    private fun syncCurrentSongFromMediaItem(mediaItem: MediaItem?) {
-        if (mediaItem == null) return
-
-        val queueId = mediaItem.mediaId
-        val item = _queue.value.find { it.queueId == queueId }
-
-        if (item != null) {
-            val isNewSong = _currentSong.value?.id != item.song.id
-            _currentSong.value = item.song
-            _currentQueueId.value = item.queueId
-            if (isNewSong) {
-                _lyricsState.value = LyricsState.Idle
-                _syncedLyrics.value = emptyList()
-            }
-        }
-    }
-
-    private fun syncQueueFromController(controller: MediaController) {
-        val restoredQueue = mutableListOf<QueueItem>()
-        for (i in 0 until controller.mediaItemCount) {
-            val mediaItem = controller.getMediaItemAt(i)
-            val songId = mediaItem.requestMetadata.mediaUri?.lastPathSegment?.toLongOrNull() ?: 0L
-            val cachedSong = librarySongs.find { it.id == songId }
-
-            val song = if (cachedSong != null) {
-                cachedSong
-            } else {
-                Song(
-                    id = songId,
-                    title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown",
-                    artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown",
-                    albumName = mediaItem.mediaMetadata.albumTitle?.toString() ?: "",
-                    songArtUri = mediaItem.mediaMetadata.artworkUri?.toString(),
-                    path = mediaItem.requestMetadata.mediaUri?.toString() ?: "",
-                    duration = 0L,
-
-                    albumId = 0L,
-                    folderName = "",
-                    dateAdded = 0L,
-                    year = mediaItem.mediaMetadata.recordingYear ?: 0,
-                    trackNumber = mediaItem.mediaMetadata.trackNumber ?: 0,
-                    genre = mediaItem.mediaMetadata.genre?.toString() ?: "",
-                    dateModified = 0L
-                )
-            }
-            restoredQueue.add(QueueItem(queueId = mediaItem.mediaId, song = song))
-        }
-        _queue.value = restoredQueue
-    }
-
+    // Queue Actions
     fun playSong(song: Song, contextList: List<Song> = emptyList()) {
-        val p = player ?: return
-        val safeList = contextList.ifEmpty { listOf(song) }
-        val newQueue = safeList.map { QueueItem(song = it) }
-        _queue.value = newQueue
-
-        val targetIndex = newQueue.indexOfFirst { it.song.id == song.id }.coerceAtLeast(0)
-
-        val targetItem = newQueue[targetIndex]
-        _currentSong.value = targetItem.song
-        _currentQueueId.value = targetItem.queueId
-
-        val mediaItems = newQueue.map { it.toMediaItem() }
-        p.setMediaItems(mediaItems, targetIndex, 0L)
-        p.prepare()
-        p.play()
-
-        if (contextList.isNotEmpty()) {
-            setLibrary(contextList)
-        }
+        player?.let { queueManager.playSong(it, song, contextList) }
     }
-
     fun addToQueue(song: Song) {
-        val newItem = QueueItem(song = song)
-        _queue.value = _queue.value + newItem
-        player?.addMediaItem(newItem.toMediaItem())
+        player?.let { queueManager.addToQueue(it, song) }
     }
-
     fun playNext(song: Song) {
-        val p = player ?: return
-        val newItem = QueueItem(song = song)
-        val currentIndex = p.currentMediaItemIndex
-        val nextIndex = currentIndex + 1
-
-        val currentQ = _queue.value.toMutableList()
-        currentQ.add(nextIndex.coerceAtMost(currentQ.size), newItem)
-        _queue.value = currentQ
-
-        p.addMediaItem(nextIndex.coerceAtMost(p.mediaItemCount), newItem.toMediaItem())
+        player?.let { queueManager.playNext(it, song) }
     }
-
     fun removeSongFromQueue(song: Song) {
-        val currentQueue = _queue.value.toMutableList()
-        val index = currentQueue.indexOfFirst { it.song.id == song.id }
-
-        if (index != -1) {
-            player?.removeMediaItem(index)
-            currentQueue.removeAt(index)
-            _queue.value = currentQueue
-        }
+        player?.let { queueManager.removeSongFromQueue(it, song) }
     }
-
     fun playQueueItem(item: QueueItem) {
-        val index = _queue.value.indexOfFirst { it.queueId == item.queueId }
-        if (index != -1) {
-            player?.seekTo(index, 0L)
-            if (player?.isPlaying == false) player?.play()
-        }
+        player?.let { queueManager.playQueueItem(it, item) }
+    }
+    fun moveQueueItem(from: Int, to: Int) {
+        player?.let { queueManager.moveQueueItem(it, from, to) }
     }
 
-    //Standard Player Controls
-    fun togglePlayPause() {
-        val p = player ?: return
-        if (p.isPlaying) p.pause() else p.play()
-    }
+    // Controls
+    fun togglePlayPause() { player?.let { queueManager.togglePlayPause(it) } }
+    fun toggleShuffle() { player?.let { queueManager.toggleShuffle(it) } }
+    fun toggleRepeat() { player?.let { queueManager.toggleRepeat(it) } }
+    fun skipNext() { player?.let { queueManager.skipNext(it) } }
+    fun skipPrev() { player?.let { queueManager.skipPrev(it) } }
+    fun toggleAutoplay() = queueManager.toggleAutoplay()
 
-    fun toggleShuffle() {
-        val p = player ?: return
-        p.shuffleModeEnabled = !p.shuffleModeEnabled
-    }
-
-    fun toggleAutoplay() {
-        _isAutoplayEnabled.value = !_isAutoplayEnabled.value
-    }
-
-    fun toggleRepeat() {
-        val p = player ?: return
-        val nextMode = when (p.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
-        }
-        p.repeatMode = nextMode
-        _repeatMode.value = nextMode
-    }
-
+    // Seeking
     fun seekTo(fraction: Float) {
         val p = player ?: return
         isSeeking = true
@@ -335,255 +174,33 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             isSeeking = false
         }
     }
-
     fun updateDragProgress(fraction: Float) {
         isSeeking = true
         val duration = player?.duration?.coerceAtLeast(1) ?: 1L
-        val dragTime = (duration * fraction).toLong()
-        _currentTime.value = dragTime
+        _currentTime.value = (duration * fraction).toLong()
         _progress.value = fraction
     }
 
-    fun skipNext() {
-        player?.let { if (it.hasNextMediaItem()) it.seekToNextMediaItem() }
-    }
+    fun toggleEq(enabled: Boolean) = EqManager.toggleEq(enabled)
+    fun setBassStrength(value: Float) = EqManager.setBassStrength(value)
+    fun setVirtStrength(value: Float) = EqManager.setVirtStrength(value)
+    fun setGainStrength(value: Float) = EqManager.setGainStrength(value)
+    fun setEqBandLevel(bandId: Short, level: Short) = EqManager.setBandLevelUserAction(bandId, level, viewModelScope)
+    fun saveCustomPreset(name: String) = EqManager.saveCustomPreset(name)
+    fun deleteCustomPreset(preset: EqPreset) = EqManager.deleteCustomPreset(preset)
+    fun applyPreset(preset: EqPreset) = EqManager.applyPreset(preset, viewModelScope)
 
-    fun skipPrev() {
-        player?.let {
-            if (it.currentPosition > 3000) it.seekTo(0)
-            else if (it.hasPreviousMediaItem()) it.seekToPreviousMediaItem()
-        }
-    }
-
-    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
-        val currentQ = _queue.value.toMutableList()
-        val p = player ?: return
-        if (fromIndex in currentQ.indices && toIndex in currentQ.indices) {
-            val item = currentQ.removeAt(fromIndex)
-            currentQ.add(toIndex, item)
-            _queue.value = currentQ
-            p.moveMediaItem(fromIndex, toIndex)
-        }
-    }
-
-    // Lyric Management
-    fun initializeLyrics(song: Song) {
-        viewModelScope.launch {
-            val repo = repository ?: return@launch
-            val cached = repo.getCachedLyrics(song.id)
-
-            if (cached != null) {
-                parseAndSetLyrics(cached)
-            } else {
-                _lyricsState.value = LyricsState.Idle
-                _syncedLyrics.value = emptyList()
-            }
-        }
-    }
-
-    fun fetchLyricsOnline() {
-        val song = _currentSong.value ?: return
-
-        viewModelScope.launch {
-            _lyricsState.value = LyricsState.Loading
-
-            val repo = repository
-            if (repo == null) {
-                _lyricsState.value = LyricsState.Error("Repo missing")
-                return@launch
-            }
-
-            val result = repo.fetchLyrics(song)
-
-            if (result != null) {
-                parseAndSetLyrics(result)
-            } else {
-                _lyricsState.value = LyricsState.Error("Lyrics not found")
-            }
-        }
-    }
-
-    // Helper to avoid duplicate code
-    private fun parseAndSetLyrics(entity: LyricsEntity) {
-        val parsedLines = LrcParser.parse(entity.syncedLyrics)
-        _syncedLyrics.value = parsedLines
-
-        if (parsedLines.isNotEmpty()) {
-            _lyricsState.value = LyricsState.Success(
-                staticLyrics = entity.plainLyrics ?: "No text lyrics",
-                isSynced = true
-            )
-        } else {
-            _lyricsState.value = LyricsState.Success(
-                staticLyrics = entity.plainLyrics ?: "No lyrics found",
-                isSynced = false
-            )
-        }
-    }
-
-    // Helpers
-    private fun getMimeType(path: String): String {
-        return when (path.substringAfterLast('.', "").lowercase(Locale.ROOT)) {
-            "mp3" -> "audio/mpeg"
-            "m4a", "aac" -> "audio/mp4"
-            "flac" -> "audio/flac"
-            "wav" -> "audio/wav"
-            "ogg", "oga" -> "audio/ogg"
-            "opus" -> "audio/opus"
-            else -> "audio/mpeg"
-        }
-    }
-
-    private fun QueueItem.toMediaItem(): MediaItem {
-        val mediaUri = ContentUris.withAppendedId(
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-            song.id
-        )
-        val metadata = MediaMetadata.Builder()
-            .setTitle(song.title)
-            .setArtist(song.artist)
-            .setAlbumTitle(song.albumName)
-            .setArtworkUri(song.songArtUri?.toUri())
-            .build()
-
-        val mimeType = getMimeType(song.path)
-
-        return MediaItem.Builder()
-            .setMediaId(queueId)
-            .setUri(mediaUri)
-            .setMimeType(mimeType)
-            .setMediaMetadata(metadata)
-            .build()
-    }
-
-    // --- Equalizer Logic ---
     fun setupEqualizer(audioSessionId: Int) {
-        try {
-            if (equalizer != null) return
-            val eq = Equalizer(0, audioSessionId)
-            equalizer = eq
-            val savedEnabledState = eqPrefs.isEqEnabled
-            eq.enabled = savedEnabledState
-            _eqEnabled.value = savedEnabledState
-            loadPresets(equalizer?.numberOfBands?.toInt() ?: 5)
-            loadEqBands(eq)
-            val enhancer = LoudnessEnhancer(audioSessionId)
-
-            // Audio gain enhancer
-            loudnessEnhancer = enhancer
-            enhancer.setTargetGain(0)
-            enhancer.enabled = savedEnabledState
-        } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun loadEqBands(eq: Equalizer) {
-        val min = eq.bandLevelRange[0]
-        val max = eq.bandLevelRange[1]
-        val numBands = eq.numberOfBands
-        val bands = mutableListOf<EqBand>()
-        for (i in 0 until numBands) {
-            val idx = i.toShort()
-            val hardwareLevel = eq.getBandLevel(idx)
-            val savedLevel = eqPrefs.getBandLevel(idx, hardwareLevel)
-            if (savedLevel != hardwareLevel) eq.setBandLevel(idx, savedLevel)
-            bands.add(EqBand(idx, eq.getCenterFreq(idx), savedLevel, min, max))
-        }
-        _eqBands.value = bands
-    }
-
-    private fun updateBandLevelInternal(bandId: Short, level: Short) {
-        val currentBands = _eqBands.value.toMutableList()
-        val index = currentBands.indexOfFirst { it.id == bandId }
-        if (index != -1) {
-            currentBands[index] = currentBands[index].copy(level = level)
-            _eqBands.value = currentBands
-        }
-        eqPrefs.saveBandLevel(bandId, level)
-        viewModelScope.launch(Dispatchers.IO) {
-            try { equalizer?.setBandLevel(bandId, level) } catch (e: Exception) { e.printStackTrace() }
-        }
-    }
-
-    fun setEqBandLevel(bandId: Short, level: Short) {
-        updateBandLevelInternal(bandId, level)
-        if (_currentPresetName.value != "Custom") {
-            _currentPresetName.value = "Custom"
-            eqPrefs.saveLastPresetName("Custom")
-        }
-    }
-
-    fun toggleEq(isEnabled: Boolean) {
-        equalizer?.enabled = isEnabled
-        loudnessEnhancer?.enabled = isEnabled
-
-        if (isEnabled) {
-            loudnessEnhancer?.setTargetGain(200)
-        } else {
-            loudnessEnhancer?.setTargetGain(0)
-        }
-        _eqEnabled.value = isEnabled
-        eqPrefs.isEqEnabled = isEnabled
-
-    }
-
-    private fun loadPresets(numBands: Int) {
-        val flat = EqPreset("Flat", List(numBands) { 0 })
-        val bass = EqPreset("Bass", List(numBands) { if(it < 2) 600.toShort() else 0.toShort() })
-        val vocal = EqPreset("Vocal", List(numBands) { if(it in 1..3) 500.toShort() else -200.toShort() } as List<Short>)
-        val treble = EqPreset("Treble", List(numBands) { if(it > 3) 600.toShort() else 0.toShort() })
-        val defaultPresets = listOf(flat, bass, vocal, treble)
-        val savedPresets = eqPrefs.loadCustomPresets()
-        _presets.value = defaultPresets + savedPresets
-    }
-
-    fun saveCustomPreset(name: String) {
-        val currentLevels = _eqBands.value.map { it.level }
-        val newPreset = EqPreset(name, currentLevels)
-        val currentList = _presets.value.toMutableList()
-        currentList.removeAll { it.name == name }
-        currentList.add(newPreset)
-
-        _presets.value = currentList
-        _currentPresetName.value = name
-
-        eqPrefs.saveLastPresetName(name)
-
-        val defaultNames = setOf("Flat", "Bass", "Vocal", "Treble")
-        val customPresetsOnly = currentList.filter { it.name !in defaultNames }
-        eqPrefs.saveCustomPresets(customPresetsOnly)
-    }
-
-
-
-    fun applyPreset(preset: EqPreset) {
-        _currentPresetName.value = preset.name
-        eqPrefs.saveLastPresetName(preset.name)
-
-        preset.bandLevels.forEachIndexed { index, level ->
-            if (index < _eqBands.value.size) {
-                val bandId = _eqBands.value[index].id
-                updateBandLevelInternal(bandId, level)
-            }
-        }
-    }
-
-    fun deleteCustomPreset(preset: EqPreset) {
-        val defaultNames = setOf("Flat", "Bass", "Vocal", "Treble")
-        if (preset.name in defaultNames) return // Don't delete defaults
-        val currentList = _presets.value.toMutableList()
-        currentList.remove(preset)
-        _presets.value = currentList
-        if (_currentPresetName.value == preset.name) {
-            _currentPresetName.value = "Custom"
-            eqPrefs.saveLastPresetName("Custom")
-        }
-        val customPresetsOnly = currentList.filter { it.name !in defaultNames }
-        eqPrefs.saveCustomPresets(customPresetsOnly)
+    // Lyrics Actions
+    fun initializeLyrics(song: Song) = lyricsManager.initializeLyrics(song, viewModelScope)
+    fun fetchLyricsOnline() {
+        val song = currentSong.value ?: return
+        lyricsManager.fetchLyricsOnline(song, viewModelScope)
     }
 
     override fun onCleared() {
-        equalizer?.release()
-        loudnessEnhancer?.release()
         super.onCleared()
     }
 }

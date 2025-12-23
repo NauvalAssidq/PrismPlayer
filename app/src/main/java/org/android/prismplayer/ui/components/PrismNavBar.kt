@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.android.prismplayer.ui.theme.PrismPlayerTheme
 
+
 enum class PrismTab {
     HOME, SEARCH, LIBRARY, SETTING
 }
@@ -41,7 +42,7 @@ fun PrismNavBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 14.dp, end = 14.dp, bottom = 24.dp, top = 8.dp)
+            .padding(start = 14.dp, end = 14.dp, bottom = 24.dp, top = 6.dp)
             .height(64.dp)
             .border(
                 width = 1.dp,

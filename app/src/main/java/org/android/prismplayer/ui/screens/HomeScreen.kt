@@ -31,6 +31,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.android.prismplayer.data.model.Album
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.ui.components.AlbumCard
 import org.android.prismplayer.ui.components.SongListItem
 import org.android.prismplayer.ui.theme.PrismPlayerTheme
 
@@ -68,8 +69,8 @@ fun HomeScreen(
             } else {
                 val displaySongs = remember(state.songs) { state.songs.take(10) }
                 val displayAlbums = remember(state.albums) { state.albums.take(5) }
-                val songCount = remember(state.songs) { state.songs.size }
-                val albumCount = remember(state.albums) { state.albums.size }
+                val songCount = state.totalSongCount
+                val albumCount = state.totalAlbumCount
 
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = bottomPadding),
@@ -77,19 +78,16 @@ fun HomeScreen(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    // Header Section
                     item(key = "header") {
                         DashboardHeader(onSettingsClick)
                         FullWidthDivider()
                     }
 
-                    // Stats Section
                     item(key = "stats") {
                         SystemStatsRow(totalSongs = songCount, totalAlbums = albumCount)
                         FullWidthDivider()
                     }
 
-                    // Command Grid
                     item(key = "commands") {
                         CommandGrid(
                             onOpenAlbums = onOpenAlbums,
@@ -109,7 +107,13 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 items(items = displayAlbums, key = { it.id }) { album ->
-                                    RawAlbumCard(album, onClick = { onAlbumClick(album.title) })
+                                    AlbumCard(
+                                        title = album.title,
+                                        artist = album.artist,
+                                        coverUri = album.coverUri,
+                                        onClick = { onAlbumClick(album.title) },
+                                        fixedWidth = 140.dp
+                                    )
                                 }
                             }
                         }
@@ -234,8 +238,8 @@ fun CommandGrid(
             verticalAlignment = Alignment.CenterVertically
         ) {
             StripButton(
-                label = "AUDIO",
-                icon = Icons.Rounded.FolderOpen,
+                label = "SONGS",
+                icon = Icons.Rounded.Audiotrack,
                 modifier = Modifier.weight(1f),
                 onClick = onSeeAllSongs
             )
@@ -315,93 +319,94 @@ fun FullWidthDivider() {
     )
 }
 
+//Deprecated but saved for debugging
 
-@Composable
-fun RawAlbumCard(album: Album, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .width(140.dp)
-            .clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .size(140.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
-                .background(Color(0xFF111111))
-        ) {
-            if (!album.coverUri.isNullOrBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(album.coverUri)
-                        .crossfade(false)
-                        .memoryCacheKey(album.coverUri)
-                        .diskCacheKey(album.coverUri)
-                        .build(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        Icons.Rounded.Album,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "NO_DATA",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 8.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .background(Color.White.copy(0.85f))
-                    .padding(horizontal = 3.dp, vertical = 2.dp)
-                    .height(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val bars = listOf(1, 2, 1, 1, 3, 1, 2, 1, 2, 3, 1)
-                bars.forEach { w ->
-                    Box(
-                        modifier = Modifier
-                            .width(w.dp)
-                            .fillMaxHeight()
-                            .background(Color.Black)
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = album.title.uppercase(),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = album.artist.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
+//@Composable
+//fun RawAlbumCard(album: Album, onClick: () -> Unit) {
+//    Column(
+//        modifier = Modifier
+//            .width(140.dp)
+//            .clickable { onClick() }
+//    ) {
+//        Box(
+//            modifier = Modifier
+//                .size(140.dp)
+//                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
+//                .background(Color(0xFF111111))
+//        ) {
+//            if (!album.coverUri.isNullOrBlank()) {
+//                AsyncImage(
+//                    model = ImageRequest.Builder(LocalContext.current)
+//                        .data(album.coverUri)
+//                        .crossfade(false)
+//                        .memoryCacheKey(album.coverUri)
+//                        .diskCacheKey(album.coverUri)
+//                        .build(),
+//                    contentDescription = null,
+//                    contentScale = ContentScale.Crop,
+//                    modifier = Modifier.fillMaxSize()
+//                )
+//            } else {
+//                Column(
+//                    modifier = Modifier.align(Alignment.Center),
+//                    horizontalAlignment = Alignment.CenterHorizontally
+//                ) {
+//                    Icon(
+//                        Icons.Rounded.Album,
+//                        null,
+//                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+//                        modifier = Modifier.size(32.dp)
+//                    )
+//                    Spacer(Modifier.height(8.dp))
+//                    Text(
+//                        "NO_DATA",
+//                        style = MaterialTheme.typography.labelSmall,
+//                        fontSize = 8.sp,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                }
+//            }
+//
+//            Row(
+//                modifier = Modifier
+//                    .align(Alignment.BottomEnd)
+//                    .padding(8.dp)
+//                    .background(Color.White.copy(0.85f))
+//                    .padding(horizontal = 3.dp, vertical = 2.dp)
+//                    .height(12.dp),
+//                horizontalArrangement = Arrangement.spacedBy(1.dp),
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                val bars = listOf(1, 2, 1, 1, 3, 1, 2, 1, 2, 3, 1)
+//                bars.forEach { w ->
+//                    Box(
+//                        modifier = Modifier
+//                            .width(w.dp)
+//                            .fillMaxHeight()
+//                            .background(Color.Black)
+//                    )
+//                }
+//            }
+//        }
+//
+//        Spacer(Modifier.height(12.dp))
+//
+//        Text(
+//            text = album.title.uppercase(),
+//            style = MaterialTheme.typography.labelLarge,
+//            color = MaterialTheme.colorScheme.primary,
+//            maxLines = 1,
+//            overflow = TextOverflow.Ellipsis
+//        )
+//        Text(
+//            text = album.artist.uppercase(),
+//            style = MaterialTheme.typography.labelSmall,
+//            color = MaterialTheme.colorScheme.onSurfaceVariant,
+//            maxLines = 1,
+//            overflow = TextOverflow.Ellipsis
+//        )
+//    }
+//}
 
 @Preview(showBackground = true)
 @Composable
