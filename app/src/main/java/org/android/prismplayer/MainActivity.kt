@@ -33,15 +33,22 @@ import org.android.prismplayer.ui.theme.PrismPlayerTheme
 import java.io.File
 
 class MainActivity : ComponentActivity() {
+    private var expandPlayerFromWidget by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.auto(AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT)
         )
+        handleIntent(intent)
+
         setContent {
             PrismPlayerTheme {
-                PrismNavigation()
+                PrismNavigation(
+                    expandPlayer = expandPlayerFromWidget,
+                    onExpandConsumed = { expandPlayerFromWidget = false }
+                )
             }
         }
     }
@@ -49,11 +56,22 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("EXPAND_PLAYER", false) == true) {
+            expandPlayerFromWidget = true
+            intent.removeExtra("EXPAND_PLAYER")
+        }
     }
 }
 
 @Composable
-fun PrismNavigation() {
+fun PrismNavigation(
+    expandPlayer: Boolean,
+    onExpandConsumed: () -> Unit
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val app = context.applicationContext as PrismApplication
@@ -61,7 +79,6 @@ fun PrismNavigation() {
     val homeViewModel: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 
     NavHost(navController = navController, startDestination = "splash") {
-
         composable("splash") {
             SplashScreen(
                 onPermissionsGranted = { navController.navigate("main") { popUpTo("splash") { inclusive = true } } },
@@ -127,6 +144,8 @@ fun PrismNavigation() {
             MainLayout(
                 audioViewModel = audioViewModel,
                 homeViewModel = homeViewModel,
+                expandPlayer = expandPlayer,
+                onExpandConsumed = onExpandConsumed,
                 onEditSong = { songId -> navController.navigate("edit_track/$songId") },
                 onReselectFolders = {
                     navController.navigate("manage_library")

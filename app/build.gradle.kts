@@ -141,4 +141,6 @@ dependencies {
     implementation(libs.converter.gson)
     implementation(libs.logging.interceptor)
     implementation("io.github.kyant0:backdrop:1.0.2")
+    implementation(libs.androidx.media3.decoder)
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.8.0+1")
 }

@@ -1,5 +1,9 @@
 package org.android.prismplayer.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,20 +33,21 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import org.android.prismplayer.data.model.EqBand
 import org.android.prismplayer.data.model.EqPreset
 import org.android.prismplayer.ui.components.DeleteConfirmationDialog
 import org.android.prismplayer.ui.components.KnobComponent
 import org.android.prismplayer.ui.components.SavePresetDialog
 import org.android.prismplayer.ui.player.AudioViewModel
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.random.Random
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.geometry.CornerRadius
 
 private val ColorPrimaryRed = Color(0xFFD71921)
 private val ColorGrid = Color(0xFF1A1A1A)
@@ -53,7 +59,20 @@ fun EqualizerScreen(
     viewModel: AudioViewModel,
     onBack: () -> Unit
 ) {
-    LaunchedEffect(Unit) { viewModel.setupEqualizer(0) }
+    val context = LocalContext.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) viewModel.setupVisualizer()
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.setupEqualizer(0)
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            viewModel.setupVisualizer()
+        }
+    }
 
     val bands by viewModel.eqBands.collectAsState()
     val isEnabled by viewModel.eqEnabled.collectAsState()
@@ -63,6 +82,7 @@ fun EqualizerScreen(
     val bassBoost by viewModel.bassStrength.collectAsState()
     val virtualizer by viewModel.virtStrength.collectAsState()
     val loudnessGain by viewModel.gainStrength.collectAsState()
+    val visualizerData by viewModel.visualizerData.collectAsState()
 
     EqualizerScreenContent(
         bands = bands,
@@ -72,6 +92,7 @@ fun EqualizerScreen(
         bassBoost = bassBoost,
         virtualizer = virtualizer,
         loudnessGain = loudnessGain,
+        fftData = visualizerData.fft,
         onBack = onBack,
         onToggleEnabled = { viewModel.toggleEq(it) },
         onApplyPreset = { viewModel.applyPreset(it) },
@@ -80,7 +101,8 @@ fun EqualizerScreen(
         onDeletePreset = { preset -> viewModel.deleteCustomPreset(preset) },
         onBassChange = { viewModel.setBassStrength(it) },
         onVirtChange = { viewModel.setVirtStrength(it) },
-        onGainChange = { viewModel.setGainStrength(it) }
+        onGainChange = { viewModel.setGainStrength(it) },
+        onRequestVisualizer = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
     )
 }
 
@@ -90,6 +112,7 @@ private fun EqualizerScreenContent(
     bands: List<EqBand>,
     isEnabled: Boolean,
     presets: List<EqPreset>,
+    fftData: FloatArray,
     currentPresetName: String?,
     bassBoost: Float,
     virtualizer: Float,
@@ -102,7 +125,8 @@ private fun EqualizerScreenContent(
     onDeletePreset: (EqPreset) -> Unit,
     onBassChange: (Float) -> Unit,
     onVirtChange: (Float) -> Unit,
-    onGainChange: (Float) -> Unit
+    onGainChange: (Float) -> Unit,
+    onRequestVisualizer: () -> Unit
 ) {
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<EqPreset?>(null) }
@@ -131,6 +155,17 @@ private fun EqualizerScreenContent(
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = onRequestVisualizer,
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.GraphicEq,
+                                contentDescription = "VISUALIZER",
+                                tint = if (fftData.isNotEmpty()) ColorPrimaryRed else Color.White.copy(0.3f)
+                            )
+                        }
+
                         val powerColor = if (isEnabled) ColorPrimaryRed else Color.White.copy(0.3f)
                         IconButton(
                             onClick = { onToggleEnabled(!isEnabled) },
@@ -198,7 +233,8 @@ private fun EqualizerScreenContent(
                 WaveformGraph(
                     bands = bands,
                     isEnabled = isEnabled,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    fftData = fftData
                 )
             }
 
@@ -271,80 +307,160 @@ private fun EqualizerScreenContent(
     }
 }
 
+
 @Composable
 fun WaveformGraph(
     bands: List<EqBand>,
+    fftData: FloatArray,
     isEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
+    var animatedData by remember { mutableStateOf(FloatArray(0)) }
+    LaunchedEffect(fftData) {
+        if (fftData.isNotEmpty()) {
+            if (animatedData.size != fftData.size) {
+                animatedData = fftData.copyOf()
+            } else {
+                val smoothingFactor = 0.4f
+                val newData = FloatArray(fftData.size) { i ->
+                    (animatedData[i] * (1 - smoothingFactor)) + (fftData[i] * smoothingFactor)
+                }
+                animatedData = newData
+            }
+        } else {
+            animatedData = FloatArray(0)
+        }
+    }
+
     Canvas(modifier = modifier.clip(RoundedCornerShape(4.dp))) {
         val width = size.width
         val height = size.height
-        val centerY = height / 2
+        val centerY = height / 2f
+        val centerX = width / 2f
+        if (isEnabled && animatedData.isNotEmpty()) {
+            val barCount = 40
+            val step = (animatedData.size / barCount).coerceAtLeast(1)
+            val barWidth = (width / 2f) / barCount
+            val strokeW = (barWidth * 0.7f).coerceAtLeast(1f)
 
-        val barCount = 60
-        val barWidth = width / barCount
+            for (i in 0 until barCount) {
+                val dataIndex = (i * step).coerceAtMost(animatedData.lastIndex)
+                val magnitude = animatedData[dataIndex] * 2.5f
+                val barHeight = (magnitude * (height / 2f)).coerceIn(2f, (height / 2f) - 2f)
 
-        for (i in 0 until barCount) {
-            val x = i * barWidth
-            val distanceFromCenter = Math.abs(i - barCount/2f) / (barCount/2f)
-            val randomAmp = Random.nextFloat() * (1f - distanceFromCenter) * height * 0.8f
+                val offsetFromCenter = i * barWidth + (barWidth / 2f)
 
+                val alpha = if (i % 2 == 0) 0.6f else 0.4f
+
+                drawLine(
+                    color = Color.White.copy(alpha = alpha),
+                    start = Offset(centerX + offsetFromCenter, centerY - barHeight),
+                    end = Offset(centerX + offsetFromCenter, centerY + barHeight),
+                    strokeWidth = strokeW,
+                    cap = StrokeCap.Round
+                )
+
+                drawLine(
+                    color = Color.White.copy(alpha = alpha),
+                    start = Offset(centerX - offsetFromCenter, centerY - barHeight),
+                    end = Offset(centerX - offsetFromCenter, centerY + barHeight),
+                    strokeWidth = strokeW,
+                    cap = StrokeCap.Round
+                )
+            }
+        } else {
             drawLine(
-                color = Color.White.copy(alpha = if(isEnabled) 0.15f else 0.05f),
-                start = Offset(x, centerY - (randomAmp/2)),
-                end = Offset(x, centerY + (randomAmp/2)),
-                strokeWidth = barWidth * 0.6f,
-                cap = StrokeCap.Round
+                color = Color.White.copy(0.1f),
+                start = Offset(0f, centerY),
+                end = Offset(width, centerY),
+                strokeWidth = 1f
             )
         }
 
         if (bands.isNotEmpty()) {
-            val path = Path()
-            val stepX = width / (bands.size + 1)
+            val topRightPath = Path()
+            val bottomRightPath = Path()
+            val topLeftPath = Path()
+            val bottomLeftPath = Path()
+            val halfWidth = width / 2f
+            val stepX = halfWidth / (bands.size + 1)
 
             val points = bands.mapIndexed { index, band ->
                 val x = stepX * (index + 1)
-                val normalized = (band.level - band.minLevel).toFloat() / (band.maxLevel - band.minLevel)
-                val y = height - (normalized * height)
-                Offset(x, y)
+
+                val normalized = (band.level - band.minLevel).toFloat() /
+                        (band.maxLevel - band.minLevel)
+                val offsetY = (normalized * (height / 2f) * 0.85f)
+
+                Offset(x, offsetY)
             }
 
             if (points.isNotEmpty()) {
-                path.moveTo(0f, points.first().y)
-                path.lineTo(points.first().x, points.first().y)
+                val baseGap = height * 0.05f
+                val firstY = points.first().y + baseGap
+
+                topRightPath.moveTo(centerX, centerY - firstY)
+                bottomRightPath.moveTo(centerX, centerY + firstY)
+                topLeftPath.moveTo(centerX, centerY - firstY)
+                bottomLeftPath.moveTo(centerX, centerY + firstY)
 
                 for (i in 0 until points.size - 1) {
                     val p1 = points[i]
                     val p2 = points[i + 1]
-                    val cx1 = (p1.x + p2.x) / 2
-                    val cy1 = p1.y
-                    val cx2 = (p1.x + p2.x) / 2
-                    val cy2 = p2.y
-                    path.cubicTo(cx1, cy1, cx2, cy2, p2.x, p2.y)
+                    val p1Y = p1.y + baseGap
+                    val p2Y = p2.y + baseGap
+
+                    val controlX = (p1.x + p2.x) / 2
+                    topRightPath.cubicTo(
+                        centerX + controlX, centerY - p1Y,
+                        centerX + controlX, centerY - p2Y,
+                        centerX + p2.x, centerY - p2Y
+                    )
+                    bottomRightPath.cubicTo(
+                        centerX + controlX, centerY + p1Y,
+                        centerX + controlX, centerY + p2Y,
+                        centerX + p2.x, centerY + p2Y
+                    )
+
+                    topLeftPath.cubicTo(
+                        centerX - controlX, centerY - p1Y,
+                        centerX - controlX, centerY - p2Y,
+                        centerX - p2.x, centerY - p2Y
+                    )
+                    bottomLeftPath.cubicTo(
+                        centerX - controlX, centerY + p1Y,
+                        centerX - controlX, centerY + p2Y,
+                        centerX - p2.x, centerY + p2Y
+                    )
                 }
 
-                path.lineTo(width, points.last().y)
+                val lastY = points.last().y + baseGap
+                topRightPath.lineTo(width, centerY - lastY)
+                bottomRightPath.lineTo(width, centerY + lastY)
+                topLeftPath.lineTo(0f, centerY - lastY)
+                bottomLeftPath.lineTo(0f, centerY + lastY)
 
-                drawPath(
-                    path = path,
-                    color = if(isEnabled) ColorPrimaryRed.copy(0.2f) else Color.Transparent,
-                    style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
-                )
-                drawPath(
-                    path = path,
-                    color = if(isEnabled) ColorPrimaryRed else Color.White.copy(0.1f),
-                    style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
-                )
+                val curveColor = if (isEnabled) ColorPrimaryRed else Color.White.copy(0.2f)
+
+                if (isEnabled) {
+                    listOf(topRightPath, bottomRightPath, topLeftPath, bottomLeftPath).forEach { path ->
+                        drawPath(
+                            path = path,
+                            color = curveColor.copy(alpha = 0.2f),
+                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+                }
+
+                listOf(topRightPath, bottomRightPath, topLeftPath, bottomLeftPath).forEach { path ->
+                    drawPath(
+                        path = path,
+                        color = curveColor.copy(alpha = 0.4f),
+                        style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round)
+                    )
+                }
             }
         }
-
-        drawLine(
-            color = Color.White.copy(0.1f),
-            start = Offset(0f, centerY),
-            end = Offset(width, centerY),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-        )
     }
 }
 
@@ -384,9 +500,10 @@ fun TechPresetChip(
         )
 
         if (onDelete != null) {
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(4.dp))
             Box(
                 modifier = Modifier
+                    .offset(x = (4).dp)
                     .size(16.dp)
                     .clickable { onDelete() },
                 contentAlignment = Alignment.Center
@@ -551,6 +668,7 @@ private fun PrismEqualizerPreview() {
             bassBoost = 0.75f,
             virtualizer = 0.3f,
             loudnessGain = 0.5f,
+            fftData = FloatArray(0),
             onBack = {},
             onToggleEnabled = {},
             onApplyPreset = {},
@@ -559,7 +677,8 @@ private fun PrismEqualizerPreview() {
             onDeletePreset = {},
             onBassChange = {},
             onVirtChange = {},
-            onGainChange = {}
+            onGainChange = {},
+            onRequestVisualizer = {}
         )
     }
 }
