@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Prism Player</string>
+    <string name="status">Status</string>
+    <string name="no_signal">NO_SIGNAL</string>
+    <string name="waiting">WAITING...</string>
+    <string name="next">Next</string>
+    <string name="play">Play</string>
+    <string name="previous">Previous</string>
+    <string name="ready">READY</string>
+    <string name="prism_os">PRISM OS</string>
 </resources>

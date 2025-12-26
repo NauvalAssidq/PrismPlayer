@@ -65,7 +65,9 @@ fun MainLayout(
     audioViewModel: AudioViewModel,
     homeViewModel: HomeViewModel,
     onEditSong: (Long) -> Unit,
-    onReselectFolders: () -> Unit
+    onReselectFolders: () -> Unit,
+    expandPlayer: Boolean,
+    onExpandConsumed: () -> Unit
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
@@ -83,8 +85,6 @@ fun MainLayout(
     var optionsState by remember { mutableStateOf<Pair<Song, SheetContext>?>(null) }
     val searchQuery by homeViewModel.searchQuery.collectAsState()
     val searchResults by homeViewModel.searchResults.collectAsState()
-
-    // CHANGE 1: Use String for Album Name instead of Long ID
     var selectedArtist by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedAlbumName by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -92,24 +92,11 @@ fun MainLayout(
     val globalBottomPadding = if (currentSong != null) 178.dp else 88.dp
     val allSongs by homeViewModel.allSongs.collectAsState()
     val backdrop = rememberLayerBackdrop()
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                val activity = context as? Activity
-                val intent = activity?.intent
-
-                if (intent?.getBooleanExtra("OPEN_FULL_PLAYER", false) == true) {
-                    if (currentSong != null) {
-                        isFullPlayerOpen = true
-                    }
-                    intent.removeExtra("OPEN_FULL_PLAYER")
-                }
-            }
+    LaunchedEffect(expandPlayer) {
+        if (expandPlayer) {
+            isFullPlayerOpen = true
+            onExpandConsumed()
         }
-
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(allSongs) {
@@ -121,8 +108,6 @@ fun MainLayout(
 
     BackHandler(enabled = isFullPlayerOpen) { isFullPlayerOpen = false }
     BackHandler(enabled = !isFullPlayerOpen && isEqualizerOpen) { isEqualizerOpen = false }
-
-    // CHANGE 2: Update BackHandlers for Album Name
     BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName != null) { selectedAlbumName = null }
     BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedArtist != null) { selectedArtist = null }
     BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedArtist == null && currentTab != PrismTab.HOME) { currentTab = PrismTab.HOME }
@@ -152,7 +137,6 @@ fun MainLayout(
                             libraryTabIndex = 2
                             currentTab = PrismTab.LIBRARY
                         },
-                        // CHANGE 3: Pass album title (name) instead of ID
                         onAlbumClick = { selectedAlbumName = it },
                         onSongMoreClick = { song -> optionsState = song to SheetContext.HOME },
                         onSettingsClick = { currentTab = PrismTab.SETTING },
@@ -222,7 +206,6 @@ fun MainLayout(
                     isPlaying = isPlaying,
                     onBack = { selectedArtist = null },
                     onSongClick = { song, list -> audioViewModel.playSong(song, list) },
-                    // CHANGE 6: Pass album title (name) instead of ID in ArtistScreen
                     onAlbumClick = { selectedAlbumName = it },
                     onShufflePlay = { list ->
                         if (list.isNotEmpty()) audioViewModel.playSong(
@@ -234,14 +217,13 @@ fun MainLayout(
                 )
             }
 
-            // CHANGE 7: Logic for Album Detail Screen based on NAME
             if (selectedAlbumName != null) {
                 val owner = LocalViewModelStoreOwner.current
                 val defaultExtras = (owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
                     ?: CreationExtras.Empty
 
                 val albumViewModel: AlbumViewModel = viewModel(
-                    key = "album_$selectedAlbumName", // Key by Name
+                    key = "album_$selectedAlbumName",
                     factory = AlbumViewModel.Factory,
                     extras = MutableCreationExtras(defaultExtras).apply {
                         // Pass albumName instead of albumId
@@ -251,7 +233,7 @@ fun MainLayout(
                 val albumState by albumViewModel.uiState.collectAsState()
 
                 AlbumDetailScreen(
-                    albumId = 0L, // ID is irrelevant for fetching now, pass 0 or a dummy
+                    albumId = 0L,
                     albumName = albumState.albumName,
                     artistName = albumState.artistName,
                     artUri = albumState.artUri,

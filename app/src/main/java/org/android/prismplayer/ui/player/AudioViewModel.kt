@@ -2,10 +2,14 @@ package org.android.prismplayer.ui.player
 
 import android.app.Application
 import android.content.ComponentName
+import android.content.pm.PackageManager
+import androidx.annotation.OptIn
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
@@ -21,7 +25,9 @@ import org.android.prismplayer.data.repository.MusicRepository
 import org.android.prismplayer.ui.player.manager.LyricsManager
 import org.android.prismplayer.ui.player.manager.QueueManager
 import org.android.prismplayer.ui.player.manager.EqManager
+import org.android.prismplayer.ui.player.manager.VisualizerManager
 import org.android.prismplayer.ui.service.PlaybackService
+import org.android.prismplayer.ui.utils.AudioSessionHolder
 
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -56,6 +62,10 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     private val _progress = MutableStateFlow(0f)
     val progress: StateFlow<Float> = _progress.asStateFlow()
 
+    // --- Visualizer ---
+    private val visualizerManager = VisualizerManager()
+    val visualizerData = visualizerManager.visualizerData
+
     private val _currentTime = MutableStateFlow(0L)
     val currentTime: StateFlow<Long> = _currentTime.asStateFlow()
 
@@ -88,6 +98,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 delay(100)
             }
         }
+
     }
 
     // --- Configuration ---
@@ -100,10 +111,17 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- Listener ---
+    @OptIn(UnstableApi::class)
     private fun setupPlayerListener(player: Player) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 queueManager.syncPlayerState(player)
+                visualizerManager.setPlaying(isPlaying)
+            }
+
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                AudioSessionHolder.updateSessionId(audioSessionId)
+                setupVisualizer()
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -200,7 +218,26 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         lyricsManager.fetchLyricsOnline(song, viewModelScope)
     }
 
+    // Visualizer
+    @OptIn(UnstableApi::class)
+    fun setupVisualizer() {
+        val sessionId = player?.audioSessionId ?: 0
+        if (sessionId == 0) return
+
+        val permission = ContextCompat.checkSelfPermission(
+            getApplication(),
+            android.Manifest.permission.RECORD_AUDIO
+        )
+
+        if (permission == PackageManager.PERMISSION_GRANTED) {
+            visualizerManager.start(sessionId)
+            // Sync state immediately
+            visualizerManager.setPlaying(player?.isPlaying == true)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
+        visualizerManager.stop()
     }
 }

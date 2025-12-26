@@ -263,7 +263,6 @@ class QueueManager {
         return MediaItem.Builder()
             .setMediaId(queueId)
             .setUri(mediaUri)
-            .setMimeType(getMimeType(song.path))
             .setMediaMetadata(metadata)
             .build()
     }
