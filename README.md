@@ -32,48 +32,6 @@
 
 ---
 
-## Quick start
-
-### Requirements
-
-* **Android 7.0+ (API 24+)**
-* Android Studio (recommended)
-
-### Run from Android Studio
-
-1. Clone / download this repo
-2. Open the project in **Android Studio**
-3. Wait for **Gradle sync**
-4. Run on a device/emulator
-
----
-
-## Build a release APK
-
-The project includes a helper task that builds and copies a nicely named APK:
-
-* **Gradle task:** `renameReleaseApk`
-* Output (usually): `app/build/outputs/apk/release/PrismPlayer-<version>.apk`
-
-You can run it from Android Studio’s **Gradle** panel or via terminal:
-
-```bash
-./gradlew renameReleaseApk
-```
-
-### Optional signing (for your own releases)
-
-This project supports signing via Gradle properties:
-
-* `KEYSTORE_PATH`
-* `KEYSTORE_PASSWORD`
-* `KEY_ALIAS`
-* `KEY_PASSWORD`
-
-Add them to your `~/.gradle/gradle.properties` (recommended) and build again.
-
----
-
 ## Permissions (why PrismPlayer asks)
 
 * **READ_MEDIA_AUDIO / READ_EXTERNAL_STORAGE** → scan and play your local audio files
@@ -97,16 +55,6 @@ Add them to your `~/.gradle/gradle.properties` (recommended) and build again.
 
 ---
 
-## Project structure (for contributors)
-* `ui/` → Compose screens, components
-* `ui/player` → Player screen + view model
-* `ui/player/managers` → manager files
-* `ui/service/` → playback service (MediaSessionService)
-* `data/` → Room database, DAOs, repositories
-* `data/network/` → LRCLIB Retrofit client
-* `data/source/` → local library + lyrics source
-
----
 
 ## Notes & limitations
 
@@ -129,6 +77,9 @@ PRs and issues are welcome. When reporting a bug, please include:
 ## Credits
 
 * Lyrics provider: **LRCLIB** (`https://lrclib.net/`)
+* Taglib by Kyant0 (`https://github.com/Kyant0/taglib`)
+* FFMPEG for decoder (`https://github.com/FFmpeg/FFmpeg`)
+* Reorderable by Calvin-LL (`https://github.com/Calvin-LL/Reorderable`)
 
 ---
 
