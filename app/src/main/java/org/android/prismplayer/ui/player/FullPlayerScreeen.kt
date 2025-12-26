@@ -71,14 +71,24 @@ fun FullPlayerScreen(
     onRemoveFromQueue: (Song) -> Unit,
     onQueueReorder: (Int, Int) -> Unit = { _, _ -> },
     audioViewModel: AudioViewModel,
+
 ) {
+    val durationLong by audioViewModel.duration.collectAsState()
+
+    val formattedTotalTime = remember(durationLong) {
+        val totalSeconds = durationLong / 1000
+        val mm = totalSeconds / 60
+        val ss = totalSeconds % 60
+        "%02d:%02d".format(mm, ss)
+    }
+
     FullPlayerContent(
         song = song,
         queue = queue,
         isPlaying = isPlaying,
         progress = progress,
         currentTime = currentTime,
-        totalTime = totalTime,
+        totalTime = formattedTotalTime,
         repeatMode = repeatMode,
         isShuffleEnabled = isShuffleEnabled,
         onPlayPause = onPlayPause,

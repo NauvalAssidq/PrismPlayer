@@ -2,12 +2,14 @@ package org.android.prismplayer.ui.service
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -28,10 +30,15 @@ class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
+    private lateinit var sessionStore: PlaybackSessionStore
+
+    // CACHE: Lightweight reference to avoid rebuilding queue from Player
+    private var currentQueue: List<Song> = emptyList()
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
+        sessionStore = PlaybackSessionStore(this)
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -39,7 +46,7 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         val renderersFactory = DefaultRenderersFactory(this)
-        renderersFactory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
         player = ExoPlayer.Builder(this, renderersFactory)
             .setAudioAttributes(audioAttributes, true)
@@ -58,17 +65,24 @@ class PlaybackService : MediaSessionService() {
             }
 
             override fun onPlayerError(error: PlaybackException) {
-                android.util.Log.e("PlaybackService", "Playback error: ${error.message}", error)
+                android.util.Log.e("PlaybackService", "Error: ${error.message}")
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                saveCurrentState()
+                if (player.duration != C.TIME_UNSET) saveCurrentState()
                 updateWidgetUI()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (!isPlaying) saveCurrentState()
                 updateWidgetUI()
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_READY) {
+                    saveCurrentState()
+                    updateWidgetUI()
+                }
             }
         })
 
@@ -78,9 +92,7 @@ class PlaybackService : MediaSessionService() {
         }
 
         val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            openIntent,
+            this, 0, openIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
@@ -88,13 +100,14 @@ class PlaybackService : MediaSessionService() {
             .setSessionActivity(pendingIntent)
             .build()
 
-        val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
-            .build()
-            .apply {
-                setSmallIcon(R.mipmap.ic_launcher)
-            }
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .build()
+                .apply {
+                    setSmallIcon(R.mipmap.ic_launcher)
+                }
+        )
 
-        setMediaNotificationProvider(notificationProvider)
         restoreSession()
         updateWidgetUI()
     }
@@ -102,120 +115,162 @@ class PlaybackService : MediaSessionService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             PrismWidgetProvider.ACTION_PLAY_PAUSE -> {
-                if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) {
-                    player.prepare()
-                }
+                if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) player.prepare()
                 if (player.isPlaying) player.pause() else player.play()
             }
-            PrismWidgetProvider.ACTION_NEXT -> {
-                if (player.hasNextMediaItem()) player.seekToNext()
-            }
-            PrismWidgetProvider.ACTION_PREV -> {
-                if (player.hasPreviousMediaItem()) player.seekToPrevious()
-            }
+            PrismWidgetProvider.ACTION_NEXT -> if (player.hasNextMediaItem()) player.seekToNext()
+            PrismWidgetProvider.ACTION_PREV -> if (player.hasPreviousMediaItem()) player.seekToPrevious()
         }
         return super.onStartCommand(intent, flags, startId)
     }
 
     private fun restoreSession() {
-        val store = PlaybackSessionStore(this)
-        val lastSong = store.getLastSong()
+        val lastState = sessionStore.getLastPlaybackState()
 
-        if (lastSong != null && player.mediaItemCount == 0) {
-            val songPath = lastSong.path ?: ""
+        if (lastState.queue.isNotEmpty()) {
+            currentQueue = lastState.queue
+            val mediaItems = currentQueue.map { song ->
+                val artUri = if (!song.songArtUri.isNullOrEmpty()) Uri.parse(song.songArtUri) else null
 
-            val mediaItem = MediaItem.Builder()
-                .setUri(Uri.parse(songPath))
-                .setMediaId(lastSong.id.toString())
-                .setMediaMetadata(
-                    androidx.media3.common.MediaMetadata.Builder()
-                        .setTitle(lastSong.title)
-                        .setArtist(lastSong.artist)
-                        .setArtworkUri(
-                            if (!lastSong.songArtUri.isNullOrEmpty()) Uri.parse(lastSong.songArtUri) else null
-                        )
-                        .build()
-                )
-                .build()
-
-            player.setMediaItem(mediaItem)
-
-            val lastState = store.getLastPlaybackState()
-            if (lastState.positionMs > 0) {
-                player.seekTo(lastState.positionMs)
+                MediaItem.Builder()
+                    .setUri(Uri.parse(song.path))
+                    .setMediaId(song.id.toString())
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle(song.title)
+                            .setArtist(song.artist)
+                            .setArtworkUri(artUri)
+                            .build()
+                    )
+                    .build()
             }
 
+            var startIndex = lastState.currentIndex
+            var startPos = lastState.positionMs
+
+            if (startIndex < 0 || startIndex >= mediaItems.size) {
+                startIndex = 0
+            }
+
+            if (startPos < 0) {
+                startPos = 0
+            }
+
+            player.setMediaItems(mediaItems, startIndex, startPos)
             player.prepare()
+        } else {
+            val lastSong = sessionStore.getLastSong()
+            if (lastSong != null) {
+                currentQueue = listOf(lastSong)
+                val artUri = if (!lastSong.songArtUri.isNullOrEmpty()) Uri.parse(lastSong.songArtUri) else null
+
+                val mediaItem = MediaItem.Builder()
+                    .setUri(Uri.parse(lastSong.path ?: ""))
+                    .setMediaId(lastSong.id.toString())
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle(lastSong.title)
+                            .setArtist(lastSong.artist)
+                            .setArtworkUri(artUri)
+                            .build()
+                    )
+                    .build()
+                player.setMediaItem(mediaItem)
+
+                val lastPos = sessionStore.getLastPlaybackState().positionMs
+                if (lastPos > 0) player.seekTo(lastPos)
+            }
         }
     }
 
     private fun saveCurrentState() {
         val mediaItem = player.currentMediaItem ?: return
         val metadata = mediaItem.mediaMetadata
-        val currentPath = mediaItem.localConfiguration?.uri.toString()
 
-        val song = Song(
+        val validDuration = if (player.duration != C.TIME_UNSET && player.duration > 0) {
+            player.duration
+        } else {
+            sessionStore.getLastSong()?.duration ?: 0L
+        }
+
+        val currentSong = Song(
             id = mediaItem.mediaId.toLongOrNull() ?: -1L,
             title = metadata.title.toString(),
             artist = metadata.artist.toString(),
-            path = currentPath,
+            path = mediaItem.localConfiguration?.uri.toString(),
             songArtUri = metadata.artworkUri?.toString() ?: "",
-            duration = player.duration.takeIf { it > 0 } ?: 0L,
-            albumName = "",
-            albumId = 0,
-            folderName = "",
-            dateAdded = 0,
-            year = 0,
-            trackNumber = 0,
-            dateModified = 0,
-            genre = ""
+            duration = validDuration,
+            albumName = "", albumId = 0, folderName = "", dateAdded = 0,
+            year = 0, trackNumber = 0, dateModified = 0, genre = ""
         )
 
-        val store = PlaybackSessionStore(this)
-        store.saveCurrentSong(song, 0, 0)
-        store.savePosition(player.currentPosition)
+        val freshQueue = ArrayList<Song>()
+        for (i in 0 until player.mediaItemCount) {
+            val item = player.getMediaItemAt(i)
+            val meta = item.mediaMetadata
+
+            var safeId = item.mediaId.toLongOrNull() ?: -1L
+            if (safeId == -1L) {
+                safeId = item.localConfiguration?.uri.toString().hashCode().toLong()
+            }
+
+            freshQueue.add(Song(
+                id = safeId,
+                title = meta.title.toString(),
+                artist = meta.artist.toString(),
+                path = item.localConfiguration?.uri.toString(),
+                songArtUri = meta.artworkUri?.toString() ?: "",
+                duration = 0L,
+                albumName = "", albumId = 0, folderName = "", dateAdded = 0,
+                year = 0, trackNumber = 0, dateModified = 0, genre = ""
+            ))
+        }
+
+        sessionStore.saveCurrentSong(currentSong, 0, 0)
+        sessionStore.savePosition(player.currentPosition)
+        sessionStore.saveQueueState(freshQueue, player.currentMediaItemIndex, player.shuffleModeEnabled, player.repeatMode)
+        currentQueue = freshQueue
     }
 
     private fun updateWidgetUI() {
         val mediaItem = player.currentMediaItem
         val metadata = mediaItem?.mediaMetadata
-        val title = metadata?.title?.toString() ?: "" // Empty string handles "Idle" better in my Widget Provider
+        val title = metadata?.title?.toString() ?: ""
         val artist = metadata?.artist?.toString() ?: ""
-        var bitmap: android.graphics.Bitmap? = null
+        var bitmap: Bitmap? = null
+        var duration = player.duration
+
+
+        if (duration <= 0 || duration == C.TIME_UNSET) {
+            duration = sessionStore.getLastSong()?.duration ?: 0L
+        }
 
         if (metadata?.artworkData != null) {
             bitmap = BitmapFactory.decodeByteArray(metadata.artworkData, 0, metadata.artworkData!!.size)
-        }
-        if (bitmap == null && metadata?.artworkUri != null) {
+        } else if (metadata?.artworkUri != null) {
             try {
-                val inputStream = contentResolver.openInputStream(metadata.artworkUri!!)
-                bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
-            } catch (e: Exception) { e.printStackTrace() }
-        }
-        if (bitmap == null) {
-            bitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
-        }
-        if (bitmap != null && (bitmap.width > 256 || bitmap.height > 256)) {
-            bitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, 256, 256, true)
+                contentResolver.openInputStream(metadata.artworkUri!!)?.use {
+                    bitmap = BitmapFactory.decodeStream(it)
+                }
+            } catch (e: Exception)
+            { /* Silent fail */ }
         }
 
-        PrismWidgetProvider.pushUpdate(
-            applicationContext,
-            title,
-            artist,
-            player.isPlaying,
-            bitmap
-        )
+        if (bitmap == null) {
+            bitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+        } else if (bitmap!!.width > 256 || bitmap!!.height > 256) {
+            bitmap = Bitmap.createScaledBitmap(bitmap!!, 256, 256, true)
+        }
+
+        PrismWidgetProvider.pushUpdate(applicationContext, title, artist, player.isPlaying, bitmap)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        val player = mediaSession?.player
-        if (player != null) {
-            player.pause()
-            player.stop()
+        mediaSession?.player?.let {
+            it.pause()
+            it.stop()
         }
         stopSelf()
         super.onTaskRemoved(rootIntent)

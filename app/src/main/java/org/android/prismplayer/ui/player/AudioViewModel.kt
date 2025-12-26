@@ -28,6 +28,8 @@ import org.android.prismplayer.ui.player.manager.EqManager
 import org.android.prismplayer.ui.player.manager.VisualizerManager
 import org.android.prismplayer.ui.service.PlaybackService
 import org.android.prismplayer.ui.utils.AudioSessionHolder
+import org.android.prismplayer.ui.utils.PlaybackSessionStore
+import androidx.media3.common.C
 
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -68,6 +70,8 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _currentTime = MutableStateFlow(0L)
     val currentTime: StateFlow<Long> = _currentTime.asStateFlow()
+    private val _duration = MutableStateFlow(0L)
+    val duration: StateFlow<Long> = _duration.asStateFlow()
 
     init {
         val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
@@ -78,10 +82,22 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 val controller = controllerFuture.get()
                 player = controller
                 setupPlayerListener(controller)
-
                 queueManager.syncQueueFromController(controller)
                 queueManager.syncPlayerState(controller)
-                controller.currentMediaItem?.let { queueManager.syncCurrentSong(it) }
+                controller.currentMediaItem?.let {
+                    queueManager.syncCurrentSong(it)
+                }
+
+                val store = PlaybackSessionStore(application)
+                val savedState = store.getLastSong()
+
+                val currentDuration = controller.duration
+                val safeDuration = if (currentDuration > 0 && currentDuration != C.TIME_UNSET) {
+                    currentDuration
+                } else {
+                    savedState?.duration ?: 0L
+                }
+                _duration.value = safeDuration
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -92,13 +108,18 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             while (true) {
                 if (player?.isPlaying == true && !isSeeking) {
                     _currentTime.value = player?.currentPosition ?: 0L
-                    val duration = player?.duration?.coerceAtLeast(1) ?: 1L
-                    _progress.value = (player?.currentPosition?.toFloat() ?: 0f) / duration
+
+                    val realDuration = player?.duration ?: C.TIME_UNSET
+                    if (realDuration > 0) {
+                        _duration.value = realDuration
+                    }
+
+                    val calcDuration = _duration.value.coerceAtLeast(1)
+                    _progress.value = (player?.currentPosition?.toFloat() ?: 0f) / calcDuration
                 }
                 delay(100)
             }
         }
-
     }
 
     // --- Configuration ---
@@ -108,9 +129,16 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setLibrary(songs: List<Song>) {
         queueManager.setLibrary(songs)
+
+        if (player == null || player?.mediaItemCount == 0) {
+            if (songs.isNotEmpty()) {
+                // queueManager.setQueue(songs)
+            }
+        } else {
+            // Log: "Service is active, skipping library default load to preserve state"
+        }
     }
 
-    // --- Listener ---
     @OptIn(UnstableApi::class)
     private fun setupPlayerListener(player: Player) {
         player.addListener(object : Player.Listener {

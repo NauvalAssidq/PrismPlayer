@@ -87,13 +87,15 @@ class QueueManager {
             val mediaItem = controller.getMediaItemAt(i)
             val extraId = mediaItem.mediaMetadata.extras?.getString("SONG_ID")?.toLongOrNull()
             val uriId = mediaItem.requestMetadata.mediaUri?.lastPathSegment?.toLongOrNull()
-            val songId = extraId ?: uriId ?: 0L
+            val mediaIdLong = mediaItem.mediaId.toLongOrNull() // <--- ADD THIS
+            val songId = extraId ?: uriId ?: mediaIdLong ?: 0L
+
             val cachedSong = librarySongs.find { it.id == songId }
             val song = if (cachedSong != null) {
                 cachedSong
             } else {
                 Song(
-                    id = songId,
+                    id = songId, // Now this will be correct (not 0)
                     title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown",
                     artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown",
                     albumName = mediaItem.mediaMetadata.albumTitle?.toString() ?: "",
