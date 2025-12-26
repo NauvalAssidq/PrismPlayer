@@ -25,17 +25,13 @@ import org.android.prismplayer.ui.utils.PlaybackSessionStore
 class PrismWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        // 1. Initialize Store
         val store = PlaybackSessionStore(context)
         val lastMetadata = store.getLastMetadata()
 
         for (appWidgetId in appWidgetIds) {
-            // 2. Check if we have history to restore
             if (lastMetadata.title != "PRISM PLAYER" && lastMetadata.title.isNotEmpty()) {
-                // RESTORED STATE (Paused) -> Opens Player
                 restoreLastState(context, appWidgetManager, appWidgetId, lastMetadata)
             } else {
-                // EMPTY STATE (Fresh) -> Opens Home
                 updateAppWidget(context, appWidgetManager, appWidgetId)
             }
         }
@@ -105,29 +101,23 @@ class PrismWidgetProvider : AppWidgetProvider() {
             metadata: PlaybackSessionStore.LastMetadata
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_prism_player)
-
-            // 1. Set Text
             views.setTextViewText(R.id.widget_title, metadata.title.uppercase())
             views.setTextViewText(R.id.widget_artist, metadata.artist.uppercase())
             views.setViewVisibility(R.id.widget_no_sig_text, View.GONE)
 
-            // 2. Set Art (Using URI directly is faster for cold start)
             if (metadata.artUri != null) {
                 views.setImageViewUri(R.id.widget_album_art, Uri.parse(metadata.artUri))
             } else {
                 views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
             }
 
-            // 3. Set Colors (From Storage - No Palette calculation needed!)
             val bgBitmap = createGradientBitmap(metadata.bgColor, 0xFF000000.toInt())
             views.setImageViewBitmap(R.id.widget_bg_gradient, bgBitmap)
             updateCorners(views, metadata.accentColor)
 
-            // 4. Set Controls (Paused state)
             views.setImageViewResource(R.id.widget_btn_play, android.R.drawable.ic_media_play)
             views.setInt(R.id.widget_btn_play, "setColorFilter", Color.WHITE)
 
-            // 5. Intent: OPEN PLAYER (Request Code 100)
             val playerIntent = Intent(context, MainActivity::class.java).apply {
                 action = ACTION_OPEN_PLAYER
                 putExtra("EXPAND_PLAYER", true)
@@ -161,7 +151,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
                 return
             }
 
-            // --- 1. CALCULATE COLORS FIRST ---
             var accentColor = 0xFFD71921.toInt()
             var bgColor = 0xFF000000.toInt()
 
@@ -171,13 +160,11 @@ class PrismWidgetProvider : AppWidgetProvider() {
                 bgColor = palette.getVibrantColor(palette.getDominantColor(0xFF000000.toInt()))
             }
 
-            // --- 2. SAVE TO STORAGE (For next reboot) ---
             if (song != null) {
                 val store = PlaybackSessionStore(context)
                 store.saveCurrentSong(song, accentColor, bgColor)
             }
 
-            // --- 3. RENDER WIDGET ---
             val views = RemoteViews(context.packageName, R.layout.widget_prism_player)
             views.setTextViewText(R.id.widget_title, title.uppercase())
             views.setTextViewText(R.id.widget_artist, artist.uppercase())
@@ -198,7 +185,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
             views.setImageViewResource(R.id.widget_btn_play, playIcon)
             views.setInt(R.id.widget_btn_play, "setColorFilter", Color.WHITE)
 
-            // Intent: OPEN PLAYER
             val playerIntent = Intent(context, MainActivity::class.java).apply {
                 action = ACTION_OPEN_PLAYER
                 putExtra("EXPAND_PLAYER", true)
@@ -238,12 +224,21 @@ class PrismWidgetProvider : AppWidgetProvider() {
             )
         }
 
+
+        // Bg color of the widget
         private fun createGradientBitmap(startColor: Int, endColor: Int): Bitmap {
             val width = 400
             val height = 100
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
-            val shader = LinearGradient(0f, 0f, width.toFloat(), 0f, startColor, endColor, Shader.TileMode.CLAMP)
+
+            val shader = LinearGradient(
+                0f, 0f, width.toFloat(), 0f,
+                intArrayOf(startColor, startColor, endColor),
+                floatArrayOf(0f, 0.4f, 1f),
+                Shader.TileMode.CLAMP
+            )
+
             val paint = Paint().apply { this.shader = shader }
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
             return bitmap
