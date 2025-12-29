@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -29,8 +30,8 @@ fun Slider(
     modifier: Modifier = Modifier,
     trackHeight: Dp = 4.dp,
     thumbSize: Dp = 12.dp,
-    activeColor: Color = Color.White,
-    inactiveColor: Color = Color.White.copy(0.2f)
+    activeColor: Color = MaterialTheme.colorScheme.primary,
+    inactiveColor: Color = MaterialTheme.colorScheme.onSurface.copy(0.2f)
 ) {
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()

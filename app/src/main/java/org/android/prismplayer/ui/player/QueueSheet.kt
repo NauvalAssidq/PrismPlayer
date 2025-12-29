@@ -76,10 +76,10 @@ fun QueueSheet(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = 48.dp) // Gap from top
-            .background(Color(0xFF0F0F0F)) // Deep matte black
+            .background(MaterialTheme.colorScheme.surface) // Deep matte black
             .border(
                 width = 1.dp,
-                color = Color.White.copy(0.15f),
+                color = MaterialTheme.colorScheme.outline.copy(0.15f),
                 shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp) // Technical corners
             )
             .pointerInput(Unit) {
@@ -95,7 +95,7 @@ fun QueueSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(32.dp)
-                .background(Color(0xFF151515))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable { onClose() }, // Click header to close
             contentAlignment = Alignment.Center
         ) {
@@ -106,13 +106,13 @@ fun QueueSheet(
                         modifier = Modifier
                             .width(24.dp)
                             .height(2.dp)
-                            .background(Color.White.copy(0.2f))
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(0.2f))
                     )
                 }
             }
         }
 
-        Divider(color = Color.White.copy(0.1f))
+        Divider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
         // 2. TITLE BAR
         Row(
@@ -145,7 +145,7 @@ fun QueueSheet(
             )
         }
 
-        Divider(color = Color.White.copy(0.1f))
+        Divider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
         // 3. THE LIST
         if (nextUpList.isEmpty()) {
@@ -169,7 +169,7 @@ fun QueueSheet(
 
                         // Interaction State
                         val scale by animateFloatAsState(if (isDragging) 1.02f else 1f, label = "scale")
-                        val bgColor = if (isDragging) Color(0xFF1A1A1A) else Color.Transparent
+                        val bgColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
                         val borderColor = if (isDragging) MaterialTheme.colorScheme.secondary else Color.Transparent
 
                         // THE ROW ITEM
@@ -194,7 +194,7 @@ fun QueueSheet(
                             Icon(
                                 imageVector = Icons.Outlined.DragHandle,
                                 contentDescription = "REORDER",
-                                tint = if (isDragging) MaterialTheme.colorScheme.secondary else Color.White.copy(0.2f),
+                                tint = if (isDragging) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface.copy(0.2f),
                                 modifier = Modifier
                                     .size(24.dp)
                                     .draggableHandle() // The touch target
@@ -206,9 +206,9 @@ fun QueueSheet(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .border(1.dp, Color.White.copy(0.2f))
-                                    .background(Color(0xFF050505))
-                            ) {
+                                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.2f))
+                                .background(MaterialTheme.colorScheme.surface)
+                        ) {
                                 AsyncImage(
                                     model = item.song.songArtUri,
                                     contentDescription = null,
@@ -224,7 +224,7 @@ fun QueueSheet(
                                 Text(
                                     text = item.song.title,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (isDragging) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    color = if (isDragging) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -257,7 +257,7 @@ fun QueueSheet(
                         // Technical Divider (only when not dragging to avoid visual glitch)
                         if (!isDragging) {
                             Divider(
-                                color = Color.White.copy(0.05f),
+                                color = MaterialTheme.colorScheme.onSurface.copy(0.05f),
                                 modifier = Modifier.padding(start = 64.dp) // Indented divider
                             )
                         }

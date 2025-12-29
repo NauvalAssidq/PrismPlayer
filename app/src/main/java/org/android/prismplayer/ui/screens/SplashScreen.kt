@@ -136,9 +136,10 @@ fun SplashScreen(
             modifier = Modifier.align(Alignment.Center),
             contentAlignment = Alignment.Center
         ) {
+            val circleColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
             Canvas(modifier = Modifier.size(240.dp)) {
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.1f),
+                    color = circleColor,
                     style = Stroke(width = 2.dp.toPx())
                 )
             }

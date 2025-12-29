@@ -200,8 +200,8 @@ fun TerminalSearchBar(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-            .background(Color(0xFF0A0A0A))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -275,7 +275,7 @@ fun TechArtistCard(
             modifier = Modifier
                 .size(100.dp)
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
-                .background(Color(0xFF111111))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             if (!imageUri.isNullOrBlank()) {
                 AsyncImage(
@@ -327,7 +327,7 @@ fun RawSearchAlbumCard(album: Album, onClick: () -> Unit) {
             modifier = Modifier
                 .size(140.dp)
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
-                .background(Color(0xFF111111))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             if (!album.coverUri.isNullOrBlank()) {
                 AsyncImage(

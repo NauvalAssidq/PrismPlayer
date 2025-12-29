@@ -44,10 +44,10 @@ fun SongOptionSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0F0F0F))
+            .background(MaterialTheme.colorScheme.background)
             .border(
                 width = 1.dp,
-                color = Color.White.copy(0.15f),
+                color = MaterialTheme.colorScheme.onSurface.copy(0.15f),
                 shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
             )
             .padding(bottom = bottomPadding)
@@ -56,7 +56,7 @@ fun SongOptionSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(26.dp)
-                .background(Color(0xFF151515)),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -65,13 +65,13 @@ fun SongOptionSheet(
                         modifier = Modifier
                             .width(16.dp)
                             .height(1.dp)
-                            .background(Color.White.copy(0.2f))
+                            .background(MaterialTheme.colorScheme.onSurface.copy(0.2f))
                     )
                 }
             }
         }
 
-        HorizontalDivider(color = Color.White.copy(0.1f))
+        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
         Row(
             modifier = Modifier
@@ -82,8 +82,8 @@ fun SongOptionSheet(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .border(1.dp, Color.White.copy(0.2f))
-                    .background(Color(0xFF050505))
+                    .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.2f))
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 if (!song.songArtUri.isNullOrBlank()) {
                     AsyncImage(
@@ -107,7 +107,7 @@ fun SongOptionSheet(
                             "NO_SIG",
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 8.sp,
-                            color = Color.White.copy(0.3f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.3f)
                         )
                     }
                 }
@@ -122,20 +122,20 @@ fun SongOptionSheet(
             }
         }
 
-        HorizontalDivider(color = Color.White.copy(0.1f))
+        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
         if (onPlayNext != null) CommandRow("PRIORITY_NEXT", Icons.Outlined.PlaylistPlay, onPlayNext)
         if (onAddToQueue != null) CommandRow("ENQUEUE", Icons.Outlined.Queue, onAddToQueue)
         if (onAddToPlaylist != null) CommandRow("ADD_TO_PLAYLIST", Icons.Outlined.PlaylistAdd, onAddToPlaylist)
         if (onPlayNext != null || onAddToQueue != null) {
-            HorizontalDivider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
         }
 
         if (onGoToAlbum != null) CommandRow("OPEN_ALBUM", Icons.Outlined.Album, onGoToAlbum)
         if (onGoToArtist != null) CommandRow("OPEN_ARTIST", Icons.Outlined.Person, onGoToArtist)
 
         if (onEdit != null || onShare != null) {
-            HorizontalDivider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
         }
 
         if (onEdit != null) CommandRow("MODIFY_TAGS", Icons.Outlined.Edit, onEdit)
@@ -155,7 +155,7 @@ private fun MetadataLine(label: String, value: String) {
             style = MaterialTheme.typography.labelSmall,
             fontFamily = FontFamily.Monospace,
             fontSize = 10.sp,
-            color = Color.White.copy(0.4f)
+            color = MaterialTheme.colorScheme.onSurface.copy(0.4f)
         )
         Text(
             text = value,
@@ -189,7 +189,7 @@ private fun CommandRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color.White.copy(0.7f),
+                tint = MaterialTheme.colorScheme.onSurface.copy(0.7f),
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -198,7 +198,7 @@ private fun CommandRow(
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.sp,
-                color = Color.White.copy(0.9f)
+                color = MaterialTheme.colorScheme.onSurface.copy(0.9f)
             )
         }
 
@@ -206,7 +206,7 @@ private fun CommandRow(
             text = ">>",
             style = MaterialTheme.typography.labelSmall,
             fontSize = 10.sp,
-            color = Color.White.copy(0.2f)
+            color = MaterialTheme.colorScheme.onSurface.copy(0.2f)
         )
     }
 }

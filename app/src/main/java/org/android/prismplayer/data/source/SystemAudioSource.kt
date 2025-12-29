@@ -171,6 +171,31 @@ class SystemAudioSource(private val context: Context) {
         } catch (e: Exception) { /* Ignore */ }
         return "Unknown"
     }
-}
+
 
 // Refactored from using the albumArtUri to songArtUri by accessing it via filepath
+
+    suspend fun scanAudioFolders(): List<org.android.prismplayer.data.model.FolderItem> {
+        return withContext(Dispatchers.IO) {
+            val folderMap = mutableMapOf<String, Int>()
+            val projection = arrayOf(MediaStore.Audio.Media.DATA)
+            val selection = "${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%' AND ${MediaStore.Audio.Media.DURATION} >= 10000"
+            try {
+                context.contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection, selection, null, null)?.use { cursor ->
+                    val pathCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                    while (cursor.moveToNext()) {
+                        val fullPath = cursor.getString(pathCol)
+                        if (File(fullPath).exists()) {
+                            File(fullPath).parentFile?.absolutePath?.let { folderMap[it] = folderMap.getOrDefault(it, 0) + 1 }
+                        }
+                    }
+                }
+            } catch (e: Exception) { e.printStackTrace() }
+            folderMap.map { (path, count) ->
+                val name = File(path).name
+                val isImportant = name.contains("Music", true) || name.contains("Download", true) || count > 5
+                org.android.prismplayer.data.model.FolderItem(name, path, count, isImportant)
+            }.sortedByDescending { it.count }
+        }
+    }
+}

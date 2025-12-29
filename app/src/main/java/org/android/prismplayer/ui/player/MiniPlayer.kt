@@ -76,12 +76,12 @@ fun MiniPlayer(
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        backgroundColor.copy(alpha = 0.9f),
-                        Color(0xFF121212)
+                        backgroundColor,
+                        MaterialTheme.colorScheme.surface
                     )
                 )
             )
-            .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(8.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.6f), RoundedCornerShape(8.dp))
             .clickable { onClick() }
     ) {
         Row(
@@ -94,8 +94,9 @@ fun MiniPlayer(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF0A0A0A))
-                    .border(1.dp, Color.White.copy(0.15f), RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.15f), RoundedCornerShape(4.dp))
             ) {
                 AsyncImage(
                     model = song.songArtUri,
@@ -111,7 +112,7 @@ fun MiniPlayer(
                         text = "NO_SIG",
                         style = MaterialTheme.typography.labelSmall,
                         fontSize = 8.sp,
-                        color = Color.White.copy(0.3f),
+                        color = MaterialTheme.colorScheme.onSurface.copy(0.3f),
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -127,15 +128,15 @@ fun MiniPlayer(
                     text = song.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee()
                 )
                 Text(
                     text = song.artist.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace, // Tech font
-                    color = Color.White.copy(0.7f),
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface.copy(0.7f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     letterSpacing = 0.5.sp
@@ -146,7 +147,7 @@ fun MiniPlayer(
                 modifier = Modifier
                     .width(1.dp)
                     .height(32.dp)
-                    .background(Color.White.copy(0.15f))
+                    .background(MaterialTheme.colorScheme.onSurface.copy(0.15f))
             )
 
             Spacer(modifier = Modifier.width(4.dp))
@@ -162,7 +163,7 @@ fun MiniPlayer(
                     Icon(
                         imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -174,7 +175,7 @@ fun MiniPlayer(
                     Icon(
                         Icons.Rounded.SkipNext,
                         null,
-                        tint = Color.White.copy(0.5f),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(0.5f),
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -187,8 +188,8 @@ fun MiniPlayer(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(2.dp),
-            color = Color.White,
-            trackColor = Color.White.copy(0.1f),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.onSurface.copy(0.1f),
             drawStopIndicator = {}
         )
     }

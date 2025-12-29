@@ -27,22 +27,30 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
-private val ColorPrimary = Color(0xFFD71921)
-private val ColorTrack = Color(0xFF1A1A1A)
-private val ColorBody = Color(0xFF111111)
-private val ColorText = Color(0xFFEEEEEE)
+@Composable
+private fun getKnobColors(): Triple<Color, Color, Color> {
+    return Triple(
+        MaterialTheme.colorScheme.surfaceVariant, // Track
+        MaterialTheme.colorScheme.surface, // Body
+        MaterialTheme.colorScheme.onSurface // Text
+    )
+}
 
 @Composable
 fun KnobComponent(
     label: String,
     value: Float,
     isEnabled: Boolean = true,
+    accentColor: Color = MaterialTheme.colorScheme.primary,
     size: Dp = 90.dp,
     onValueChange: (Float) -> Unit
 ) {
     val view = LocalView.current
     val currentPercent = (value * 100).toInt()
     var lastHapticValue by remember { mutableIntStateOf(currentPercent) }
+    val (trackColor, bodyColor, textColor) = getKnobColors()
+    val primaryColor = accentColor
+
     val startAngle = 135f
     val sweepAngle = 270f
 
@@ -92,7 +100,7 @@ fun KnobComponent(
                 val bodyRadius = arcRadius - 8.dp.toPx()
 
                 drawArc(
-                    color = ColorTrack,
+                    color = trackColor,
                     startAngle = startAngle,
                     sweepAngle = sweepAngle,
                     useCenter = false,
@@ -103,7 +111,7 @@ fun KnobComponent(
 
                 if (isEnabled) {
                     drawArc(
-                        color = ColorPrimary,
+                        color = primaryColor,
                         startAngle = startAngle,
                         sweepAngle = sweepAngle * value,
                         useCenter = false,
@@ -115,7 +123,7 @@ fun KnobComponent(
 
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0xFF252525), ColorBody),
+                        colors = listOf(trackColor, bodyColor),
                         center = canvasCenter,
                         radius = bodyRadius
                     ),
@@ -123,7 +131,7 @@ fun KnobComponent(
                     center = canvasCenter
                 )
                 drawCircle(
-                    color = Color(0xFF333333),
+                    color = trackColor.copy(alpha = 0.5f),
                     radius = bodyRadius,
                     center = canvasCenter,
                     style = Stroke(width = 1.dp.toPx())
@@ -140,7 +148,7 @@ fun KnobComponent(
                 )
 
                 drawLine(
-                    color = if(isEnabled) Color.White else Color.Gray,
+                    color = if(isEnabled) textColor else textColor.copy(alpha = 0.3f),
                     start = indicatorStart,
                     end = indicatorEnd,
                     strokeWidth = 3.dp.toPx(),
@@ -151,7 +159,7 @@ fun KnobComponent(
             if (isEnabled) {
                 Text(
                     text = "${(value * 100).toInt()}",
-                    color = ColorText,
+                    color = textColor,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
@@ -165,7 +173,7 @@ fun KnobComponent(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = if (isEnabled) ColorPrimary else Color.Gray,
+            color = if (isEnabled) primaryColor else textColor.copy(alpha = 0.5f),
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp,

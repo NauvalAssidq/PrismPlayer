@@ -234,7 +234,7 @@ fun CommandGrid(
                 .height(52.dp)
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
                 .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFF0A0A0A)),
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
             verticalAlignment = Alignment.CenterVertically
         ) {
             StripButton(
@@ -306,14 +306,14 @@ fun VerticalDivider() {
             .width(1.dp)
             .fillMaxHeight()
             .padding(vertical = 14.dp)
-            .background(Color.White.copy(alpha = 0.2f))
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
     )
 }
 
 @Composable
 fun FullWidthDivider() {
     HorizontalDivider(
-        color = Color.White.copy(alpha = 0.1f),
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
         thickness = 1.dp,
         modifier = Modifier.fillMaxWidth()
     )

@@ -180,9 +180,17 @@ fun FullPlayerContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF050505))
+            .background(MaterialTheme.colorScheme.background)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { }
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    MaterialTheme.colorScheme.surface
+                )
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -217,7 +225,7 @@ fun FullPlayerContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Outlined.KeyboardArrowDown, null, tint = Color.White)
+                    Icon(Icons.Outlined.KeyboardArrowDown, null, tint = MaterialTheme.colorScheme.onBackground)
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -231,7 +239,7 @@ fun FullPlayerContent(
                     Text(
                         "PRISM_OS",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(0.7f),
+                        color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
@@ -248,8 +256,8 @@ fun FullPlayerContent(
                 modifier = Modifier
                     .width(screenWidth * artWidthFraction)
                     .aspectRatio(1f)
-                    .background(Color(0xFF0A0A0A))
-                    .border(1.dp, Color.White.copy(0.15f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(0.15f))
                     .padding(6.dp)
             ) {
                 Box(
@@ -275,14 +283,14 @@ fun FullPlayerContent(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(0xFF151515)),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(
                                     Icons.Outlined.MusicNote,
                                     null,
-                                    tint = Color.White.copy(0.2f),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.2f),
                                     modifier = Modifier.size(48.dp)
                                 )
                             }
@@ -305,7 +313,7 @@ fun FullPlayerContent(
                     Text(
                         text = song.title.uppercase(),
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -326,12 +334,12 @@ fun FullPlayerContent(
                     onClick = { isLiked = !isLiked },
                     modifier = Modifier
                         .size(44.dp)
-                        .border(1.dp, Color.White.copy(0.2f), CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(0.2f), CircleShape)
                 ) {
                     Icon(
                         imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "Like",
-                        tint = if (isLiked) glowColor else Color.White.copy(0.7f),
+                        tint = if (isLiked) glowColor else MaterialTheme.colorScheme.onBackground.copy(0.7f),
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -350,14 +358,14 @@ fun FullPlayerContent(
                     Text(
                         currentTime,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(0.7f),
+                        color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 10.sp
                     )
                     Text(
                         totalTime,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(0.3f),
+                        color = MaterialTheme.colorScheme.onBackground.copy(0.3f),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 10.sp
                     )
@@ -386,37 +394,37 @@ fun FullPlayerContent(
                     Icon(
                         Icons.Outlined.Shuffle,
                         null,
-                        tint = if (isShuffleEnabled) glowColor else Color.White.copy(0.3f),
+                        tint = if (isShuffleEnabled) glowColor else MaterialTheme.colorScheme.onBackground.copy(0.3f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
 
                 IconButton(onClick = onPrev) {
-                    Icon(Icons.Outlined.SkipPrevious, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Outlined.SkipPrevious, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(32.dp))
                 }
 
                 Box(
                     modifier = Modifier
                         .size(64.dp)
-                        .background(Color.White, RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
                         .clickable { onPlayPause() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
                         contentDescription = null,
-                        tint = Color.Black,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
 
                 IconButton(onClick = onNext) {
-                    Icon(Icons.Outlined.SkipNext, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Outlined.SkipNext, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(32.dp))
                 }
 
                 IconButton(onClick = onToggleRepeat) {
                     val icon = if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Outlined.RepeatOne else Icons.Outlined.Repeat
-                    val tint = if (repeatMode == Player.REPEAT_MODE_OFF) Color.White.copy(0.3f) else glowColor
+                    val tint = if (repeatMode == Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.onBackground.copy(0.3f) else glowColor
                     Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
                 }
             }
@@ -505,7 +513,7 @@ fun DeckKey(
             .height(56.dp)
             .border(
                 width = 1.dp,
-                color = if (isActive) activeColor else Color.White.copy(0.15f),
+                color = if (isActive) activeColor else MaterialTheme.colorScheme.onBackground.copy(0.15f),
                 shape = RoundedCornerShape(4.dp)
             )
             .background(
@@ -522,7 +530,7 @@ fun DeckKey(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (isActive) activeColor else Color.White.copy(0.7f),
+                tint = if (isActive) activeColor else MaterialTheme.colorScheme.onBackground.copy(0.7f),
                 modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.width(8.dp))
@@ -531,7 +539,7 @@ fun DeckKey(
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
-                color = if (isActive) activeColor else Color.White.copy(0.7f),
+                color = if (isActive) activeColor else MaterialTheme.colorScheme.onBackground.copy(0.7f),
                 letterSpacing = 1.sp
             )
         }

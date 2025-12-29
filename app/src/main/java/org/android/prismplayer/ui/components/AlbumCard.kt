@@ -56,7 +56,7 @@ fun AlbumCard(
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
-                .background(Color(0xFF111111))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             if (!coverUri.isNullOrBlank()) {
                 AsyncImage(

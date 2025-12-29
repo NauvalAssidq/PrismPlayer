@@ -53,7 +53,7 @@ fun ManageFoldersScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFF050505),
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Column {
@@ -77,19 +77,19 @@ fun ManageFoldersScreen(
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(0xFF050505)
+                        containerColor = MaterialTheme.colorScheme.background
                     )
                 )
-                Divider(color = Color.White.copy(0.1f))
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
             }
         },
         bottomBar = {
             Column {
-                Divider(color = Color.White.copy(0.1f))
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF050505))
+                        .background(MaterialTheme.colorScheme.background)
                         .navigationBarsPadding()
                         .padding(24.dp)
                 ) {
@@ -175,7 +175,7 @@ fun MountPointRow(
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.2f), RoundedCornerShape(4.dp))
-            .background(Color(0xFF111111), RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(0.3f), RoundedCornerShape(4.dp))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

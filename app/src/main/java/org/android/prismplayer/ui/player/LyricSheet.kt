@@ -75,10 +75,10 @@ fun LyricSheetContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(top = 48.dp)
-            .background(Color(0xFF0F0F0F))
+            .background(MaterialTheme.colorScheme.surface)
             .border(
                 width = 1.dp,
-                color = Color.White.copy(0.15f),
+                color = MaterialTheme.colorScheme.outline.copy(0.15f),
                 shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
             )
             .pointerInput(Unit) {
@@ -93,7 +93,7 @@ fun LyricSheetContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(32.dp)
-                    .background(Color(0xFF151515))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .clickable { onClose() },
                 contentAlignment = Alignment.Center
             ) {
@@ -104,13 +104,13 @@ fun LyricSheetContent(
                             modifier = Modifier
                                 .width(24.dp)
                                 .height(2.dp)
-                                .background(Color.White.copy(0.2f))
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(0.2f))
                         )
                     }
                 }
             }
 
-            Divider(color = Color.White.copy(0.1f))
+            Divider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
             // 2. TABS (Mechanical Switch)
             if (lyricState is LyricsState.Success) {
@@ -124,7 +124,7 @@ fun LyricSheetContent(
                     Spacer(Modifier.width(16.dp))
                     TechTabButton("STATIC_TXT", selected = selectedTab == 1) { selectedTab = 1 }
                 }
-                Divider(color = Color.White.copy(0.05f))
+                Divider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f))
             }
 
             // 3. CONTENT AREA
@@ -143,7 +143,7 @@ fun LyricSheetContent(
                                         "SYNC_DATA_UNAVAILABLE",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontFamily = FontFamily.Monospace,
-                                        color = Color.White.copy(0.5f)
+                                        color = MaterialTheme.colorScheme.onSurface.copy(0.5f)
                                     )
                                 }
                             }
@@ -207,7 +207,7 @@ fun SyncedLyricView(lines: List<LyricLine>, currentTime: Long, glowColor: Color)
                         fontWeight = FontWeight.Bold,
                         lineHeight = 40.sp
                     ),
-                    color = if (isActive) Color.White else Color.White.copy(0.4f),
+                    color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(0.4f),
                     textAlign = TextAlign.Center, // Teleprompter style
                     modifier = Modifier
                         .fillMaxWidth()
@@ -237,8 +237,8 @@ fun TechTabButton(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val borderColor = if (selected) MaterialTheme.colorScheme.primary else Color.White.copy(0.2f)
-    val textColor = if (selected) MaterialTheme.colorScheme.primary else Color.White.copy(0.5f)
+    val borderColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(0.2f)
+    val textColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(0.5f)
 
     Box(
         modifier = Modifier
@@ -276,7 +276,7 @@ fun StaticLyricView(text: String) {
                     lineHeight = 32.sp,
                     fontFamily = FontFamily.Monospace
                 ),
-                color = Color.White.copy(0.8f),
+                color = MaterialTheme.colorScheme.onSurface.copy(0.8f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -298,7 +298,7 @@ fun IdleLyricView(onFetch: () -> Unit) {
         Icon(
             imageVector = Icons.Outlined.Lyrics,
             contentDescription = null,
-            tint = Color.White.copy(0.2f),
+            tint = MaterialTheme.colorScheme.onSurface.copy(0.2f),
             modifier = Modifier.size(64.dp)
         )
         Spacer(Modifier.height(24.dp))
@@ -340,7 +340,7 @@ fun TechAttribution() {
             text = "SOURCE: LRCLIB.NET",
             style = MaterialTheme.typography.labelSmall,
             fontFamily = FontFamily.Monospace,
-            color = Color.White.copy(0.3f),
+            color = MaterialTheme.colorScheme.onSurface.copy(0.3f),
             fontSize = 10.sp
         )
     }

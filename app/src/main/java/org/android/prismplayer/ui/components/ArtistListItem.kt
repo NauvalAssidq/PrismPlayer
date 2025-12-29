@@ -44,7 +44,7 @@ fun ArtistListItem(
             modifier = Modifier
                 .size(52.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFF111111))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(2.dp)),
             contentAlignment = Alignment.Center
         ) {

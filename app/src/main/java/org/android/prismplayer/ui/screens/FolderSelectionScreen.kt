@@ -25,8 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.android.prismplayer.ui.theme.PrismPlayerTheme
 
+import org.android.prismplayer.data.model.FolderItem
+
 // Reuse the same data structure logic but for folders
-data class FolderItem(val name: String, val path: String, val count: Int, var isSelected: Boolean)
+
 
 @Composable
 fun FolderSelectionScreen(
@@ -47,12 +49,13 @@ fun FolderSelectionScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         // 1. Same Dotted Matrix Background
+        val dotColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val step = 40.dp.toPx()
             for (x in 0..size.width.toInt() step step.toInt()) {
                 for (y in 0..size.height.toInt() step step.toInt()) {
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.05f),
+                        color = dotColor,
                         radius = 1.dp.toPx(),
                         center = Offset(x.toFloat(), y.toFloat())
                     )

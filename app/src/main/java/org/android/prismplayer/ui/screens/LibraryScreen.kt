@@ -127,7 +127,7 @@ fun LibraryScreen(
                     .height(48.dp)
                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFF0A0A0A)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TabSegment(
@@ -164,7 +164,7 @@ fun LibraryScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            Divider(color = Color.White.copy(0.1f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
             HorizontalPager(
                 state = pagerState,
@@ -188,7 +188,7 @@ fun LibraryScreen(
                                         onClick = { onSongClick(song, songs) },
                                         onMoreClick = { onSongMoreClick(song) }
                                     )
-                                    Divider(color = Color.White.copy(0.1f))
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
                                 }
                             }
                         }
@@ -239,7 +239,7 @@ fun LibraryScreen(
                                         onClick = { onArtistClick(artistName) }
                                     )
 
-                                    Divider(color = Color.White.copy(0.1f))
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
                                 }
                             }
                         }
@@ -259,8 +259,8 @@ fun TabSegment(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary
-    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.background
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
 
     Box(
         modifier = modifier

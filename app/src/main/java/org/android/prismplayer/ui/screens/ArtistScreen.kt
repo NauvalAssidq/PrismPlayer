@@ -5,14 +5,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -21,7 +20,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
@@ -49,25 +47,26 @@ import org.android.prismplayer.ui.utils.rememberImmersiveColor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArtistScreen(
-    state: ArtistUiState,
-    currentSong: Song?,
-    isPlaying: Boolean,
-    onBack: () -> Unit,
-    onSongClick: (Song, List<Song>) -> Unit,
-    onSongMoreClick: (Song) -> Unit,
-    onAlbumClick: (String) -> Unit,
-    onShufflePlay: (List<Song>) -> Unit,
-    bottomPadding: Dp
+        state: ArtistUiState,
+        currentSong: Song?,
+        isPlaying: Boolean,
+        onBack: () -> Unit,
+        onSongClick: (Song, List<Song>) -> Unit,
+        onSongMoreClick: (Song) -> Unit,
+        onAlbumClick: (String) -> Unit,
+        onShufflePlay: (List<Song>) -> Unit,
+        bottomPadding: Dp
 ) {
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(state.heroArtUri) {
         if (!state.heroArtUri.isNullOrEmpty()) {
-            val request = ImageRequest.Builder(context)
-                .data(state.heroArtUri)
-                .allowHardware(false)
-                .build()
+            val request =
+                    ImageRequest.Builder(context)
+                            .data(state.heroArtUri)
+                            .allowHardware(false)
+                            .build()
             val result = context.imageLoader.execute(request)
             if (result is SuccessResult) {
                 bitmap = result.drawable.toBitmap()
@@ -77,100 +76,108 @@ fun ArtistScreen(
 
     val rawColor = rememberImmersiveColor(bitmap)
 
-    val accentColor by animateColorAsState(
-        targetValue = remember(rawColor) {
-            val base = PrismaColorUtils.adjustForAccent(rawColor)
-            if (base.luminance() < 0.3f) {
-                base.copy(alpha = 0.9f).compositeOver(Color.White)
-            } else {
-                base
-            }
-        },
-        animationSpec = tween(1000),
-        label = "accentGlow"
-    )
+    val accentColor by
+            animateColorAsState(
+                    targetValue =
+                            remember(rawColor) {
+                                val base = PrismaColorUtils.adjustForAccent(rawColor)
+                                if (base.luminance() < 0.3f) {
+                                    base.copy(alpha = 0.9f).compositeOver(Color.White)
+                                } else {
+                                    base
+                                }
+                            },
+                    animationSpec = tween(1000),
+                    label = "accentGlow"
+            )
 
-    // MATCHING HEADER LOGIC: Wrapped in Scaffold
     Scaffold(
-        containerColor = Color(0xFF050505),
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            Column {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            "ARTIST_DOSSIER",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            color = MaterialTheme.colorScheme.onSecondary
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Outlined.ArrowBack, "RETURN", tint = Color.White)
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { }) {
-                            Icon(Icons.Outlined.MoreVert, "OPTIONS", tint = Color.White)
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(0xFF050505)
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {
+                Column {
+                    CenterAlignedTopAppBar(
+                            title = {
+                                Text(
+                                        "ARTIST_DOSSIER",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 2.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = onBack) {
+                                    Icon(
+                                            Icons.AutoMirrored.Outlined.ArrowBack,
+                                            "RETURN",
+                                            tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(onClick = {}) {
+                                    Icon(
+                                            Icons.Outlined.MoreVert,
+                                            "OPTIONS",
+                                            tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            },
+                            colors =
+                                    TopAppBarDefaults.topAppBarColors(
+                                            containerColor = MaterialTheme.colorScheme.background
+                                    )
                     )
-                )
-                Divider(color = Color.White.copy(0.1f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                }
             }
-        }
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(350.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.15f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+                    modifier =
+                            Modifier.fillMaxWidth()
+                                    .height(350.dp)
+                                    .background(
+                                            Brush.verticalGradient(
+                                                    colors =
+                                                            listOf(
+                                                                    accentColor.copy(alpha = 0.15f),
+                                                                    Color.Transparent
+                                                            )
+                                            )
+                                    )
             )
 
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        color = accentColor,
-                        modifier = Modifier.size(32.dp),
-                        strokeWidth = 2.dp
+                            color = accentColor,
+                            modifier = Modifier.size(32.dp),
+                            strokeWidth = 2.dp
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = padding.calculateTopPadding(), // Respect Scaffold padding
-                        bottom = bottomPadding + 20.dp
-                    )
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                                PaddingValues(
+                                        top = padding.calculateTopPadding(),
+                                        bottom = bottomPadding + 20.dp
+                                )
                 ) {
                     item {
                         ArtistDataHeader(
-                            artistName = state.artistName,
-                            artUri = state.heroArtUri,
-                            albumCount = state.albums.size,
-                            songCount = state.songs.size,
-                            accentColor = accentColor,
-                            // onBack and header title logic moved to TopBar
-                            onPlayClick = {
-                                if (state.songs.isNotEmpty())
-                                    onSongClick(state.songs.first(), state.songs)
-                            },
-                            onShuffleClick = { onShufflePlay(state.songs) }
+                                artistName = state.artistName,
+                                artUri = state.heroArtUri,
+                                albumCount = state.albums.size,
+                                songCount = state.songs.size,
+                                accentColor = accentColor,
+                                onPlayClick = {
+                                    if (state.songs.isNotEmpty())
+                                            onSongClick(state.songs.first(), state.songs)
+                                },
+                                onShuffleClick = { onShufflePlay(state.songs) }
                         )
                         FullWidthDivider()
                     }
@@ -179,16 +186,17 @@ fun ArtistScreen(
                         item { SectionLabel("DISCOGRAPHY", "DATA_BLOCKS") }
                         item {
                             LazyRow(
-                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    contentPadding =
+                                            PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
                                 items(state.albums) { album ->
                                     AlbumCard(
-                                        title = album.title,
-                                        artist = album.artist,
-                                        coverUri = album.coverUri,
-                                        onClick = { onAlbumClick(album.title) },
-                                        fixedWidth = 140.dp
+                                            title = album.title,
+                                            artist = album.artist,
+                                            coverUri = album.coverUri,
+                                            onClick = { onAlbumClick(album.title) },
+                                            fixedWidth = 140.dp
                                     )
                                 }
                             }
@@ -201,12 +209,12 @@ fun ArtistScreen(
                         items(state.songs) { song ->
                             val isCurrent = currentSong?.id == song.id
                             SongListItem(
-                                song = song,
-                                isActive = isCurrent,
-                                isPlaying = isCurrent && isPlaying,
-                                index = null,
-                                onClick = { onSongClick(song, state.songs) },
-                                onMoreClick = { onSongMoreClick(song) }
+                                    song = song,
+                                    isActive = isCurrent,
+                                    isPlaying = isCurrent && isPlaying,
+                                    index = null,
+                                    onClick = { onSongClick(song, state.songs) },
+                                    onMoreClick = { onSongMoreClick(song) }
                             )
                             FullWidthDivider()
                         }
@@ -219,47 +227,42 @@ fun ArtistScreen(
 
 @Composable
 fun ArtistDataHeader(
-    artistName: String,
-    artUri: String?,
-    albumCount: Int,
-    songCount: Int,
-    accentColor: Color,
-    onPlayClick: () -> Unit,
-    onShuffleClick: () -> Unit
+        artistName: String,
+        artUri: String?,
+        albumCount: Int,
+        songCount: Int,
+        accentColor: Color,
+        onPlayClick: () -> Unit,
+        onShuffleClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
+                verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .border(1.dp, Color.White.copy(0.2f))
-                    .background(Color(0xFF0A0A0A))
+                    modifier =
+                            Modifier.size(100.dp)
+                                    .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.2f))
+                                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 if (artUri != null) {
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(artUri)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                            model =
+                                    ImageRequest.Builder(LocalContext.current)
+                                            .data(artUri)
+                                            .crossfade(true)
+                                            .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                     )
                 } else {
                     Icon(
-                        Icons.Outlined.Person,
-                        null,
-                        tint = Color.White.copy(0.2f),
-                        modifier = Modifier
-                            .size(40.dp)
-                            .align(Alignment.Center)
+                            Icons.Outlined.Person,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(0.2f),
+                            modifier = Modifier.size(40.dp).align(Alignment.Center)
                     )
                 }
             }
@@ -268,52 +271,49 @@ fun ArtistDataHeader(
 
             Column {
                 Text(
-                    text = artistName.uppercase(),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = accentColor,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                        text = artistName.uppercase(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(Modifier.height(8.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = "$albumCount ALBUMS",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(0.7f)
+                            text = "$albumCount ALBUMS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.7f)
                     )
                     Text(
-                        text = "//",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(0.3f)
+                            text = "//",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.3f)
                     )
                     Text(
-                        text = "$songCount TRACKS",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(0.7f)
+                            text = "$songCount TRACKS",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.7f)
                     )
                 }
             }
         }
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Button(
-                onClick = onPlayClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = accentColor,
-                    contentColor = Color.Black
-                )
+                    onClick = onPlayClick,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    shape = RoundedCornerShape(4.dp),
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = accentColor,
+                                    contentColor = MaterialTheme.colorScheme.onSecondary
+                            )
             ) {
                 Icon(Icons.Outlined.PlayArrow, null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
@@ -321,16 +321,21 @@ fun ArtistDataHeader(
             }
 
             Button(
-                onClick = onShuffleClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(56.dp)
-                    .border(1.dp, Color.White.copy(0.3f), RoundedCornerShape(4.dp)),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.White
-                )
+                    onClick = onShuffleClick,
+                    modifier =
+                            Modifier.weight(1f)
+                                    .height(56.dp)
+                                    .border(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.onSurface.copy(0.3f),
+                                            RoundedCornerShape(4.dp)
+                                    ),
+                    shape = RoundedCornerShape(4.dp),
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                            )
             ) {
                 Icon(Icons.Outlined.Shuffle, null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
@@ -342,35 +347,64 @@ fun ArtistDataHeader(
     }
 }
 
-
 @Preview(showBackground = true, backgroundColor = 0xFF050505)
 @Composable
 fun ArtistScreenPreview() {
     val now = System.currentTimeMillis() / 1000
 
-    val mockSongs = listOf(
-        Song(1L, "Starboy", "The Weeknd", "Starboy", 1L, 230_000L, "", "Music", now, null, 2016, 1, "Pop"),
-        Song(2L, "Blinding Lights", "The Weeknd", "After Hours", 2L, 200_000L, "", "Music", now, null, 2020, 9, "Synth")
-    )
+    val mockSongs =
+            listOf(
+                    Song(
+                            1L,
+                            "Starboy",
+                            "The Weeknd",
+                            "Starboy",
+                            1L,
+                            230_000L,
+                            "",
+                            "Music",
+                            now,
+                            null,
+                            2016,
+                            1,
+                            "Pop"
+                    ),
+                    Song(
+                            2L,
+                            "Blinding Lights",
+                            "The Weeknd",
+                            "After Hours",
+                            2L,
+                            200_000L,
+                            "",
+                            "Music",
+                            now,
+                            null,
+                            2020,
+                            9,
+                            "Synth"
+                    )
+            )
 
-    val mockAlbums = listOf(
-        Album(1L, "Starboy", "The Weeknd", null, 1, 2016),
-        Album(2L, "After Hours", "The Weeknd", null, 2, 2020)
-    )
+    val mockAlbums =
+            listOf(
+                    Album(1L, "Starboy", "The Weeknd", null, 1, 2016),
+                    Album(2L, "After Hours", "The Weeknd", null, 2, 2020)
+            )
 
     val mockState = ArtistUiState("The Weeknd", null, mockSongs, mockAlbums, "", isLoading = false)
 
     MaterialTheme {
         ArtistScreen(
-            state = mockState,
-            currentSong = mockSongs.first(),
-            isPlaying = true,
-            onBack = {},
-            onSongClick = { _, _ -> },
-            onSongMoreClick = {},
-            onAlbumClick = {},
-            onShufflePlay = {},
-            bottomPadding = 80.dp
+                state = mockState,
+                currentSong = mockSongs.first(),
+                isPlaying = true,
+                onBack = {},
+                onSongClick = { _, _ -> },
+                onSongMoreClick = {},
+                onAlbumClick = {},
+                onShufflePlay = {},
+                bottomPadding = 80.dp
         )
     }
 }

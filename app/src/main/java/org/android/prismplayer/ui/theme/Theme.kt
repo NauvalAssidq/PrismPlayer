@@ -15,62 +15,55 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+private val DarkColorScheme =
+        darkColorScheme(
+                primary = PrismColor.White,
+                onPrimary = PrismColor.Black,
+                primaryContainer = PrismColor.DarkGrey,
+                onPrimaryContainer = PrismColor.White,
+                secondary = PrismColor.Red,
+                onSecondary = PrismColor.White,
+                secondaryContainer = PrismColor.Red.copy(alpha = 0.2f),
+                onSecondaryContainer = PrismColor.Red,
+                background = PrismColor.Black,
+                onBackground = PrismColor.White,
+                surface = PrismColor.Black,
+                onSurface = PrismColor.White,
+                surfaceVariant = PrismColor.DarkGrey,
+                onSurfaceVariant = PrismColor.White,
+                outline = PrismColor.Grey,
+                outlineVariant = PrismColor.DarkGrey
+        )
 
-val PrismBlack = Color(0xFF000000)
-val PrismDarkGrey = Color(0xFF121212)
-val PrismGrey = Color(0xFF262626)
-val PrismLightGrey = Color(0xFF808080)
-val PrismWhite = Color(0xFFFFFFFF)
-val NothingRed = Color(0xFFD71921)
-
-
-private val DarkColorScheme = darkColorScheme(
-    primary = PrismWhite,
-    onPrimary = PrismBlack,
-    primaryContainer = PrismDarkGrey,
-    onPrimaryContainer = PrismWhite,
-
-    secondary = NothingRed,
-    onSecondary = PrismWhite,
-    secondaryContainer = NothingRed.copy(alpha = 0.2f),
-    onSecondaryContainer = NothingRed,
-
-    background = PrismBlack,
-    onBackground = PrismWhite,
-
-    surface = PrismBlack,
-    onSurface = PrismWhite,
-    surfaceVariant = PrismDarkGrey,
-    onSurfaceVariant = PrismLightGrey,
-
-    outline = PrismGrey,
-    outlineVariant = PrismDarkGrey
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = PrismBlack,
-    onPrimary = PrismWhite,
-    secondary = NothingRed,
-    background = Color(0xFFF0F0F0),
-    onBackground = PrismBlack,
-    surface = PrismWhite,
-    onSurface = PrismBlack
-)
+private val LightColorScheme =
+        lightColorScheme(
+                primary = PrismColor.Black,
+                onPrimary = PrismColor.White,
+                secondary = PrismColor.Red,
+                background = Color(0xFFF0F0F0),
+                onBackground = PrismColor.Black,
+                surface = PrismColor.White,
+                onSurface = PrismColor.Black,
+                surfaceVariant = PrismColor.White,
+                onSurfaceVariant = PrismColor.LightGrey
+        )
 
 @Composable
 fun PrismPlayerTheme(
-    darkTheme: Boolean = true,
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
+        darkTheme: Boolean = true,
+        dynamicColor: Boolean = false,
+        content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme =
+            when {
+                dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                    val context = LocalContext.current
+                    if (darkTheme) dynamicDarkColorScheme(context)
+                    else dynamicLightColorScheme(context)
+                }
+                darkTheme -> DarkColorScheme
+                else -> LightColorScheme
+            }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -82,9 +75,5 @@ fun PrismPlayerTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = PrismTypography,
-        content = content
-    )
+    MaterialTheme(colorScheme = colorScheme, typography = PrismTypography, content = content)
 }

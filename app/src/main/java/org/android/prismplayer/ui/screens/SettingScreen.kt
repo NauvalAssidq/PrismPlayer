@@ -26,6 +26,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.android.prismplayer.ui.utils.AppTheme
 
 @Composable
 fun SettingsScreen(
@@ -45,23 +47,29 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val isScanning by viewModel.isScanning.collectAsState()
+    val currentTheme by viewModel.currentTheme.collectAsState()
 
     SettingsContent(
         isScanning = isScanning,
+        currentTheme = currentTheme,
         onBack = onBack,
         onRescan = { if (!isScanning) viewModel.rescanLibrary() },
+        onThemeChanged = viewModel::setTheme,
         onOpenEqualizer = onOpenEqualizer,
         onReselectFolders = onReselectFolders,
         bottomPadding = bottomPadding
     )
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsContent(
     isScanning: Boolean,
+    currentTheme: AppTheme,
     onBack: () -> Unit,
     onRescan: () -> Unit,
+    onThemeChanged: (AppTheme) -> Unit,
     onOpenEqualizer: () -> Unit,
     onReselectFolders: () -> Unit,
     bottomPadding: Dp
@@ -94,7 +102,7 @@ fun SettingsContent(
                         containerColor = MaterialTheme.colorScheme.background
                     )
                 )
-                Divider(color = Color.White.copy(0.1f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
             }
         }
     ) { padding ->
@@ -104,6 +112,12 @@ fun SettingsContent(
                 .padding(padding)
                 .padding(bottom = bottomPadding)
         ) {
+            ConfigSectionHeader("APPEARANCE")
+            
+            ThemeSelector(currentTheme, onThemeChanged)
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+
             ConfigSectionHeader("AUDIO_PROCESSING")
 
             ConfigItem(
@@ -113,7 +127,7 @@ fun SettingsContent(
                 onClick = onOpenEqualizer
             )
 
-            Divider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
 
             ConfigSectionHeader("DATA_MANAGEMENT")
 
@@ -124,7 +138,7 @@ fun SettingsContent(
                 onClick = onRescan
             )
 
-            Divider(color = Color.White.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
 
             ConfigItem(
                 icon = Icons.Outlined.FolderOpen,
@@ -133,7 +147,7 @@ fun SettingsContent(
                 onClick = onReselectFolders
             )
 
-            Divider(color = Color.White.copy(0.1f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
             Box(
                 modifier = Modifier
@@ -237,13 +251,13 @@ fun SystemProcessDialog() {
             modifier = Modifier
                 .width(320.dp)
                 .clip(RoundedCornerShape(2.dp)) // Sharp, technical corners
-                .background(Color(0xFF0F0F0F)) // Deep matte black
+                .background(MaterialTheme.colorScheme.surface) // Deep matte black
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(2.dp))
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1A1A1A)) // Lighter header strip
+                    .background(MaterialTheme.colorScheme.surfaceVariant) // Lighter header strip
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -274,7 +288,7 @@ fun SystemProcessDialog() {
                 }
             }
 
-            Divider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
 
             Column(
                 modifier = Modifier
@@ -347,11 +361,71 @@ fun PreviewSettingsScreen() {
     ) {
         SettingsContent(
             isScanning = false,
+            currentTheme = AppTheme.DARK,
+
             onBack = {},
             onRescan = {},
+            onThemeChanged = {},
             onOpenEqualizer = {},
             onReselectFolders = {},
             bottomPadding = 80.dp
+        )
+    }
+}
+
+@Composable
+fun ThemeSelector(currentTheme: AppTheme, onThemeSelected: (AppTheme) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ThemeOption(
+            label = "SYSTEM",
+            isSelected = currentTheme == AppTheme.SYSTEM,
+            onClick = { onThemeSelected(AppTheme.SYSTEM) },
+            modifier = Modifier.weight(1f)
+        )
+        ThemeOption(
+            label = "LIGHT",
+            isSelected = currentTheme == AppTheme.LIGHT,
+            onClick = { onThemeSelected(AppTheme.LIGHT) },
+            modifier = Modifier.weight(1f)
+        )
+        ThemeOption(
+            label = "DARK",
+            isSelected = currentTheme == AppTheme.DARK,
+            onClick = { onThemeSelected(AppTheme.DARK) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun ThemeOption(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    
+    Box(
+        modifier = modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .border(1.dp, if(isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(0.2f), RoundedCornerShape(4.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = contentColor
         )
     }
 }

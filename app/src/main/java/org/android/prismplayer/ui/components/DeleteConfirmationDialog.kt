@@ -47,13 +47,14 @@ fun DeleteConfirmationDialog(
             modifier = Modifier
                 .width(320.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFF0F0F0F))
+                .background(MaterialTheme.colorScheme.surface)
                 .border(1.dp, MaterialTheme.colorScheme.error.copy(0.5f), RoundedCornerShape(2.dp)) // Red border for danger
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1A0505))
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.errorContainer)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween

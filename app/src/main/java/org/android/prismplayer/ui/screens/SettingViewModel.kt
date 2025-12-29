@@ -12,13 +12,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.android.prismplayer.PrismApplication
 import org.android.prismplayer.data.repository.MusicRepository
+import org.android.prismplayer.ui.utils.AppTheme
+import org.android.prismplayer.ui.utils.ThemePreferences
 
 class SettingsViewModel(
-    private val repository: MusicRepository
+    private val repository: MusicRepository,
+    private val themePreferences: ThemePreferences
 ) : ViewModel() {
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning = _isScanning.asStateFlow()
+
+    val currentTheme = themePreferences.themeFlow
+
+    fun setTheme(theme: AppTheme) {
+        themePreferences.saveTheme(theme)
+    }
 
     fun rescanLibrary() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -51,7 +60,8 @@ class SettingsViewModel(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val app = checkNotNull(extras[APPLICATION_KEY]) as PrismApplication
-                return SettingsViewModel(app.repository) as T
+                val themePrefs = ThemePreferences(app.applicationContext)
+                return SettingsViewModel(app.repository, themePrefs) as T
             }
         }
     }

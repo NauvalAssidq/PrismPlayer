@@ -173,7 +173,7 @@ fun EditTrackScreen(
 
     Scaffold(
         modifier = Modifier.imePadding(),
-        containerColor = Color(0xFF0F0F0F),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column {
                 CenterAlignedTopAppBar(
@@ -188,23 +188,23 @@ fun EditTrackScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Outlined.Close, "ABORT", tint = Color.White)
+                            Icon(Icons.Outlined.Close, "ABORT", tint = MaterialTheme.colorScheme.onBackground)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color(0xFF0F0F0F)
+                        containerColor = MaterialTheme.colorScheme.background
                     )
                 )
-                HorizontalDivider(color = Color.White.copy(0.1f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
             }
         },
         bottomBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF0F0F0F))
+                    .background(MaterialTheme.colorScheme.background)
             ) {
-                HorizontalDivider(color = Color.White.copy(0.1f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
                 Row(
                     modifier = Modifier
@@ -216,14 +216,14 @@ fun EditTrackScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp)
-                            .border(1.dp, Color.White.copy(0.2f), RoundedCornerShape(4.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.2f), RoundedCornerShape(4.dp))
                             .clickable(onClick = onBack),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             "DISCARD",
                             style = MaterialTheme.typography.labelLarge,
-                            color = Color.White.copy(0.7f)
+                            color = MaterialTheme.colorScheme.onSurface.copy(0.7f)
                         )
                     }
 
@@ -264,8 +264,8 @@ fun EditTrackScreen(
                 Box(
                     modifier = Modifier
                         .size(180.dp)
-                        .border(1.dp, Color.White.copy(0.2f))
-                        .background(Color(0xFF050505))
+                        .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.2f))
+                        .background(MaterialTheme.colorScheme.surfaceVariant) // Placeholder bg
                         .clickable {
                             imagePickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -287,7 +287,7 @@ fun EditTrackScreen(
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .background(Color.Black.copy(0.6f))
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(0.9f))
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                             .border(1.dp, MaterialTheme.colorScheme.primary),
                     ) {
@@ -303,7 +303,7 @@ fun EditTrackScreen(
                 }
             }
 
-            HorizontalDivider(color = Color.White.copy(0.1f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -402,7 +402,7 @@ fun TechTextField(
             style = MaterialTheme.typography.labelSmall,
             fontFamily = FontFamily.Monospace,
             fontSize = 10.sp,
-            color = Color.White.copy(0.5f),
+            color = MaterialTheme.colorScheme.onSurface.copy(0.5f),
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -410,7 +410,7 @@ fun TechTextField(
             value = value,
             onValueChange = onValueChange,
             textStyle = TextStyle(
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
@@ -429,8 +429,8 @@ fun TechTextField(
             interactionSource = interactionSource,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF151515))
-                .border(1.dp, Color.White.copy(0.1f))
+                .background(MaterialTheme.colorScheme.surface) // Input field bg
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
                 .padding(horizontal = 12.dp, vertical = 14.dp)
         )
     }
@@ -441,8 +441,13 @@ fun CornerBrackets() {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val length = 10.dp.toPx()
         val stroke = 1.dp.toPx()
-        val color = Color.White
-        drawLine(color, Offset(0f, 0f), Offset(length, 0f), stroke)
+        val color = Color.Gray // Fallback, will use theme color from outside if needed or hardcode acceptable grey
+        // Actually, let's use primary color from theme
+        // We can't access composable theme here easily without passing it or variable capture.
+        // Let's rely on White for now or better, pass color.
+        val bracketColor = Color.White // Keeping white/theme insensitive for brackets or pass it?
+        // Let's use Color.Gray for neutral
+        drawLine(Color.Gray, Offset(0f, 0f), Offset(length, 0f), stroke)
         drawLine(color, Offset(0f, 0f), Offset(0f, length), stroke)
         drawLine(color, Offset(size.width, 0f), Offset(size.width - length, 0f), stroke)
         drawLine(color, Offset(size.width, 0f), Offset(size.width, length), stroke)
@@ -456,7 +461,7 @@ fun CornerBrackets() {
 @Composable
 fun EditLoadingState() {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -479,7 +484,7 @@ fun EditLoadingState() {
 @Composable
 fun EditErrorState(message: String, onRetry: () -> Unit, onBack: () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xFF0F0F0F)),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -503,7 +508,7 @@ fun EditErrorState(message: String, onRetry: () -> Unit, onBack: () -> Unit) {
                 message,
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
-                color = Color.White.copy(0.5f)
+                color = MaterialTheme.colorScheme.onSurface.copy(0.5f)
             )
             Spacer(modifier = Modifier.height(32.dp))
             Button(

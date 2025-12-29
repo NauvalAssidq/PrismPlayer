@@ -11,6 +11,8 @@ import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.data.source.LocalLibrarySource
 import org.android.prismplayer.data.source.LyricsSource
 import org.android.prismplayer.data.source.SystemAudioSource
+import org.android.prismplayer.data.model.FolderItem
+
 
 class MusicRepository(
     private val context: Context,
@@ -72,4 +74,8 @@ class MusicRepository(
     suspend fun getCachedLyrics(songId: Long): LyricsEntity? = lyricsSource.getCached(songId)
 
     suspend fun fetchLyrics(song: Song): LyricsEntity? = lyricsSource.fetchFromNetwork(song)
+
+    suspend fun scanAudioFolders(): List<FolderItem> {
+        return systemSource.scanAudioFolders()
+    }
 }

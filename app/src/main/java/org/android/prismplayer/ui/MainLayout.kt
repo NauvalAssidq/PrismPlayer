@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import org.android.prismplayer.ui.utils.formatTime
+import org.android.prismplayer.ui.theme.PrismColor
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,6 +60,8 @@ import org.android.prismplayer.ui.screens.SettingsScreen
 enum class SheetContext {
     HOME, LIBRARY, ALBUM, ARTIST, SEARCH, PLAYER
 }
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -113,7 +118,7 @@ fun MainLayout(
     BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedArtist == null && currentTab != PrismTab.HOME) { currentTab = PrismTab.HOME }
 
     Scaffold(
-        containerColor = Color(0xFF050505),
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {}
     ) { _ ->
@@ -375,12 +380,4 @@ fun MainLayout(
             }
         }
     }
-}
-
-@SuppressLint("DefaultLocale")
-fun formatTime(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
 }

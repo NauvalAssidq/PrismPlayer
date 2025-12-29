@@ -38,14 +38,9 @@ fun SongListItem(
     onClick: () -> Unit,
     onMoreClick: () -> Unit = {}
 ) {
-    val nothingRed = Color(0xFFD71921)
-    val prismWhite = Color(0xFFFFFFFF)
-    val prismLightGrey = Color(0xFF808080)
-    val prismDarkGrey = Color(0xFF121212)
-
-    val textColor = if (isActive) nothingRed else prismWhite
-    val subTextColor = if (isActive) nothingRed.copy(0.7f) else prismLightGrey
-    val bgColor = if (isActive) prismDarkGrey.copy(0.5f) else Color.Transparent
+    val textColor = if (isActive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurface
+    val subTextColor = if (isActive) MaterialTheme.colorScheme.secondary.copy(0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+    val bgColor = if (isActive) MaterialTheme.colorScheme.surfaceVariant.copy(0.5f) else Color.Transparent
 
     val pulseAlpha = if (isActive && isPlaying) {
         val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -78,7 +73,7 @@ fun SongListItem(
                 Text(
                     text = if (isActive) ">>" else String.format("%02d", index),
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isActive) nothingRed else prismLightGrey.copy(0.5f),
+                    color = if (isActive) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f),
                     modifier = Modifier.graphicsLayer { alpha = if (isActive && isPlaying) pulseAlpha else 1f }
                 )
             }
@@ -88,7 +83,7 @@ fun SongListItem(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFF111111))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             if (!song.songArtUri.isNullOrBlank()) {
                 AsyncImage(
@@ -113,16 +108,16 @@ fun SongListItem(
                     text = "N/A",
                     style = MaterialTheme.typography.labelSmall,
                     fontSize = 8.sp,
-                    color = prismLightGrey.copy(0.3f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
 
             if (isActive) {
                 if (isPlaying) {
-                    AnimatedEqualizer(nothingRed)
+                    AnimatedEqualizer(MaterialTheme.colorScheme.secondary)
                 } else {
-                    StaticEqualizer(nothingRed)
+                    StaticEqualizer(MaterialTheme.colorScheme.secondary)
                 }
             }
         }
@@ -155,7 +150,7 @@ fun SongListItem(
                     Text(
                         text = " // ${formatDuration(song.duration)}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = prismLightGrey.copy(0.4f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f)
                     )
                 }
             }
@@ -166,7 +161,7 @@ fun SongListItem(
                 text = if (isPlaying) "RUNNING" else "PAUSED",
                 style = MaterialTheme.typography.labelSmall,
                 fontSize = 9.sp,
-                color = nothingRed,
+                color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.graphicsLayer { alpha = if (isPlaying) pulseAlpha else 1f }
             )
         } else {
@@ -174,7 +169,7 @@ fun SongListItem(
                 Icon(
                     Icons.Rounded.MoreVert,
                     null,
-                    tint = prismLightGrey,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
             }

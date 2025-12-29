@@ -15,12 +15,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,7 +29,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -46,30 +46,23 @@ import org.android.prismplayer.ui.components.DeleteConfirmationDialog
 import org.android.prismplayer.ui.components.KnobComponent
 import org.android.prismplayer.ui.components.SavePresetDialog
 import org.android.prismplayer.ui.player.AudioViewModel
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.geometry.CornerRadius
-
-private val ColorPrimaryRed = Color(0xFFD71921)
-private val ColorGrid = Color(0xFF1A1A1A)
-private val ColorBackground = Color(0xFF050505)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EqualizerScreen(
-    viewModel: AudioViewModel,
-    onBack: () -> Unit
-) {
+fun EqualizerScreen(viewModel: AudioViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) viewModel.setupVisualizer()
-    }
+    val permissionLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+                    isGranted ->
+                if (isGranted) viewModel.setupVisualizer()
+            }
 
     LaunchedEffect(Unit) {
         viewModel.setupEqualizer(0)
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+                        PackageManager.PERMISSION_GRANTED
+        ) {
             viewModel.setupVisualizer()
         }
     }
@@ -85,156 +78,166 @@ fun EqualizerScreen(
     val visualizerData by viewModel.visualizerData.collectAsState()
 
     EqualizerScreenContent(
-        bands = bands,
-        isEnabled = isEnabled,
-        presets = presets,
-        currentPresetName = currentPresetName,
-        bassBoost = bassBoost,
-        virtualizer = virtualizer,
-        loudnessGain = loudnessGain,
-        fftData = visualizerData.fft,
-        onBack = onBack,
-        onToggleEnabled = { viewModel.toggleEq(it) },
-        onApplyPreset = { viewModel.applyPreset(it) },
-        onSetBandLevel = { id, level -> viewModel.setEqBandLevel(id, level) },
-        onSavePreset = { name -> viewModel.saveCustomPreset(name) },
-        onDeletePreset = { preset -> viewModel.deleteCustomPreset(preset) },
-        onBassChange = { viewModel.setBassStrength(it) },
-        onVirtChange = { viewModel.setVirtStrength(it) },
-        onGainChange = { viewModel.setGainStrength(it) },
-        onRequestVisualizer = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
+            bands = bands,
+            isEnabled = isEnabled,
+            presets = presets,
+            currentPresetName = currentPresetName,
+            bassBoost = bassBoost,
+            virtualizer = virtualizer,
+            loudnessGain = loudnessGain,
+            fftData = visualizerData.fft,
+            onBack = onBack,
+            onToggleEnabled = { viewModel.toggleEq(it) },
+            onApplyPreset = { viewModel.applyPreset(it) },
+            onSetBandLevel = { id, level -> viewModel.setEqBandLevel(id, level) },
+            onSavePreset = { name -> viewModel.saveCustomPreset(name) },
+            onDeletePreset = { preset -> viewModel.deleteCustomPreset(preset) },
+            onBassChange = { viewModel.setBassStrength(it) },
+            onVirtChange = { viewModel.setVirtStrength(it) },
+            onGainChange = { viewModel.setGainStrength(it) },
+            onRequestVisualizer = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EqualizerScreenContent(
-    bands: List<EqBand>,
-    isEnabled: Boolean,
-    presets: List<EqPreset>,
-    fftData: FloatArray,
-    currentPresetName: String?,
-    bassBoost: Float,
-    virtualizer: Float,
-    loudnessGain: Float,
-    onBack: () -> Unit,
-    onToggleEnabled: (Boolean) -> Unit,
-    onApplyPreset: (EqPreset) -> Unit,
-    onSetBandLevel: (bandId: Short, level: Short) -> Unit,
-    onSavePreset: (String) -> Unit,
-    onDeletePreset: (EqPreset) -> Unit,
-    onBassChange: (Float) -> Unit,
-    onVirtChange: (Float) -> Unit,
-    onGainChange: (Float) -> Unit,
-    onRequestVisualizer: () -> Unit
+        bands: List<EqBand>,
+        isEnabled: Boolean,
+        presets: List<EqPreset>,
+        fftData: FloatArray,
+        currentPresetName: String?,
+        bassBoost: Float,
+        virtualizer: Float,
+        loudnessGain: Float,
+        onBack: () -> Unit,
+        onToggleEnabled: (Boolean) -> Unit,
+        onApplyPreset: (EqPreset) -> Unit,
+        onSetBandLevel: (bandId: Short, level: Short) -> Unit,
+        onSavePreset: (String) -> Unit,
+        onDeletePreset: (EqPreset) -> Unit,
+        onBassChange: (Float) -> Unit,
+        onVirtChange: (Float) -> Unit,
+        onGainChange: (Float) -> Unit,
+        onRequestVisualizer: () -> Unit
 ) {
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<EqPreset?>(null) }
     val defaultPresets = listOf("Flat", "Bass", "Vocal", "Treble")
 
     Scaffold(
-        containerColor = ColorBackground,
-        topBar = {
-            Column {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            "AUDIO_PROCESSOR",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            color = MaterialTheme.colorScheme.onSecondary
-                        )
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = ColorBackground
-                    ),
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Outlined.ArrowBack, "RETURN", tint = Color.White)
-                        }
-                    },
-                    actions = {
-                        IconButton(
-                            onClick = onRequestVisualizer,
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.GraphicEq,
-                                contentDescription = "VISUALIZER",
-                                tint = if (fftData.isNotEmpty()) ColorPrimaryRed else Color.White.copy(0.3f)
-                            )
-                        }
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                Column {
+                    CenterAlignedTopAppBar(
+                            title = {
+                                Text(
+                                        "AUDIO_PROCESSOR",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 2.sp,
+                                        color = MaterialTheme.colorScheme.onSecondary
+                                )
+                            },
+                            colors =
+                                    TopAppBarDefaults.topAppBarColors(
+                                            containerColor = MaterialTheme.colorScheme.background
+                                    ),
+                            navigationIcon = {
+                                IconButton(onClick = onBack) {
+                                    Icon(
+                                            Icons.AutoMirrored.Outlined.ArrowBack,
+                                            "RETURN",
+                                            tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(
+                                        onClick = onRequestVisualizer,
+                                        modifier = Modifier.padding(end = 8.dp)
+                                ) {
+                                    Icon(
+                                            imageVector = Icons.Outlined.GraphicEq,
+                                            contentDescription = "VISUALIZER",
+                                            tint =
+                                                    if (fftData.isNotEmpty())
+                                                            MaterialTheme.colorScheme.secondary
+                                                    else
+                                                            MaterialTheme.colorScheme.onBackground
+                                                                    .copy(0.3f)
+                                    )
+                                }
 
-                        val powerColor = if (isEnabled) ColorPrimaryRed else Color.White.copy(0.3f)
-                        IconButton(
-                            onClick = { onToggleEnabled(!isEnabled) },
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .border(1.dp, powerColor, CircleShape)
-                                .size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.PowerSettingsNew,
-                                contentDescription = "POWER",
-                                tint = powerColor,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                )
-                Divider(color = Color.White.copy(0.1f))
+                                val powerColor =
+                                        if (isEnabled) MaterialTheme.colorScheme.secondary
+                                        else MaterialTheme.colorScheme.onBackground.copy(0.3f)
+                                IconButton(
+                                        onClick = { onToggleEnabled(!isEnabled) },
+                                        modifier =
+                                                Modifier.padding(end = 16.dp)
+                                                        .border(1.dp, powerColor, CircleShape)
+                                                        .size(32.dp)
+                                ) {
+                                    Icon(
+                                            imageVector = Icons.Outlined.PowerSettingsNew,
+                                            contentDescription = "POWER",
+                                            tint = powerColor,
+                                            modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                }
             }
-        }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-            ) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        contentPadding = PaddingValues(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
                         TechPresetChip(
-                            text = "+ NEW",
-                            selected = false,
-                            onClick = { showSaveDialog = true },
-                            isAction = true
+                                text = "+ NEW",
+                                selected = false,
+                                onClick = { showSaveDialog = true },
+                                isAction = true
                         )
                     }
                     items(presets) { preset ->
                         val isCustom = preset.name !in defaultPresets
                         TechPresetChip(
-                            text = preset.name.uppercase(),
-                            selected = preset.name == currentPresetName,
-                            onClick = { onApplyPreset(preset) },
-                            onDelete = if (isCustom) { { presetToDelete = preset } } else null
+                                text = preset.name.uppercase(),
+                                selected = preset.name == currentPresetName,
+                                onClick = { onApplyPreset(preset) },
+                                onDelete =
+                                        if (isCustom) {
+                                            { presetToDelete = preset }
+                                        } else null
                         )
                     }
                 }
             }
 
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
-                    .padding(horizontal = 24.dp)
-                    .border(1.dp, ColorGrid, RoundedCornerShape(4.dp))
-                    .background(Color(0xFF080808))
+                modifier =
+                        Modifier.fillMaxWidth()
+                                .height(200.dp)
+                                .padding(horizontal = 24.dp)
+                                .border(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outline.copy(0.2f),
+                                        RoundedCornerShape(4.dp)
+                                )
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(0.5f))
             ) {
                 WaveformGraph(
-                    bands = bands,
-                    isEnabled = isEnabled,
-                    modifier = Modifier.fillMaxSize(),
-                    fftData = fftData
+                        bands = bands,
+                        isEnabled = isEnabled,
+                        modifier = Modifier.fillMaxSize(),
+                        fftData = fftData
                 )
             }
 
@@ -242,21 +245,19 @@ private fun EqualizerScreenContent(
 
             if (bands.isEmpty()) {
                 Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    Text("NO_SIGNAL", color = Color.White.copy(0.3f))
+                    Text("NO_SIGNAL", color = MaterialTheme.colorScheme.onSurface.copy(0.3f))
                 }
             } else {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                 ) {
                     bands.forEach { band ->
                         TechFader(
-                            band = band,
-                            isEnabled = isEnabled,
-                            onValueChange = { level -> onSetBandLevel(band.id, level) }
+                                band = band,
+                                isEnabled = isEnabled,
+                                onValueChange = { level -> onSetBandLevel(band.id, level) }
                         )
                     }
                 }
@@ -264,56 +265,69 @@ private fun EqualizerScreenContent(
 
             Spacer(Modifier.height(32.dp))
 
-            Divider(color = Color.White.copy(0.05f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f))
 
             Spacer(Modifier.height(16.dp))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 KnobComponent(
-                    label = "SUB_BASS",
-                    value = bassBoost,
-                    isEnabled = isEnabled,
-                    size = 80.dp,
-                    onValueChange = onBassChange
+                        label = "SUB_BASS",
+                        value = bassBoost,
+                        isEnabled = isEnabled,
+                        accentColor = MaterialTheme.colorScheme.secondary,
+                        size = 80.dp,
+                        onValueChange = onBassChange
                 )
                 KnobComponent(
-                    label = "STEREO",
-                    value = virtualizer,
-                    isEnabled = isEnabled,
-                    size = 80.dp,
-                    onValueChange = onVirtChange
+                        label = "STEREO",
+                        value = virtualizer,
+                        isEnabled = isEnabled,
+                        accentColor = MaterialTheme.colorScheme.secondary,
+                        size = 80.dp,
+                        onValueChange = onVirtChange
                 )
                 KnobComponent(
-                    label = "GAIN",
-                    value = loudnessGain,
-                    isEnabled = isEnabled,
-                    size = 80.dp,
-                    onValueChange = onGainChange
+                        label = "GAIN",
+                        value = loudnessGain,
+                        isEnabled = isEnabled,
+                        accentColor = MaterialTheme.colorScheme.secondary,
+                        size = 80.dp,
+                        onValueChange = onGainChange
                 )
             }
         }
     }
 
     if (showSaveDialog) {
-        SavePresetDialog(onDismiss = { showSaveDialog = false }, onSave = { showSaveDialog = false; onSavePreset(it) })
+        SavePresetDialog(
+                onDismiss = { showSaveDialog = false },
+                onSave = {
+                    showSaveDialog = false
+                    onSavePreset(it)
+                }
+        )
     }
     if (presetToDelete != null) {
-        DeleteConfirmationDialog(presetName = presetToDelete!!.name, onConfirm = { onDeletePreset(presetToDelete!!); presetToDelete = null }, onDismiss = { presetToDelete = null })
+        DeleteConfirmationDialog(
+                presetName = presetToDelete!!.name,
+                onConfirm = {
+                    onDeletePreset(presetToDelete!!)
+                    presetToDelete = null
+                },
+                onDismiss = { presetToDelete = null }
+        )
     }
 }
 
-
 @Composable
 fun WaveformGraph(
-    bands: List<EqBand>,
-    fftData: FloatArray,
-    isEnabled: Boolean,
-    modifier: Modifier = Modifier
+        bands: List<EqBand>,
+        fftData: FloatArray,
+        isEnabled: Boolean,
+        modifier: Modifier = Modifier
 ) {
     var animatedData by remember { mutableStateOf(FloatArray(0)) }
     LaunchedEffect(fftData) {
@@ -322,15 +336,21 @@ fun WaveformGraph(
                 animatedData = fftData.copyOf()
             } else {
                 val smoothingFactor = 0.4f
-                val newData = FloatArray(fftData.size) { i ->
-                    (animatedData[i] * (1 - smoothingFactor)) + (fftData[i] * smoothingFactor)
-                }
+                val newData =
+                        FloatArray(fftData.size) { i ->
+                            (animatedData[i] * (1 - smoothingFactor)) +
+                                    (fftData[i] * smoothingFactor)
+                        }
                 animatedData = newData
             }
         } else {
             animatedData = FloatArray(0)
         }
     }
+
+    val gridColor = MaterialTheme.colorScheme.onSurface.copy(0.1f)
+    val curveColorMain = MaterialTheme.colorScheme.secondary
+    val curveColorInactive = MaterialTheme.colorScheme.onSurface.copy(0.2f)
 
     Canvas(modifier = modifier.clip(RoundedCornerShape(4.dp))) {
         val width = size.width
@@ -353,27 +373,27 @@ fun WaveformGraph(
                 val alpha = if (i % 2 == 0) 0.6f else 0.4f
 
                 drawLine(
-                    color = Color.White.copy(alpha = alpha),
-                    start = Offset(centerX + offsetFromCenter, centerY - barHeight),
-                    end = Offset(centerX + offsetFromCenter, centerY + barHeight),
-                    strokeWidth = strokeW,
-                    cap = StrokeCap.Round
+                        color = Color.White.copy(alpha = alpha),
+                        start = Offset(centerX + offsetFromCenter, centerY - barHeight),
+                        end = Offset(centerX + offsetFromCenter, centerY + barHeight),
+                        strokeWidth = strokeW,
+                        cap = StrokeCap.Round
                 )
 
                 drawLine(
-                    color = Color.White.copy(alpha = alpha),
-                    start = Offset(centerX - offsetFromCenter, centerY - barHeight),
-                    end = Offset(centerX - offsetFromCenter, centerY + barHeight),
-                    strokeWidth = strokeW,
-                    cap = StrokeCap.Round
+                        color = Color.White.copy(alpha = alpha),
+                        start = Offset(centerX - offsetFromCenter, centerY - barHeight),
+                        end = Offset(centerX - offsetFromCenter, centerY + barHeight),
+                        strokeWidth = strokeW,
+                        cap = StrokeCap.Round
                 )
             }
         } else {
             drawLine(
-                color = Color.White.copy(0.1f),
-                start = Offset(0f, centerY),
-                end = Offset(width, centerY),
-                strokeWidth = 1f
+                    color = gridColor,
+                    start = Offset(0f, centerY),
+                    end = Offset(width, centerY),
+                    strokeWidth = 1f
             )
         }
 
@@ -385,15 +405,17 @@ fun WaveformGraph(
             val halfWidth = width / 2f
             val stepX = halfWidth / (bands.size + 1)
 
-            val points = bands.mapIndexed { index, band ->
-                val x = stepX * (index + 1)
+            val points =
+                    bands.mapIndexed { index, band ->
+                        val x = stepX * (index + 1)
 
-                val normalized = (band.level - band.minLevel).toFloat() /
-                        (band.maxLevel - band.minLevel)
-                val offsetY = (normalized * (height / 2f) * 0.85f)
+                        val normalized =
+                                (band.level - band.minLevel).toFloat() /
+                                        (band.maxLevel - band.minLevel)
+                        val offsetY = (normalized * (height / 2f) * 0.85f)
 
-                Offset(x, offsetY)
-            }
+                        Offset(x, offsetY)
+                    }
 
             if (points.isNotEmpty()) {
                 val baseGap = height * 0.05f
@@ -412,25 +434,37 @@ fun WaveformGraph(
 
                     val controlX = (p1.x + p2.x) / 2
                     topRightPath.cubicTo(
-                        centerX + controlX, centerY - p1Y,
-                        centerX + controlX, centerY - p2Y,
-                        centerX + p2.x, centerY - p2Y
+                            centerX + controlX,
+                            centerY - p1Y,
+                            centerX + controlX,
+                            centerY - p2Y,
+                            centerX + p2.x,
+                            centerY - p2Y
                     )
                     bottomRightPath.cubicTo(
-                        centerX + controlX, centerY + p1Y,
-                        centerX + controlX, centerY + p2Y,
-                        centerX + p2.x, centerY + p2Y
+                            centerX + controlX,
+                            centerY + p1Y,
+                            centerX + controlX,
+                            centerY + p2Y,
+                            centerX + p2.x,
+                            centerY + p2Y
                     )
 
                     topLeftPath.cubicTo(
-                        centerX - controlX, centerY - p1Y,
-                        centerX - controlX, centerY - p2Y,
-                        centerX - p2.x, centerY - p2Y
+                            centerX - controlX,
+                            centerY - p1Y,
+                            centerX - controlX,
+                            centerY - p2Y,
+                            centerX - p2.x,
+                            centerY - p2Y
                     )
                     bottomLeftPath.cubicTo(
-                        centerX - controlX, centerY + p1Y,
-                        centerX - controlX, centerY + p2Y,
-                        centerX - p2.x, centerY + p2Y
+                            centerX - controlX,
+                            centerY + p1Y,
+                            centerX - controlX,
+                            centerY + p2Y,
+                            centerX - p2.x,
+                            centerY + p2Y
                     )
                 }
 
@@ -440,23 +474,24 @@ fun WaveformGraph(
                 topLeftPath.lineTo(0f, centerY - lastY)
                 bottomLeftPath.lineTo(0f, centerY + lastY)
 
-                val curveColor = if (isEnabled) ColorPrimaryRed else Color.White.copy(0.2f)
+                val curveColor = if (isEnabled) curveColorMain else curveColorInactive
 
                 if (isEnabled) {
-                    listOf(topRightPath, bottomRightPath, topLeftPath, bottomLeftPath).forEach { path ->
+                    listOf(topRightPath, bottomRightPath, topLeftPath, bottomLeftPath).forEach {
+                            path ->
                         drawPath(
-                            path = path,
-                            color = curveColor.copy(alpha = 0.2f),
-                            style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                                path = path,
+                                color = curveColor.copy(alpha = 0.2f),
+                                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                         )
                     }
                 }
 
                 listOf(topRightPath, bottomRightPath, topLeftPath, bottomLeftPath).forEach { path ->
                     drawPath(
-                        path = path,
-                        color = curveColor.copy(alpha = 0.4f),
-                        style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round)
+                            path = path,
+                            color = curveColor.copy(alpha = 0.4f),
+                            style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round)
                     )
                 }
             }
@@ -466,53 +501,53 @@ fun WaveformGraph(
 
 @Composable
 fun TechPresetChip(
-    text: String,
-    selected: Boolean,
-    isAction: Boolean = false,
-    onClick: () -> Unit,
-    onDelete: (() -> Unit)? = null
+        text: String,
+        selected: Boolean,
+        isAction: Boolean = false,
+        onClick: () -> Unit,
+        onDelete: (() -> Unit)? = null
 ) {
-    val activeColor = ColorPrimaryRed
-    val inactiveColor = Color.White.copy(0.6f)
-    val inactiveBorder = Color.White.copy(0.2f)
-    val borderColor = if (selected) activeColor else if (isAction) inactiveBorder else inactiveBorder
-    val textColor = if (selected) activeColor else if (isAction) Color.White else inactiveColor
+    val activeColor = MaterialTheme.colorScheme.secondary
+    val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(0.6f)
+    val inactiveBorder = MaterialTheme.colorScheme.onSurface.copy(0.2f)
+    val borderColor =
+            if (selected) activeColor else if (isAction) inactiveBorder else inactiveBorder
+    val textColor =
+            if (selected) activeColor
+            else if (isAction) MaterialTheme.colorScheme.onSurface else inactiveColor
     val bgColor = if (selected) activeColor.copy(0.1f) else Color.Transparent
     val iconColor = if (selected) activeColor else inactiveColor
 
     Row(
-        modifier = Modifier
-            .height(36.dp)
-            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
-            .background(bgColor, RoundedCornerShape(4.dp))
-            .clip(RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+            modifier =
+                    Modifier.height(36.dp)
+                            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
+                            .background(bgColor, RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(4.dp))
+                            .clickable(onClick = onClick)
+                            .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
     ) {
         Text(
-            text = text,
-            color = textColor,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace
+                text = text,
+                color = textColor,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
         )
 
         if (onDelete != null) {
             Spacer(Modifier.width(4.dp))
             Box(
-                modifier = Modifier
-                    .offset(x = (4).dp)
-                    .size(16.dp)
-                    .clickable { onDelete() },
-                contentAlignment = Alignment.Center
+                    modifier = Modifier.offset(x = (4).dp).size(16.dp).clickable { onDelete() },
+                    contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = "DELETE",
-                    tint = iconColor,
-                    modifier = Modifier.size(12.dp)
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "DELETE",
+                        tint = iconColor,
+                        modifier = Modifier.size(12.dp)
                 )
             }
         }
@@ -520,82 +555,83 @@ fun TechPresetChip(
 }
 
 @Composable
-fun TechFader(
-    band: EqBand,
-    isEnabled: Boolean,
-    onValueChange: (Short) -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(48.dp)
-    ) {
+fun TechFader(band: EqBand, isEnabled: Boolean, onValueChange: (Short) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(48.dp)) {
         val dbValue = (band.level / 100)
         Text(
-            text = if (dbValue > 0) "+${dbValue}dB" else "${dbValue}dB",
-            color = if (isEnabled) ColorPrimaryRed else Color.White.copy(0.3f),
-            style = MaterialTheme.typography.labelSmall,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 9.sp
+                text = if (dbValue > 0) "+${dbValue}dB" else "${dbValue}dB",
+                color =
+                        if (isEnabled) MaterialTheme.colorScheme.secondary
+                        else MaterialTheme.colorScheme.onSurface.copy(0.3f),
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 9.sp
         )
 
         Spacer(Modifier.height(12.dp))
 
         VerticalFaderTrack(
-            value = band.level.toFloat(),
-            min = band.minLevel.toFloat(),
-            max = band.maxLevel.toFloat(),
-            isEnabled = isEnabled,
-            onValueChange = { onValueChange(it.toInt().toShort()) },
-            modifier = Modifier
-                .height(200.dp)
-                .width(40.dp)
+                value = band.level.toFloat(),
+                min = band.minLevel.toFloat(),
+                max = band.maxLevel.toFloat(),
+                isEnabled = isEnabled,
+                onValueChange = { onValueChange(it.toInt().toShort()) },
+                modifier = Modifier.height(200.dp).width(40.dp)
         )
 
         Spacer(Modifier.height(12.dp))
 
         Text(
-            text = band.label,
-            color = if (isEnabled) Color.White.copy(0.8f) else Color.White.copy(0.3f),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            fontSize = 10.sp
+                text = band.label,
+                color =
+                        if (isEnabled) MaterialTheme.colorScheme.onSurface.copy(0.8f)
+                        else MaterialTheme.colorScheme.onSurface.copy(0.3f),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.sp
         )
     }
 }
 
 @Composable
 fun VerticalFaderTrack(
-    value: Float,
-    min: Float,
-    max: Float,
-    isEnabled: Boolean,
-    onValueChange: (Float) -> Unit,
-    modifier: Modifier = Modifier
+        value: Float,
+        min: Float,
+        max: Float,
+        isEnabled: Boolean,
+        onValueChange: (Float) -> Unit,
+        modifier: Modifier = Modifier
 ) {
     var canvasHeight by remember { mutableFloatStateOf(0f) }
 
+    val trackColor = Color.White.copy(0.1f)
+    val thumbColorActive = MaterialTheme.colorScheme.onSurface
+    val thumbColorInactive = MaterialTheme.colorScheme.onSurface.copy(0.3f)
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val primaryColor = MaterialTheme.colorScheme.secondary
+
     Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .onSizeChanged { size -> canvasHeight = size.height.toFloat() }
-            .pointerInput(isEnabled, canvasHeight) {
-                if (!isEnabled || canvasHeight == 0f) return@pointerInput
+            modifier =
+                    modifier.fillMaxSize()
+                            .onSizeChanged { size -> canvasHeight = size.height.toFloat() }
+                            .pointerInput(isEnabled, canvasHeight) {
+                                if (!isEnabled || canvasHeight == 0f) return@pointerInput
 
-                fun updateValue(touchY: Float) {
-                    val percentFromBottom = 1f - (touchY / canvasHeight)
-                    val range = max - min
-                    val newValue = min + (range * percentFromBottom)
-                    onValueChange(newValue.coerceIn(min, max))
-                }
+                                fun updateValue(touchY: Float) {
+                                    val percentFromBottom = 1f - (touchY / canvasHeight)
+                                    val range = max - min
+                                    val newValue = min + (range * percentFromBottom)
+                                    onValueChange(newValue.coerceIn(min, max))
+                                }
 
-                detectDragGestures(
-                    onDragStart = { updateValue(it.y) },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        updateValue(change.position.y)
-                    }
-                )
-            }
+                                detectDragGestures(
+                                        onDragStart = { updateValue(it.y) },
+                                        onDrag = { change, _ ->
+                                            change.consume()
+                                            updateValue(change.position.y)
+                                        }
+                                )
+                            }
     ) {
         val range = max - min
         val normalizedValue = ((value - min) / range).coerceIn(0f, 1f)
@@ -605,35 +641,35 @@ fun VerticalFaderTrack(
         val zeroY = height * (1f - ((0 - min) / range))
 
         drawLine(
-            color = Color.White.copy(0.1f),
-            start = Offset(centerX, 0f),
-            end = Offset(centerX, height),
-            strokeWidth = 2.dp.toPx()
+                color = trackColor,
+                start = Offset(centerX, 0f),
+                end = Offset(centerX, height),
+                strokeWidth = 2.dp.toPx()
         )
 
         val thumbY = height - (normalizedValue * height)
         val thumbHeight = 12.dp.toPx()
         val thumbWidth = 24.dp.toPx()
-        val thumbColor = if (isEnabled) Color.White else Color.White.copy(0.3f)
+        val thumbColor = if (isEnabled) thumbColorActive else thumbColorInactive
 
         drawRect(
-            color = ColorBackground,
-            topLeft = Offset(centerX - thumbWidth/2, thumbY - thumbHeight/2),
-            size = Size(thumbWidth, thumbHeight)
+                color = backgroundColor,
+                topLeft = Offset(centerX - thumbWidth / 2, thumbY - thumbHeight / 2),
+                size = Size(thumbWidth, thumbHeight)
         )
         drawRect(
-            color = thumbColor,
-            topLeft = Offset(centerX - thumbWidth/2, thumbY - thumbHeight/2),
-            size = Size(thumbWidth, thumbHeight),
-            style = Stroke(width = 2.dp.toPx())
+                color = thumbColor,
+                topLeft = Offset(centerX - thumbWidth / 2, thumbY - thumbHeight / 2),
+                size = Size(thumbWidth, thumbHeight),
+                style = Stroke(width = 2.dp.toPx())
         )
 
         if (isEnabled) {
             drawLine(
-                color = ColorPrimaryRed.copy(0.5f),
-                start = Offset(centerX, zeroY),
-                end = Offset(centerX, thumbY),
-                strokeWidth = 2.dp.toPx()
+                    color = primaryColor.copy(0.5f),
+                    start = Offset(centerX, zeroY),
+                    end = Offset(centerX, thumbY),
+                    strokeWidth = 2.dp.toPx()
             )
         }
     }
@@ -644,41 +680,49 @@ fun VerticalFaderTrack(
 private fun PrismEqualizerPreview() {
     val numBands = 5
     val freqs = listOf(60, 230, 910, 3600, 14000)
-    val fakeBands = freqs.mapIndexed { i, f ->
-        val level = when(i) {
-            0 -> 800
-            1 -> 400
-            2 -> 0
-            3 -> 500
-            4 -> 1000
-            else -> 0
-        }
-        EqBand(id = i.toShort(), level = level.toShort(), minLevel = -1500, maxLevel = 1500, centerFreq = f)
-    }
+    val fakeBands =
+            freqs.mapIndexed { i, f ->
+                val level =
+                        when (i) {
+                            0 -> 800
+                            1 -> 400
+                            2 -> 0
+                            3 -> 500
+                            4 -> 1000
+                            else -> 0
+                        }
+                EqBand(
+                        id = i.toShort(),
+                        level = level.toShort(),
+                        minLevel = -1500,
+                        maxLevel = 1500,
+                        centerFreq = f
+                )
+            }
 
     val flat = EqPreset("FLAT", emptyList())
     val myCustom = EqPreset("CYBER_BASS", emptyList())
 
     MaterialTheme {
         EqualizerScreenContent(
-            bands = fakeBands,
-            isEnabled = true,
-            presets = listOf(flat, myCustom),
-            currentPresetName = "CYBER_BASS",
-            bassBoost = 0.75f,
-            virtualizer = 0.3f,
-            loudnessGain = 0.5f,
-            fftData = FloatArray(0),
-            onBack = {},
-            onToggleEnabled = {},
-            onApplyPreset = {},
-            onSetBandLevel = { _, _ -> },
-            onSavePreset = {},
-            onDeletePreset = {},
-            onBassChange = {},
-            onVirtChange = {},
-            onGainChange = {},
-            onRequestVisualizer = {}
+                bands = fakeBands,
+                isEnabled = true,
+                presets = listOf(flat, myCustom),
+                currentPresetName = "CYBER_BASS",
+                bassBoost = 0.75f,
+                virtualizer = 0.3f,
+                loudnessGain = 0.5f,
+                fftData = FloatArray(0),
+                onBack = {},
+                onToggleEnabled = {},
+                onApplyPreset = {},
+                onSetBandLevel = { _, _ -> },
+                onSavePreset = {},
+                onDeletePreset = {},
+                onBassChange = {},
+                onVirtChange = {},
+                onGainChange = {},
+                onRequestVisualizer = {}
         )
     }
 }

@@ -56,14 +56,14 @@ fun SavePresetDialog(
             modifier = Modifier
                 .width(320.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFF0F0F0F))
+                .background(MaterialTheme.colorScheme.surface)
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(2.dp))
         ) {
             // 1. HEADER STRIP
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1A1A1A))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -135,7 +135,7 @@ fun SavePresetDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF050505)) // Darker well
+                                .background(MaterialTheme.colorScheme.background) // Darker well
                                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.2f))
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically

@@ -71,12 +71,13 @@ fun PermissionScreen(onAllPermissionsGranted: () -> Unit) {
             .background(MaterialTheme.colorScheme.background)
     ) {
         // 1. Dotted Matrix Background (The "PCB Board" feel)
+        val dotColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.05f)
         Canvas(modifier = Modifier.fillMaxSize()) {
             val step = 40.dp.toPx()
             for (x in 0..size.width.toInt() step step.toInt()) {
                 for (y in 0..size.height.toInt() step step.toInt()) {
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.05f),
+                        color = dotColor,
                         radius = 1.dp.toPx(),
                         center = Offset(x.toFloat(), y.toFloat())
                     )
