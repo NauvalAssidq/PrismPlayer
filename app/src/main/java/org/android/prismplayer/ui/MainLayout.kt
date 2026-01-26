@@ -249,7 +249,12 @@ fun MainLayout(
                     onPlayAlbum = { list -> audioViewModel.playSong(list.first(), list) },
                     onSongClick = { song, list -> audioViewModel.playSong(song, list) },
                     onSongMoreClick = { song -> optionsState = song to SheetContext.ALBUM },
-                    bottomPadding = globalBottomPadding
+                    bottomPadding = globalBottomPadding,
+                    onAddToQueue = { songsToAdd ->
+                        songsToAdd.forEach { song ->
+                            audioViewModel.addToQueue(song)
+                        }
+                    },
                 )
             }
 
@@ -286,11 +291,24 @@ fun MainLayout(
                         onToggleShuffle = { audioViewModel.toggleShuffle() },
                         onClose = { isFullPlayerOpen = false },
                         onQueueItemClick = { clickedSong -> audioViewModel.playQueueItem(clickedSong) },
-                        onRemoveFromQueue = { songToRemove -> audioViewModel.removeSongFromQueue(songToRemove) },
+                        onRemoveFromQueue = { songToRemove ->
+                            audioViewModel.removeSongFromQueue(
+                                songToRemove
+                            )
+                        },
                         onQueueReorder = { from, to ->
                             audioViewModel.moveQueueItem(from, to)
                         },
-                        audioViewModel = audioViewModel
+                        audioViewModel = audioViewModel,
+                        onGoToAlbum = { albumName ->
+                            isFullPlayerOpen = false
+                            selectedAlbumName = albumName
+                        },
+                        onGoToArtist = { artistName ->
+                            isFullPlayerOpen = false
+                            selectedArtist = artistName
+                        },
+                        onAddToQueue = { audioViewModel.addToQueue(it) },
                     )
                 }
             }
@@ -313,7 +331,7 @@ fun MainLayout(
                         onAddToPlaylist = { optionsState = null },
                         onGoToAlbum = if (source != SheetContext.ALBUM) {
                             {
-                                val albumName = song.albumName // CHANGE 8: Use Name
+                                val albumName = song.albumName
                                 optionsState = null
                                 selectedAlbumName = albumName
                             }

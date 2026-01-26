@@ -409,7 +409,7 @@ fun ThemeOption(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surfaceVariant
     val contentColor = if (isSelected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant
     
     Box(
@@ -418,7 +418,7 @@ fun ThemeOption(
             .clip(RoundedCornerShape(4.dp))
             .background(backgroundColor)
             .clickable(onClick = onClick)
-            .border(1.dp, if(isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(0.2f), RoundedCornerShape(4.dp)),
+            .border(1.dp, if(isSelected) Color.Transparent else MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(

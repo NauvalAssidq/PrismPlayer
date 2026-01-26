@@ -307,7 +307,7 @@ fun SongListItemPreview() {
                         dateAdded = 0, songArtUri = null, year = 2016, trackNumber = 3,
                         genre = "Pop", dateModified = 0L
                     ),
-                    isActive = true,
+                    isActive = false,
                     isPlaying = false,
                     index = 3,
                     onClick = {}

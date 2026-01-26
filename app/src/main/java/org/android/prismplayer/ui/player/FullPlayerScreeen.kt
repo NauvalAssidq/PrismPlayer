@@ -1,11 +1,15 @@
 package org.android.prismplayer.ui.player
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
@@ -40,6 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import coil.imageLoader
@@ -48,6 +53,7 @@ import coil.request.SuccessResult
 import org.android.prismplayer.data.model.QueueItem
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.Slider
+import org.android.prismplayer.ui.components.SongOptionSheet
 import org.android.prismplayer.ui.utils.PrismaColorUtils
 import org.android.prismplayer.ui.utils.rememberDominantColor
 
@@ -67,9 +73,12 @@ fun FullPlayerScreen(
     onToggleRepeat: () -> Unit,
     onToggleShuffle: () -> Unit,
     onClose: () -> Unit,
+    onGoToAlbum: (String) -> Unit,
+    onGoToArtist: (String) -> Unit,
     onQueueItemClick: (QueueItem) -> Unit,
     onRemoveFromQueue: (Song) -> Unit,
     onQueueReorder: (Int, Int) -> Unit = { _, _ -> },
+    onAddToQueue: (Song) -> Unit,
     audioViewModel: AudioViewModel,
 
 ) {
@@ -108,7 +117,10 @@ fun FullPlayerScreen(
                 glowColor = glowColor,
                 onClose = onCloseLyrics
             )
-        }
+        },
+        onGoToAlbum = onGoToAlbum,
+        onGoToArtist = onGoToArtist,
+        onAddToQueue = onAddToQueue
     )
 }
 
@@ -129,23 +141,33 @@ fun FullPlayerContent(
     onToggleRepeat: () -> Unit,
     onToggleShuffle: () -> Unit,
     onClose: () -> Unit,
+    onGoToAlbum: (String) -> Unit,
+    onGoToArtist: (String) -> Unit,
     onQueueItemClick: (QueueItem) -> Unit,
     onRemoveFromQueue: (Song) -> Unit,
     onQueueReorder: (Int, Int) -> Unit,
     onSeek: (Float) -> Unit,
     onSeekDrag: (Float) -> Unit,
-    lyricsContent: @Composable (Color, () -> Unit) -> Unit
-) {
+    lyricsContent: @Composable (Color, () -> Unit) -> Unit,
+    onAddToQueue: (Song) -> Unit,
+
+    ) {
     BackHandler(onBack = onClose)
 
     val context = LocalContext.current
     val config = LocalConfiguration.current
     val screenWidth = config.screenWidthDp.dp
-    // Slightly adjust art size for the new bottom deck
     val artWidthFraction = if (config.screenHeightDp < 700) 0.75f else 0.82f
-
     var showQueue by remember { mutableStateOf(false) }
     var showLyrics by remember { mutableStateOf(false) }
+    var showOptions by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = showQueue || showLyrics || showOptions) {
+        showQueue = false
+        showLyrics = false
+        showOptions = false
+    }
+
     var isLiked by remember { mutableStateOf(false) }
 
     BackHandler(enabled = showQueue || showLyrics) {
@@ -456,18 +478,16 @@ fun FullPlayerContent(
                     onClick = { showLyrics = true }
                 )
 
-                // MORE KEY (Replaces the top menu)
                 DeckKey(
                     label = "OPTS",
                     icon = Icons.Outlined.MoreHoriz,
                     isActive = false,
                     activeColor = glowColor,
                     modifier = Modifier.weight(0.6f),
-                    onClick = { /* TODO: Bottom Sheet for More */ }
+                    onClick = { showOptions = true }
                 )
             }
 
-            // Bottom safe area spacing
             Spacer(Modifier.height(8.dp))
         }
 
@@ -495,6 +515,61 @@ fun FullPlayerContent(
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             lyricsContent(glowColor) { showLyrics = false }
+        }
+
+        AnimatedVisibility(
+            visible = showOptions,
+            enter = fadeIn(tween(200)),
+            exit = fadeOut(tween(200)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(0.5f))
+                    .clickable { showOptions = false }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showOptions,
+            enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)),
+            exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Box(
+                modifier = Modifier.navigationBarsPadding()
+            ) {
+                SongOptionSheet(
+                    song = song,
+                    bottomPadding = 0.dp,
+                    onPlayNext = null,
+                    onAddToQueue = {
+                        onAddToQueue(song)
+                        showOptions = false
+                    },
+                    onAddToPlaylist = { /* TODO Phase 3 */ },
+                    onGoToAlbum = {
+                        onGoToAlbum(song.albumName)
+                        showOptions = false
+                        onClose()
+                    },
+                    onGoToArtist = {
+                        onGoToArtist(song.artist)
+                        showOptions = false
+                        onClose()
+                    },
+                    onShare = {
+                        val shareIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            type = "audio/*"
+                            putExtra(Intent.EXTRA_STREAM, Uri.parse(song.path))
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Song"))
+                        showOptions = false
+                    },
+                )
+            }
         }
     }
 }
@@ -612,7 +687,10 @@ fun FullPlayerScreenPreview() {
                 ) {
                     Text("Lyrics Placeholder", color = Color.White)
                 }
-            }
+            },
+            onGoToAlbum = {},
+            onGoToArtist = {},
+            onAddToQueue = {},
         )
     }
 }

@@ -185,6 +185,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     fun addToQueue(song: Song) {
         player?.let { queueManager.addToQueue(it, song) }
     }
+
     fun playNext(song: Song) {
         player?.let { queueManager.playNext(it, song) }
     }

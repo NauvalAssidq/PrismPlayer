@@ -84,6 +84,13 @@ class PlaybackService : MediaSessionService() {
                     updateWidgetUI()
                 }
             }
+
+            override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+                    saveCurrentState()
+                    updateWidgetUI()
+                }
+            }
         })
 
         val openIntent = Intent(this, MainActivity::class.java).apply {
