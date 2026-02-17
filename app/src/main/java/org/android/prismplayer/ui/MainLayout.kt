@@ -1,11 +1,8 @@
 package org.android.prismplayer.ui
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import org.android.prismplayer.ui.utils.formatTime
-import org.android.prismplayer.ui.theme.PrismColor
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -16,21 +13,27 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import androidx.lifecycle.DEFAULT_ARGS_KEY
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
@@ -38,10 +41,15 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import kotlinx.coroutines.launch
+import org.android.prismplayer.data.model.Playlist
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.ui.components.AddToPlaylistSheet
 import org.android.prismplayer.ui.components.CustomBottomSheet
+import org.android.prismplayer.ui.components.DuplicateSongDialog
 import org.android.prismplayer.ui.components.PrismNavBar
 import org.android.prismplayer.ui.components.PrismTab
+import org.android.prismplayer.ui.components.PrismToast
 import org.android.prismplayer.ui.components.SongOptionSheet
 import org.android.prismplayer.ui.player.AudioViewModel
 import org.android.prismplayer.ui.player.FullPlayerScreen
@@ -54,11 +62,13 @@ import org.android.prismplayer.ui.screens.EqualizerScreen
 import org.android.prismplayer.ui.screens.HomeScreen
 import org.android.prismplayer.ui.screens.HomeViewModel
 import org.android.prismplayer.ui.screens.LibraryScreen
+import org.android.prismplayer.ui.screens.PlaylistDetailScreen
 import org.android.prismplayer.ui.screens.SearchScreen
 import org.android.prismplayer.ui.screens.SettingsScreen
+import org.android.prismplayer.ui.utils.formatTime
 
 enum class SheetContext {
-    HOME, LIBRARY, ALBUM, ARTIST, SEARCH, PLAYER
+    HOME, LIBRARY, ALBUM, ARTIST, SEARCH, PLAYER, PLAYLIST
 }
 
 
@@ -92,11 +102,17 @@ fun MainLayout(
     val searchResults by homeViewModel.searchResults.collectAsState()
     var selectedArtist by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedAlbumName by rememberSaveable { mutableStateOf<String?>(null) }
-
+    var playlistTargetSong by remember { mutableStateOf<Song?>(null) }
+    var selectedPlaylist by remember { mutableStateOf<Playlist?>(null) }
+    val playlists by audioViewModel.playlists.collectAsState()
     var isEqualizerOpen by rememberSaveable { mutableStateOf(false) }
     val globalBottomPadding = if (currentSong != null) 178.dp else 88.dp
     val allSongs by homeViewModel.allSongs.collectAsState()
     val backdrop = rememberLayerBackdrop()
+    var showDuplicateDialog by remember { mutableStateOf(false) }
+    var pendingPlaylist by remember { mutableStateOf<Playlist?>(null) }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(expandPlayer) {
         if (expandPlayer) {
             isFullPlayerOpen = true
@@ -111,11 +127,21 @@ fun MainLayout(
         }
     }
 
+    LaunchedEffect(toastMessage) {
+        if (toastMessage != null) {
+            kotlinx.coroutines.delay(2000)
+            toastMessage = null
+        }
+    }
+
     BackHandler(enabled = isFullPlayerOpen) { isFullPlayerOpen = false }
     BackHandler(enabled = !isFullPlayerOpen && isEqualizerOpen) { isEqualizerOpen = false }
     BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName != null) { selectedAlbumName = null }
     BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedArtist != null) { selectedArtist = null }
     BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedArtist == null && currentTab != PrismTab.HOME) { currentTab = PrismTab.HOME }
+    BackHandler(enabled = !isFullPlayerOpen && !isEqualizerOpen && selectedAlbumName == null && selectedPlaylist != null) {
+        selectedPlaylist = null
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -169,12 +195,16 @@ fun MainLayout(
                     PrismTab.LIBRARY -> LibraryScreen(
                         state = homeState,
                         songs = allSongs,
+                        playlists = playlists,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
                         onSongClick = { song, list -> audioViewModel.playSong(song, list) },
                         onAlbumClick = { selectedAlbumName = it },
                         onArtistClick = { selectedArtist = it },
                         onSongMoreClick = { song -> optionsState = song to SheetContext.LIBRARY },
+                        onPlaylistClick = { playlist ->
+                            selectedPlaylist = playlist
+                        },
                         bottomPadding = globalBottomPadding,
                         initialPage = libraryTabIndex,
                         onPageChanged = { newIndex ->
@@ -258,6 +288,34 @@ fun MainLayout(
                 )
             }
 
+            if (selectedPlaylist != null) {
+                val playlistSongs by audioViewModel.getPlaylistSongs(selectedPlaylist!!.playlistId, allSongs)
+                    .collectAsState(initial = emptyList())
+
+                PlaylistDetailScreen(
+                    playlist = selectedPlaylist!!,
+                    songs = playlistSongs,
+                    currentSong = currentSong,
+                    isPlaying = isPlaying,
+                    onBack = { selectedPlaylist = null },
+                    onPlayPlaylist = { list ->
+                        if (list.isNotEmpty()) audioViewModel.playSong(list.first(), list)
+                    },
+                    onSongClick = { song ->
+                        audioViewModel.playSong(song, playlistSongs)
+                    },
+                    onSongMoreClick = { song ->
+                        optionsState = song to SheetContext.PLAYLIST
+                    },
+
+                    onDeletePlaylist = {
+                        audioViewModel.deletePlaylist(selectedPlaylist!!)
+                        selectedPlaylist = null
+                    },
+                    bottomPadding = globalBottomPadding
+                )
+            }
+
             AnimatedVisibility(
                 visible = isEqualizerOpen,
                 enter = fadeIn(),
@@ -276,39 +334,42 @@ fun MainLayout(
             ) {
                 if (currentSong != null) {
                     FullPlayerScreen(
-                        song = currentSong!!,
-                        queue = queue,
-                        isPlaying = isPlaying,
-                        progress = progress,
-                        currentTime = formatTime(currentTime),
-                        totalTime = formatTime(currentSong!!.duration),
-                        repeatMode = repeatMode,
-                        isShuffleEnabled = isShuffleEnabled,
-                        onPlayPause = { audioViewModel.togglePlayPause() },
-                        onNext = { audioViewModel.skipNext() },
-                        onPrev = { audioViewModel.skipPrev() },
-                        onToggleRepeat = { audioViewModel.toggleRepeat() },
-                        onToggleShuffle = { audioViewModel.toggleShuffle() },
-                        onClose = { isFullPlayerOpen = false },
-                        onQueueItemClick = { clickedSong -> audioViewModel.playQueueItem(clickedSong) },
-                        onRemoveFromQueue = { songToRemove ->
-                            audioViewModel.removeSongFromQueue(
-                                songToRemove
-                            )
-                        },
-                        onQueueReorder = { from, to ->
-                            audioViewModel.moveQueueItem(from, to)
-                        },
-                        audioViewModel = audioViewModel,
-                        onGoToAlbum = { albumName ->
-                            isFullPlayerOpen = false
-                            selectedAlbumName = albumName
-                        },
-                        onGoToArtist = { artistName ->
-                            isFullPlayerOpen = false
-                            selectedArtist = artistName
-                        },
-                        onAddToQueue = { audioViewModel.addToQueue(it) },
+                      song = currentSong!!,
+                      queue = queue,
+                      isPlaying = isPlaying,
+                      progress = progress,
+                      currentTime = formatTime(currentTime),
+                      totalTime = formatTime(currentSong!!.duration),
+                      repeatMode = repeatMode,
+                      isShuffleEnabled = isShuffleEnabled,
+                      onPlayPause = { audioViewModel.togglePlayPause() },
+                      onNext = { audioViewModel.skipNext() },
+                      onPrev = { audioViewModel.skipPrev() },
+                      onToggleRepeat = { audioViewModel.toggleRepeat() },
+                      onToggleShuffle = { audioViewModel.toggleShuffle() },
+                      onClose = { isFullPlayerOpen = false },
+                      onQueueItemClick = { clickedSong -> audioViewModel.playQueueItem(clickedSong) },
+                      onRemoveFromQueue = { songToRemove ->
+                        audioViewModel.removeSongFromQueue(
+                          songToRemove
+                        )
+                      },
+                      onQueueReorder = { from, to ->
+                        audioViewModel.moveQueueItem(from, to)
+                      },
+                      audioViewModel = audioViewModel,
+                      onGoToAlbum = { albumName ->
+                        isFullPlayerOpen = false
+                        selectedAlbumName = albumName
+                      },
+                      onGoToArtist = { artistName ->
+                        isFullPlayerOpen = false
+                        selectedArtist = artistName
+                      },
+                      onAddToQueue = { audioViewModel.addToQueue(it) },
+                      onAddToPlaylist = {
+                        playlistTargetSong = it
+                      },
                     )
                 }
             }
@@ -328,7 +389,16 @@ fun MainLayout(
                         song = song,
                         onPlayNext = { optionsState = null },
                         onAddToQueue = { optionsState = null },
-                        onAddToPlaylist = { optionsState = null },
+                        onAddToPlaylist = {
+                            optionsState = null
+                            playlistTargetSong = song
+                        },
+                        onRemoveFromPlaylist = if (source == SheetContext.PLAYLIST && selectedPlaylist != null) {
+                            {
+                                audioViewModel.removeSongFromPlaylist(selectedPlaylist!!.playlistId, song.id)
+                                optionsState = null
+                            }
+                        } else null,
                         onGoToAlbum = if (source != SheetContext.ALBUM) {
                             {
                                 val albumName = song.albumName
@@ -363,6 +433,52 @@ fun MainLayout(
                 }
             }
 
+            if (playlistTargetSong != null) {
+                BackHandler { playlistTargetSong = null }
+                val scope = rememberCoroutineScope()
+                CustomBottomSheet(
+                    visible = true,
+                    onDismiss = { playlistTargetSong = null }
+                ) {
+                    AddToPlaylistSheet(
+                        playlists = playlists,
+                        onPlaylistSelected = { playlist ->
+                            scope.launch {
+                                val isDuplicate = audioViewModel.isSongInPlaylist(playlist.playlistId, playlistTargetSong!!.id)
+
+                                if (isDuplicate) {
+                                    pendingPlaylist = playlist
+                                    showDuplicateDialog = true
+                                } else {
+                                    audioViewModel.addSongToPlaylist(playlist.playlistId, playlistTargetSong!!.id)
+                                    toastMessage = "ADDED TO ${playlist.name}"
+                                    playlistTargetSong = null
+                                }
+                            }
+                        },
+                        onCreateNew = { name ->
+                            audioViewModel.createPlaylist(name)
+                            // Note: You might want to auto-add the song after creation,
+                            // but for now, the user sees the new playlist appear and can tap it.
+                        },
+                        onDismiss = { playlistTargetSong = null },
+                        bottomPadding = globalBottomPadding
+                    )
+                }
+            }
+
+            if (showDuplicateDialog && pendingPlaylist != null && playlistTargetSong != null) {
+                DuplicateSongDialog(
+                    playlistName = pendingPlaylist!!.name,
+                    songTitle = playlistTargetSong!!.title,
+                    onDismiss = {
+                        showDuplicateDialog = false
+                        pendingPlaylist = null
+                    }
+                )
+            }
+
+
             Column(
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
@@ -390,10 +506,26 @@ fun MainLayout(
                         currentTab = currentTab,
                         onTabSelected = {
                             currentTab = it
+                            selectedPlaylist = null
                             selectedArtist = null
                             selectedAlbumName = null
+                            optionsState = null
+                            playlistTargetSong = null
                         },
                     )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = toastMessage != null,
+                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = globalBottomPadding)
+            ) {
+                if (toastMessage != null) {
+                    PrismToast(message = toastMessage!!)
                 }
             }
         }

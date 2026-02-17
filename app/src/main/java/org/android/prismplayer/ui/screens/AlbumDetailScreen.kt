@@ -326,7 +326,6 @@ fun AlbumDetailScreen(
     }
 }
 
-// ... MetadataField, calculateTotalDuration, Preview ...
 @Composable
 fun MetadataField(
     label: String,
@@ -387,7 +386,7 @@ fun MetadataField(
     }
 }
 
-private fun calculateTotalDuration(songs: List<Song>): String {
+fun calculateTotalDuration(songs: List<Song>): String {
     val totalSeconds = songs.sumOf { it.duration } / 1000
     val minutes = totalSeconds / 60
     return "${minutes} MIN"

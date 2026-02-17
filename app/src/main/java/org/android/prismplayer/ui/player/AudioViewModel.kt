@@ -30,6 +30,9 @@ import org.android.prismplayer.ui.service.PlaybackService
 import org.android.prismplayer.ui.utils.AudioSessionHolder
 import org.android.prismplayer.ui.utils.PlaybackSessionStore
 import androidx.media3.common.C
+import org.android.prismplayer.data.local.PrismDatabase
+import org.android.prismplayer.data.repository.PlaylistRepository
+import org.android.prismplayer.data.model.Playlist
 
 class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -60,6 +63,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     val lyricState = lyricsManager.lyricsState
     val syncedLyrics = lyricsManager.syncedLyrics
 
+
     // --- Progress State (Kept in VM for loop efficiency) ---
     private val _progress = MutableStateFlow(0f)
     val progress: StateFlow<Float> = _progress.asStateFlow()
@@ -72,6 +76,20 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     val currentTime: StateFlow<Long> = _currentTime.asStateFlow()
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
+
+    private val database = PrismDatabase.getDatabase(application)
+    private val playlistRepository = PlaylistRepository(database.playlistDao())
+
+    // --- [NEW] Playlist State ---
+    // Expose playlists as a StateFlow for the UI to observe
+    private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
+    val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
+
+    private val FAVORITES_NAME = "Favorites"
+    private var favoritesPlaylistId: Long? = null
+
+    private val _likedSongIds = MutableStateFlow<Set<Long>>(emptySet())
+    val likedSongIds: StateFlow<Set<Long>> = _likedSongIds.asStateFlow()
 
     init {
         val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
@@ -118,6 +136,24 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                     _progress.value = (player?.currentPosition?.toFloat() ?: 0f) / calcDuration
                 }
                 delay(100)
+            }
+        }
+
+        viewModelScope.launch {
+            playlistRepository.allPlaylists.collect { playlists ->
+                val fav = playlists.find { it.name == FAVORITES_NAME }
+                if (fav != null) {
+                    favoritesPlaylistId = fav.playlistId
+                    observeFavorites(fav.playlistId)
+                } else {
+                    createPlaylist(FAVORITES_NAME)
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            playlistRepository.allPlaylists.collect { list ->
+                _playlists.value = list
             }
         }
     }
@@ -245,6 +281,74 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     fun fetchLyricsOnline() {
         val song = currentSong.value ?: return
         lyricsManager.fetchLyricsOnline(song, viewModelScope)
+    }
+
+    // Playlist Action
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            playlistRepository.createPlaylist(name)
+        }
+    }
+
+    fun addSongToPlaylist(playlistId: Long, songId: Long) {
+        viewModelScope.launch {
+            playlistRepository.addSongToPlaylist(playlistId, songId)
+        }
+    }
+
+    fun getPlaylistSongs(playlistId: Long, allSongs: List<Song>): kotlinx.coroutines.flow.Flow<List<Song>> {
+        return playlistRepository.getSongsInPlaylist(playlistId, allSongs)
+    }
+
+    // Optional: Delete playlist
+    fun deletePlaylist(playlist: Playlist) {
+        viewModelScope.launch {
+            playlistRepository.deletePlaylist(playlist)
+        }
+    }
+
+    fun removeSongFromPlaylist(playlistId: Long, songId: Long) {
+        viewModelScope.launch {
+            playlistRepository.removeSongFromPlaylist(playlistId, songId)
+        }
+    }
+
+    suspend fun isSongInPlaylist(playlistId: Long, songId: Long): Boolean {
+        return playlistRepository.isSongInPlaylist(playlistId, songId)
+    }
+
+    private fun observeFavorites(playlistId: Long) {
+        viewModelScope.launch {
+            playlistRepository.getSongsInPlaylist(playlistId, emptyList()) // Pass empty list just to get IDs flow if your repo supports it, OR:
+            // We need a way to just get IDs from the DAO for efficiency,
+            // but for now, let's use the existing flow and map it.
+            // *NOTE: You might need to update Repository to allow passing 'allSongs' or use a simpler DAO call.*
+            // For now, let's assume we pass the current library:
+
+            // BETTER APPROACH: Let's just watch the DB entries directly in DAO (if possible),
+            // but sticking to your Repository:
+            database.playlistDao().getEntriesForPlaylist(playlistId).collect { entries ->
+                _likedSongIds.value = entries.map { it.songId }.toSet()
+            }
+        }
+    }
+
+    fun toggleLike(song: Song) {
+        val favId = favoritesPlaylistId ?: return
+        val isLiked = _likedSongIds.value.contains(song.id)
+
+        viewModelScope.launch {
+            if (isLiked) {
+                playlistRepository.removeSongFromPlaylist(favId, song.id)
+            } else {
+                database.playlistDao().addSongToPlaylist(
+                    org.android.prismplayer.data.model.PlaylistEntry(
+                        playlistId = favId,
+                        songId = song.id
+                    )
+                )
+            }
+        }
     }
 
     // Visualizer

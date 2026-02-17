@@ -25,6 +25,7 @@ import org.android.prismplayer.ui.player.manager.EqManager
 import org.android.prismplayer.ui.utils.AudioSessionHolder
 import org.android.prismplayer.ui.utils.PlaybackSessionStore
 import org.android.prismplayer.ui.widget.PrismWidgetProvider
+import androidx.core.net.toUri
 
 class PlaybackService : MediaSessionService() {
 
@@ -137,10 +138,10 @@ class PlaybackService : MediaSessionService() {
         if (lastState.queue.isNotEmpty()) {
             currentQueue = lastState.queue
             val mediaItems = currentQueue.map { song ->
-                val artUri = if (!song.songArtUri.isNullOrEmpty()) Uri.parse(song.songArtUri) else null
+                val artUri = if (!song.songArtUri.isNullOrEmpty()) song.songArtUri.toUri() else null
 
                 MediaItem.Builder()
-                    .setUri(Uri.parse(song.path))
+                    .setUri(song.path.toUri())
                     .setMediaId(song.id.toString())
                     .setMediaMetadata(
                         MediaMetadata.Builder()

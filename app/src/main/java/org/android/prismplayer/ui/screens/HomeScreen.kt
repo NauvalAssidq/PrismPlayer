@@ -88,18 +88,9 @@ fun HomeScreen(
                         FullWidthDivider()
                     }
 
-                    item(key = "commands") {
-                        CommandGrid(
-                            onOpenAlbums = onOpenAlbums,
-                            onOpenArtists = onOpenArtists,
-                            onSeeAllSongs = onSeeAllSongs
-                        )
-                        FullWidthDivider()
-                    }
-
                     if (displayAlbums.isNotEmpty()) {
                         item(key = "albums_label") {
-                            SectionLabel("RECENT_MOUNTS", "DATA_BLOCKS")
+                            SectionLabel("RECENT_MOUNTS", "ALBUMS")
                         }
                         item(key = "albums_list") {
                             LazyRow(
@@ -162,7 +153,7 @@ fun DashboardHeader(onSettingsClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "PRISM OS",
+                text = "PRISM PLAYER",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary,
                 letterSpacing = 2.sp
@@ -185,10 +176,10 @@ fun SystemStatsRow(totalSongs: Int, totalAlbums: Int) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+        horizontalArrangement = Arrangement.SpaceBetween )
+    {
         StatBadge("INDEXED_FILES", "$totalSongs")
-        StatBadge("DATA_BLOCKS", "$totalAlbums")
+        StatBadge("ALBUMS_INDEXES", "$totalAlbums")
         StatBadge("SYS", "ONLINE")
     }
 }
@@ -217,87 +208,6 @@ fun StatBadge(label: String, value: String) {
     }
 }
 
-@Composable
-fun CommandGrid(
-    onOpenAlbums: () -> Unit,
-    onOpenArtists: () -> Unit,
-    onSeeAllSongs: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 24.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                .clip(RoundedCornerShape(4.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StripButton(
-                label = "SONGS",
-                icon = Icons.Rounded.Audiotrack,
-                modifier = Modifier.weight(1f),
-                onClick = onSeeAllSongs
-            )
-
-            VerticalDivider()
-
-            StripButton(
-                label = "ALBUMS",
-                icon = Icons.Rounded.Album,
-                modifier = Modifier.weight(1f),
-                onClick = onOpenAlbums
-            )
-
-            VerticalDivider()
-
-            StripButton(
-                label = "ARTISTS",
-                icon = Icons.Rounded.Person,
-                modifier = Modifier.weight(1f),
-                onClick = onOpenArtists
-            )
-        }
-    }
-}
-
-@Composable
-fun StripButton(
-    label: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-}
 
 @Composable
 fun VerticalDivider() {
