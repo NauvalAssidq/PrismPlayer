@@ -126,7 +126,7 @@ fun SplashScreen(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "PRISM v1.0.0-beta.1",
+                text = "PRISM v1.0.0-beta.3",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -194,7 +194,7 @@ fun SplashScreen(
         }
 
         Text(
-            text = "BUILD_2025.12",
+            text = "BUILD_2026.1",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
             modifier = Modifier
