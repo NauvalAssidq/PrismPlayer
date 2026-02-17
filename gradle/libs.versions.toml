@@ -41,6 +41,7 @@ playServicesAppsearch = "16.0.1"
 foundation = "1.10.0"
 material3 = "1.4.0"
 uiGraphics = "1.10.0"
+foundationVersion = "1.10.3"
 
 
 [libraries]
@@ -92,6 +93,7 @@ retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 taglib = { module = "com.github.Kyant0:taglib", version.ref = "taglib" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
+androidx-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundationVersion" }
 
 
 [plugins]

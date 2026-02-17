@@ -69,7 +69,7 @@ android {
         doLast {
             val versionName = android.defaultConfig.versionName ?: "0.0.0"
             val appName = "PrismPlayer"
-            val apkDir = file("$buildDir/outputs/apk/release")
+            val apkDir = file("$layout.buildDirectory/outputs/apk/release")
             val unsigned = File(apkDir, "app-release-unsigned.apk")
             val signed = File(apkDir, "app-release.apk")
             val input = when {
@@ -101,7 +101,8 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.ui.graphics)
-    testImplementation(libs.junit)
+  implementation(libs.androidx.foundation)
+  testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 

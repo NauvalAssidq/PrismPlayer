@@ -36,6 +36,7 @@ fun SongOptionSheet(
     onPlayNext: (() -> Unit)? = null,
     onAddToQueue: (() -> Unit)? = null,
     onAddToPlaylist: (() -> Unit)? = null,
+    onRemoveFromPlaylist: (() -> Unit)? = null,
     onGoToAlbum: (() -> Unit)? = null,
     onGoToArtist: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
@@ -131,6 +132,10 @@ fun SongOptionSheet(
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
         }
 
+        if (onRemoveFromPlaylist != null) {
+            CommandRow("REMOVE_FROM_PLAYLIST", Icons.Outlined.Delete, onRemoveFromPlaylist)
+        }
+
         if (onGoToAlbum != null) CommandRow("OPEN_ALBUM", Icons.Outlined.Album, onGoToAlbum)
         if (onGoToArtist != null) CommandRow("OPEN_ARTIST", Icons.Outlined.Person, onGoToArtist)
 
@@ -145,7 +150,6 @@ fun SongOptionSheet(
     }
 }
 
-// --- SUB-COMPONENTS ---
 
 @Composable
 private fun MetadataLine(label: String, value: String) {

@@ -19,6 +19,7 @@ import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.QueueMusic // [NEW] Icon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily // [NEW]
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,6 +41,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.Album
+import org.android.prismplayer.data.model.Playlist // [NEW]
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.AlbumCard
 import org.android.prismplayer.ui.components.ArtistListItem
@@ -49,18 +52,22 @@ fun LibraryScreen(
     state: HomeState,
     currentSong: Song?,
     songs: List<Song>,
+    // [NEW] Playlist Data
+    playlists: List<Playlist>,
     isPlaying: Boolean,
     onSongClick: (Song, List<Song>) -> Unit,
     onAlbumClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit,
     onArtistClick: (String) -> Unit,
+    // [NEW] Playlist Click
+    onPlaylistClick: (Playlist) -> Unit,
     bottomPadding: Dp,
     initialPage: Int = 0,
     onPageChanged: (Int) -> Unit,
 ) {
     val pagerState = rememberPagerState(
         initialPage = initialPage,
-        pageCount = { 3 }
+        pageCount = { 4 } // [UPDATED] Increased from 3 to 4
     )
     val scope = rememberCoroutineScope()
 
@@ -120,6 +127,7 @@ fun LibraryScreen(
                 )
             }
 
+            // --- TAB ROW ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -135,9 +143,7 @@ fun LibraryScreen(
                     icon = Icons.Rounded.Audiotrack,
                     isSelected = pagerState.currentPage == 0,
                     modifier = Modifier.weight(1f)
-                ) {
-                    scope.launch { pagerState.animateScrollToPage(0) }
-                }
+                ) { scope.launch { pagerState.animateScrollToPage(0) } }
 
                 VerticalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
 
@@ -146,9 +152,7 @@ fun LibraryScreen(
                     icon = Icons.Rounded.Album,
                     isSelected = pagerState.currentPage == 1,
                     modifier = Modifier.weight(1f)
-                ) {
-                    scope.launch { pagerState.animateScrollToPage(1) }
-                }
+                ) { scope.launch { pagerState.animateScrollToPage(1) } }
 
                 VerticalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
 
@@ -157,9 +161,17 @@ fun LibraryScreen(
                     icon = Icons.Rounded.Person,
                     isSelected = pagerState.currentPage == 2,
                     modifier = Modifier.weight(1f)
-                ) {
-                    scope.launch { pagerState.animateScrollToPage(2) }
-                }
+                ) { scope.launch { pagerState.animateScrollToPage(2) } }
+
+                // [NEW] Playlist Tab
+                VerticalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+
+                TabSegment(
+                    text = "LISTS",
+                    icon = Icons.Rounded.QueueMusic,
+                    isSelected = pagerState.currentPage == 3,
+                    modifier = Modifier.weight(1f)
+                ) { scope.launch { pagerState.animateScrollToPage(3) } }
             }
 
             Spacer(Modifier.height(24.dp))
@@ -171,7 +183,7 @@ fun LibraryScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> {
+                    0 -> { // SONGS
                         if (songs.isEmpty()) {
                             EmptyStateMessage("NO_AUDIO_FILES_DETECTED")
                         } else {
@@ -194,7 +206,7 @@ fun LibraryScreen(
                         }
                     }
 
-                    1 -> {
+                    1 -> { // ALBUMS
                         if (albums.isEmpty()) {
                             EmptyStateMessage("NO_DATA_BLOCKS_FOUND")
                         } else {
@@ -220,7 +232,7 @@ fun LibraryScreen(
                         }
                     }
 
-                    2 -> {
+                    2 -> { // ARTISTS
                         if (artists.isEmpty()) {
                             EmptyStateMessage("NO_ARTIST_METADATA")
                         } else {
@@ -239,6 +251,25 @@ fun LibraryScreen(
                                         onClick = { onArtistClick(artistName) }
                                     )
 
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                                }
+                            }
+                        }
+                    }
+
+                    3 -> { // [NEW] PLAYLISTS
+                        if (playlists.isEmpty()) {
+                            EmptyStateMessage("NO_PLAYLIST_DATA")
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(bottom = bottomPadding),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(playlists, key = { it.playlistId }) { playlist ->
+                                    PlaylistItem(
+                                        playlist = playlist,
+                                        onClick = { onPlaylistClick(playlist) }
+                                    )
                                     HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
                                 }
                             }
@@ -279,12 +310,67 @@ fun TabSegment(
                 tint = contentColor,
                 modifier = Modifier.size(16.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            // Condensed spacer to fit 4 tabs
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = contentColor
+                color = contentColor,
+                fontSize = 10.sp, // Condensed font size
+                maxLines = 1,
+                overflow = TextOverflow.Clip
+            )
+        }
+    }
+}
+
+// [NEW] Component for rendering a Playlist Row
+@Composable
+fun PlaylistItem(
+    playlist: Playlist,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icon Box
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(0.5f), RoundedCornerShape(4.dp))
+                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.1f), RoundedCornerShape(4.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.QueueMusic,
+                null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = playlist.name.uppercase(),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "ID: ${playlist.playlistId} // USER_CREATED",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp
             )
         }
     }
@@ -304,69 +390,15 @@ fun EmptyStateMessage(message: String) {
     }
 }
 
-//Deprecated but might be useful in the future for debugging
-
-//@Composable
-//fun RawAlbumGridItem(song: Song, onClick: () -> Unit) {
-//    Column(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .clickable { onClick() }
-//    ) {
-//        Box(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .aspectRatio(1f)
-//                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
-//                .background(Color(0xFF111111))
-//        ) {
-//            if (!song.songArtUri.isNullOrBlank()) {
-//                AsyncImage(
-//                    model = ImageRequest.Builder(LocalContext.current)
-//                        .data(song.songArtUri)
-//                        .crossfade(true)
-//                        .build(),
-//                    contentDescription = null,
-//                    contentScale = ContentScale.Crop,
-//                    modifier = Modifier.fillMaxSize()
-//                )
-//            } else {
-//                Icon(
-//                    Icons.Rounded.Album,
-//                    null,
-//                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-//                    modifier = Modifier
-//                        .align(Alignment.Center)
-//                        .size(32.dp)
-//                )
-//            }
-//        }
-//
-//        Spacer(Modifier.height(8.dp))
-//
-//        Text(
-//            text = song.albumName.uppercase(),
-//            style = MaterialTheme.typography.labelMedium,
-//            color = MaterialTheme.colorScheme.primary,
-//            maxLines = 1,
-//            overflow = TextOverflow.Ellipsis
-//        )
-//        Text(
-//            text = song.artist.uppercase(),
-//            style = MaterialTheme.typography.labelSmall,
-//            color = MaterialTheme.colorScheme.onSurfaceVariant,
-//            maxLines = 1,
-//            overflow = TextOverflow.Ellipsis,
-//            fontSize = 10.sp
-//        )
-//    }
-//}
-
 @Preview(showBackground = true)
 @Composable
 fun LibraryPreview() {
     val mockSongs = listOf(
         Song(1, "Midnight City", "M83", "Hurry Up", 1, 240000, "", "", 0, null, 2011, 1, "Rock")
+    )
+    val mockPlaylists = listOf(
+        Playlist(1, "Gym Mix"),
+        Playlist(2, "Night Drive")
     )
     val state = HomeState(false, mockSongs, emptyList(), null)
 
@@ -375,11 +407,13 @@ fun LibraryPreview() {
             state = state,
             currentSong = null,
             songs = mockSongs,
+            playlists = mockPlaylists,
             isPlaying = false,
             onSongClick = { _, _ -> },
             onAlbumClick = {},
             onSongMoreClick = {},
             onArtistClick = {},
+            onPlaylistClick = {},
             bottomPadding = 80.dp,
             onPageChanged = {}
         )

@@ -79,8 +79,8 @@ fun FullPlayerScreen(
     onRemoveFromQueue: (Song) -> Unit,
     onQueueReorder: (Int, Int) -> Unit = { _, _ -> },
     onAddToQueue: (Song) -> Unit,
+    onAddToPlaylist: (Song) -> Unit,
     audioViewModel: AudioViewModel,
-
 ) {
     val durationLong by audioViewModel.duration.collectAsState()
 
@@ -89,6 +89,11 @@ fun FullPlayerScreen(
         val mm = totalSeconds / 60
         val ss = totalSeconds % 60
         "%02d:%02d".format(mm, ss)
+    }
+
+    val likedSongIds by audioViewModel.likedSongIds.collectAsState()
+    val isLiked = remember(song.id, likedSongIds) {
+        likedSongIds.contains(song.id)
     }
 
     FullPlayerContent(
@@ -100,6 +105,8 @@ fun FullPlayerScreen(
         totalTime = formattedTotalTime,
         repeatMode = repeatMode,
         isShuffleEnabled = isShuffleEnabled,
+        isLiked = isLiked,
+        onToggleLike = { audioViewModel.toggleLike(song) },
         onPlayPause = onPlayPause,
         onNext = onNext,
         onPrev = onPrev,
@@ -120,7 +127,8 @@ fun FullPlayerScreen(
         },
         onGoToAlbum = onGoToAlbum,
         onGoToArtist = onGoToArtist,
-        onAddToQueue = onAddToQueue
+        onAddToQueue = onAddToQueue,
+        onAddToPlaylist = onAddToPlaylist
     )
 }
 
@@ -135,6 +143,8 @@ fun FullPlayerContent(
     totalTime: String,
     repeatMode: Int,
     isShuffleEnabled: Boolean,
+    isLiked: Boolean,
+    onToggleLike: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
@@ -150,8 +160,8 @@ fun FullPlayerContent(
     onSeekDrag: (Float) -> Unit,
     lyricsContent: @Composable (Color, () -> Unit) -> Unit,
     onAddToQueue: (Song) -> Unit,
-
-    ) {
+    onAddToPlaylist: (Song) -> Unit,
+) {
     BackHandler(onBack = onClose)
 
     val context = LocalContext.current
@@ -166,13 +176,6 @@ fun FullPlayerContent(
         showQueue = false
         showLyrics = false
         showOptions = false
-    }
-
-    var isLiked by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = showQueue || showLyrics) {
-        showQueue = false
-        showLyrics = false
     }
 
     // --- COLOR LOGIC ---
@@ -353,7 +356,7 @@ fun FullPlayerContent(
                 Spacer(modifier = Modifier.width(16.dp))
 
                 IconButton(
-                    onClick = { isLiked = !isLiked },
+                    onClick = onToggleLike,
                     modifier = Modifier
                         .size(44.dp)
                         .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(0.2f), CircleShape)
@@ -548,7 +551,10 @@ fun FullPlayerContent(
                         onAddToQueue(song)
                         showOptions = false
                     },
-                    onAddToPlaylist = { /* TODO Phase 3 */ },
+                    onAddToPlaylist = {
+                        showOptions = false
+                        onAddToPlaylist(song)
+                    },
                     onGoToAlbum = {
                         onGoToAlbum(song.albumName)
                         showOptions = false
@@ -665,6 +671,8 @@ fun FullPlayerScreenPreview() {
             totalTime = "4:03",
             repeatMode = Player.REPEAT_MODE_OFF,
             isShuffleEnabled = false,
+            isLiked = true,
+            onToggleLike = {},
             onPlayPause = {},
             onNext = {},
             onPrev = {},
@@ -691,6 +699,7 @@ fun FullPlayerScreenPreview() {
             onGoToAlbum = {},
             onGoToArtist = {},
             onAddToQueue = {},
+            onAddToPlaylist = {},
         )
     }
 }

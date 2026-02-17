@@ -5,19 +5,29 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import org.android.prismplayer.data.dao.LyricsDao
+import org.android.prismplayer.data.dao.PlaylistDao // [NEW]
 import org.android.prismplayer.data.dao.SongDao
-import org.android.prismplayer.data.model.LyricsEntity // ✅ Import this
+import org.android.prismplayer.data.model.LyricsEntity
 import org.android.prismplayer.data.model.PlayHistory
+import org.android.prismplayer.data.model.Playlist // [NEW]
+import org.android.prismplayer.data.model.PlaylistEntry // [NEW]
 import org.android.prismplayer.data.model.Song
 
 @Database(
-    entities = [Song::class, PlayHistory::class, LyricsEntity::class],
-    version = 2,
+    entities = [
+        Song::class,
+        PlayHistory::class,
+        LyricsEntity::class,
+        Playlist::class,
+        PlaylistEntry::class
+    ],
+    version = 3,
     exportSchema = false
 )
 abstract class PrismDatabase : RoomDatabase() {
     abstract fun statsDao(): SongDao
     abstract fun lyricsDao(): LyricsDao
+    abstract fun playlistDao(): PlaylistDao
 
     companion object {
         @Volatile
