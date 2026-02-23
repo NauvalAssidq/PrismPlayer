@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -203,6 +204,7 @@ fun EditTrackScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
+                    .navigationBarsPadding()
             ) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
@@ -441,12 +443,8 @@ fun CornerBrackets() {
     Canvas(modifier = Modifier.fillMaxSize()) {
         val length = 10.dp.toPx()
         val stroke = 1.dp.toPx()
-        val color = Color.Gray // Fallback, will use theme color from outside if needed or hardcode acceptable grey
-        // Actually, let's use primary color from theme
-        // We can't access composable theme here easily without passing it or variable capture.
-        // Let's rely on White for now or better, pass color.
-        val bracketColor = Color.White // Keeping white/theme insensitive for brackets or pass it?
-        // Let's use Color.Gray for neutral
+        val color = Color.Gray
+        val bracketColor = Color.White
         drawLine(Color.Gray, Offset(0f, 0f), Offset(length, 0f), stroke)
         drawLine(color, Offset(0f, 0f), Offset(0f, length), stroke)
         drawLine(color, Offset(size.width, 0f), Offset(size.width - length, 0f), stroke)
