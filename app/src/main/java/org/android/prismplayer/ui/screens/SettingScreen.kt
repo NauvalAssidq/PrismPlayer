@@ -11,24 +11,34 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,6 +47,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.android.prismplayer.ui.utils.AppTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @Composable
 fun SettingsScreen(
@@ -48,15 +60,18 @@ fun SettingsScreen(
 ) {
     val isScanning by viewModel.isScanning.collectAsState()
     val currentTheme by viewModel.currentTheme.collectAsState()
+    val geminiApiKey by viewModel.geminiApiKey.collectAsState(initial = "")
 
     SettingsContent(
         isScanning = isScanning,
         currentTheme = currentTheme,
+        geminiApiKey = geminiApiKey,
         onBack = onBack,
         onRescan = { if (!isScanning) viewModel.rescanLibrary() },
         onThemeChanged = viewModel::setTheme,
         onOpenEqualizer = onOpenEqualizer,
         onReselectFolders = onReselectFolders,
+        onSaveGeminiKey = viewModel::setGeminiApiKey,
         bottomPadding = bottomPadding
     )
 }
@@ -67,13 +82,17 @@ fun SettingsScreen(
 fun SettingsContent(
     isScanning: Boolean,
     currentTheme: AppTheme,
+    geminiApiKey: String,
     onBack: () -> Unit,
     onRescan: () -> Unit,
     onThemeChanged: (AppTheme) -> Unit,
     onOpenEqualizer: () -> Unit,
     onReselectFolders: () -> Unit,
+    onSaveGeminiKey: (String) -> Unit,
     bottomPadding: Dp
 ) {
+    var showGeminiDialog by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -111,9 +130,10 @@ fun SettingsContent(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(bottom = bottomPadding)
+                .verticalScroll(scrollState)
         ) {
             ConfigSectionHeader("APPEARANCE")
-            
+
             ThemeSelector(currentTheme, onThemeChanged)
 
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
@@ -147,6 +167,17 @@ fun SettingsContent(
                 onClick = onReselectFolders
             )
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f), modifier = Modifier.padding(horizontal = 24.dp))
+
+            ConfigSectionHeader("ARTIFICIAL_INTELLIGENCE")
+
+            ConfigItem(
+                icon = Icons.Outlined.Memory,
+                label = "GEMINI_ENGINE",
+                description = if (geminiApiKey.isNotBlank()) "API_KEY_CONFIGURED" else "API_KEY_MISSING",
+                onClick = { showGeminiDialog = true }
+            )
+
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
             Box(
@@ -166,6 +197,17 @@ fun SettingsContent(
 
         if (isScanning) {
             SystemProcessDialog()
+        }
+
+        if (showGeminiDialog) {
+            GeminiKeyDialog(
+                currentKey = geminiApiKey,
+                onDismiss = { showGeminiDialog = false },
+                onSave = { newKey ->
+                    onSaveGeminiKey(newKey)
+                    showGeminiDialog = false
+                }
+            )
         }
     }
 }
@@ -213,14 +255,14 @@ fun ConfigItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyLarge, // Standard font for readability
+                style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = description,
                 style = MaterialTheme.typography.labelSmall,
-                fontFamily = FontFamily.Monospace, // Tech font for subtext
+                fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f),
                 fontSize = 10.sp
             )
@@ -347,6 +389,155 @@ fun SystemProcessDialog() {
     }
 }
 
+@Composable
+fun GeminiKeyDialog(
+    currentKey: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var text by remember { mutableStateOf(currentKey) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "status_light")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "alpha"
+    )
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+    ) {
+        Column(
+            modifier = Modifier
+                .width(320.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(2.dp))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "SYS_CONFIG // GEMINI_API",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "INPUT_REQ",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .alpha(alpha)
+                            .background(MaterialTheme.colorScheme.secondary, CircleShape)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "> ENTER_API_KEY:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                BasicTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    textStyle = TextStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 14.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(
+                        onDone = { onSave(text.trim()) }
+                    ),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
+                    singleLine = true,
+                    decorationBox = { innerTextField ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.background)
+                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.2f))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (text.isEmpty()) {
+                                Text(
+                                    text = "AIzaSy...",
+                                    style = TextStyle(
+                                        color = MaterialTheme.colorScheme.onSurface.copy(0.3f),
+                                        fontSize = 14.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "[ ABORT ]",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f),
+                        modifier = Modifier
+                            .clickable { onDismiss() }
+                            .padding(8.dp)
+                    )
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Text(
+                        text = "[ EXECUTE ]",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier
+                            .clickable { onSave(text.trim()) }
+                            .padding(8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 fun PreviewSettingsScreen() {
@@ -362,12 +553,13 @@ fun PreviewSettingsScreen() {
         SettingsContent(
             isScanning = false,
             currentTheme = AppTheme.DARK,
-
+            geminiApiKey = "",
             onBack = {},
             onRescan = {},
             onThemeChanged = {},
             onOpenEqualizer = {},
             onReselectFolders = {},
+            onSaveGeminiKey = {},
             bottomPadding = 80.dp
         )
     }

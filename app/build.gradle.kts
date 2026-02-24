@@ -1,18 +1,18 @@
-val keystorePath = providers.gradleProperty("KEYSTORE_PATH").orNull
-val keystorePass = providers.gradleProperty("KEYSTORE_PASSWORD").orNull
-val keyAliasVal  = providers.gradleProperty("KEY_ALIAS").orNull
-val keyPass      = providers.gradleProperty("KEY_PASSWORD").orNull
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.devtools.ksp") version "2.3.3"
-    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21"
+    id("org.jetbrains.kotlin.plugin.compose") version
+        "2.3.10"
 }
 
 android {
     namespace = "org.android.prismplayer"
     compileSdk = 36
+    val keystorePath: String? by project
+    val keystorePass: String? by project
+    val keyAliasVal: String? by project
+    val keyPass: String? by project
 
     defaultConfig {
         applicationId = "org.android.prismplayer"
@@ -23,24 +23,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        if (!keystorePath.isNullOrBlank()
-            && !keystorePass.isNullOrBlank()
-            && !keyAliasVal.isNullOrBlank()
-            && !keyPass.isNullOrBlank()
-        ) {
-            create("release") {
-                storeFile = file(keystorePath)
-                storePassword = keystorePass
-                keyAlias = keyAliasVal
-                keyPassword = keyPass
-            }
-        }
-    }
+//    signingConfigs {
+//        if (!keystorePath.isNullOrBlank()
+//            && !keystorePass.isNullOrBlank()
+//            && !keyAliasVal.isNullOrBlank()
+//            && !keyPass.isNullOrBlank()
+//        ) {
+//            create("release") {
+//                storeFile = file(keystorePath)
+//                storePassword = keystorePass
+//                keyAlias = keyAliasVal
+//                keyPassword = keyPass
+//            }
+//        }
+//    }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+//            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
             proguardFiles(
@@ -101,8 +101,8 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.ui.graphics)
-  implementation(libs.androidx.foundation)
-  testImplementation(libs.junit)
+    implementation(libs.androidx.foundation)
+    testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 

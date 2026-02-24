@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -122,5 +123,38 @@ fun AlbumCard(
             overflow = TextOverflow.Ellipsis,
             fontSize = 10.sp
         )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF000000)
+@Composable
+fun AlbumCardPreview() {
+    MaterialTheme(
+        colorScheme = androidx.compose.material3.darkColorScheme(
+            primary = Color.White,
+            surfaceVariant = Color(0xFF1E1E1E),
+            onSurfaceVariant = Color.Gray,
+            outline = Color.White.copy(0.5f)
+        )
+    ) {
+        Box(modifier = Modifier.padding(16.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                AlbumCard(
+                    title = "Hurry Up, We're Dreaming",
+                    artist = "M83",
+                    coverUri = null,
+                    onClick = {},
+                    fixedWidth = 140.dp
+                )
+
+                AlbumCard(
+                    title = "Night Drive",
+                    artist = "Timecop1983",
+                    coverUri = "dummy_uri",
+                    onClick = {},
+                    fixedWidth = 140.dp
+                )
+            }
+        }
     }
 }
