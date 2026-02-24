@@ -9,7 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
@@ -49,6 +50,7 @@ import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.Playlist
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.AddToPlaylistSheet
+import org.android.prismplayer.ui.components.CreatePlaylistDialog
 import org.android.prismplayer.ui.components.CustomBottomSheet
 import org.android.prismplayer.ui.components.DuplicateSongDialog
 import org.android.prismplayer.ui.components.PrismNavBar
@@ -116,6 +118,7 @@ fun MainLayout(
     val backdrop = rememberLayerBackdrop()
     var showDuplicateDialog by remember { mutableStateOf(false) }
     var pendingPlaylist by remember { mutableStateOf<Playlist?>(null) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(expandPlayer) {
@@ -461,10 +464,8 @@ fun MainLayout(
                                 }
                             }
                         },
-                        onCreateNew = { name ->
-                            audioViewModel.createPlaylist(name)
-                            // Note: You might want to auto-add the song after creation,
-                            // but for now, the user sees the new playlist appear and can tap it.
+                        onCreateNew = {
+                            showCreatePlaylistDialog = true
                         },
                         onDismiss = { playlistTargetSong = null },
                         bottomPadding = globalBottomPadding
@@ -483,10 +484,23 @@ fun MainLayout(
                 )
             }
 
+            if (showCreatePlaylistDialog) {
+                CreatePlaylistDialog(
+                    onDismiss = { showCreatePlaylistDialog = false },
+                    onCreate = { newName ->
+                        audioViewModel.createPlaylist(newName)
+                        toastMessage = "INDEX CREATED: $newName"
+                        showCreatePlaylistDialog = false
+                    }
+                )
+            }
+
 
             Column(
                 modifier = Modifier.align(Alignment.BottomCenter)
-                    .background(MaterialTheme.colorScheme.background)
+                    .pointerInput(Unit) {
+                        detectTapGestures { /* Do nothing */ }
+                    }
                     .navigationBarsPadding()
             ) {
                 AnimatedVisibility(

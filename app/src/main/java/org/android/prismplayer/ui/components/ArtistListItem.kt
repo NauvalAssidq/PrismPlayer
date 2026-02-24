@@ -121,7 +121,7 @@ fun ArtistListItemPreview() {
             )
             ArtistListItem(
                 artistName = "The Weeknd",
-                imageUri = "https://example.com", // Will show placeholder in preview
+                imageUri = "https://example.com",
                 onClick = {}
             )
         }

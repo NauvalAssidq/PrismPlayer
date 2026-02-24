@@ -1,5 +1,7 @@
 package org.android.prismplayer.ui.screens
 
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -14,16 +16,26 @@ import org.android.prismplayer.PrismApplication
 import org.android.prismplayer.data.repository.MusicRepository
 import org.android.prismplayer.ui.utils.AppTheme
 import org.android.prismplayer.ui.utils.ThemePreferences
+import androidx.core.content.edit
 
 class SettingsViewModel(
     private val repository: MusicRepository,
-    private val themePreferences: ThemePreferences
+    private val themePreferences: ThemePreferences,
+    private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning = _isScanning.asStateFlow()
 
     val currentTheme = themePreferences.themeFlow
+
+    private val _geminiApiKey = MutableStateFlow(sharedPreferences.getString("gemini_api_key", "") ?: "")
+    val geminiApiKey = _geminiApiKey.asStateFlow()
+
+    fun setGeminiApiKey(key: String) {
+        _geminiApiKey.value = key
+        sharedPreferences.edit { putString("gemini_api_key", key) }
+    }
 
     fun setTheme(theme: AppTheme) {
         themePreferences.saveTheme(theme)
@@ -52,7 +64,8 @@ class SettingsViewModel(
                 delay(1500 - elapsedTime)
             }
 
-            _isScanning.value = false        }
+            _isScanning.value = false
+        }
     }
 
     companion object {
@@ -61,7 +74,9 @@ class SettingsViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val app = checkNotNull(extras[APPLICATION_KEY]) as PrismApplication
                 val themePrefs = ThemePreferences(app.applicationContext)
-                return SettingsViewModel(app.repository, themePrefs) as T
+                val sharedPrefs = app.getSharedPreferences("prism_config", Context.MODE_PRIVATE)
+
+                return SettingsViewModel(app.repository, themePrefs, sharedPrefs) as T
             }
         }
     }
