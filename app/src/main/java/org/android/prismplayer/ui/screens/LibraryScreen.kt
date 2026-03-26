@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.QueueMusic // [NEW] Icon
 import androidx.compose.material3.*
@@ -163,7 +164,6 @@ fun LibraryScreen(
                     modifier = Modifier.weight(1f)
                 ) { scope.launch { pagerState.animateScrollToPage(2) } }
 
-                // [NEW] Playlist Tab
                 VerticalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
 
                 TabSegment(
@@ -310,14 +310,13 @@ fun TabSegment(
                 tint = contentColor,
                 modifier = Modifier.size(16.dp)
             )
-            // Condensed spacer to fit 4 tabs
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 color = contentColor,
-                fontSize = 10.sp, // Condensed font size
+                fontSize = 10.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Clip
             )
@@ -325,7 +324,6 @@ fun TabSegment(
     }
 }
 
-// [NEW] Component for rendering a Playlist Row
 @Composable
 fun PlaylistItem(
     playlist: Playlist,
@@ -347,7 +345,7 @@ fun PlaylistItem(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Rounded.QueueMusic,
+                Icons.Rounded.Favorite,
                 null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
