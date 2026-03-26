@@ -32,9 +32,23 @@ class SettingsViewModel(
     private val _geminiApiKey = MutableStateFlow(sharedPreferences.getString("gemini_api_key", "") ?: "")
     val geminiApiKey = _geminiApiKey.asStateFlow()
 
+    private val _aiSystemPrompt = MutableStateFlow(
+        sharedPreferences.getString("gemini_system_prompt", DEFAULT_GEMINI_PROMPT) ?: DEFAULT_GEMINI_PROMPT
+    )
+    val aiSystemPrompt = _aiSystemPrompt.asStateFlow()
+
     fun setGeminiApiKey(key: String) {
         _geminiApiKey.value = key
         sharedPreferences.edit { putString("gemini_api_key", key) }
+    }
+
+    fun setAiSystemPrompt(prompt: String) {
+        _aiSystemPrompt.value = prompt
+        sharedPreferences.edit { putString("gemini_system_prompt", prompt) }
+    }
+
+    fun resetAiSystemPrompt() {
+        setAiSystemPrompt(DEFAULT_GEMINI_PROMPT)
     }
 
     fun setTheme(theme: AppTheme) {
@@ -54,8 +68,6 @@ class SettingsViewModel(
 
             foldersToScan.forEach { path ->
                 // This is a simple directory walker to find files and tell Android to scan them
-                // Note: For deep directories, just relying on the default import is usually safer/faster
-                // unless you implement a full recursive file walker here.
             }
 
             repository.importSongsFromFolders(foldersToScan)
@@ -69,6 +81,24 @@ class SettingsViewModel(
     }
 
     companion object {
+        const val DEFAULT_GEMINI_PROMPT =
+        """
+            [SYSTEM_OVERRIDE // BILINGUAL_CURATOR_MODE]
+            You are an elite AI music curator operating within PrismPlayer.
+            
+            TASK:
+            Filter the provided JSON library of songs based on the user's requested VIBE/HEURISTIC. The user query may be in English or Indonesian.
+            
+            RULES:
+            1. Select only songs that strongly match the requested vibe/genre/mood.
+            2. Do NOT hallucinate or invent IDs. Only use IDs from the provided library list.
+            3. Return STRICTLY a raw JSON array of integers representing the chosen Song IDs.
+            4. NO markdown formatting, NO backticks (```json), NO conversational text. Just the array.
+            
+            OUTPUT FORMAT EXPECTED:
+            [12, 45, 88, 102]
+        """
+
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
