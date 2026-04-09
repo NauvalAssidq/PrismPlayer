@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/bg_widget_wireframe"
     android:clipToOutline="true">
 
     <ImageView
@@ -11,7 +12,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
-        android:background="#000000"
         android:src="@drawable/bg_widget_wireframe"
         android:alpha="0.9" />
 
@@ -24,8 +24,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="8dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="12dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         android:gravity="center_vertical">
@@ -178,8 +178,8 @@
 
     <ImageView
         android:id="@+id/widget_corner_tr"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:src="@drawable/shape_corner_bracket"
@@ -188,8 +188,8 @@
 
     <ImageView
         android:id="@+id/widget_corner_tl"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
         android:rotation="-90"
@@ -199,8 +199,8 @@
 
     <ImageView
         android:id="@+id/widget_corner_br"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:rotation="90"
@@ -210,8 +210,8 @@
 
     <ImageView
         android:id="@+id/widget_corner_bl"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
         android:rotation="180"

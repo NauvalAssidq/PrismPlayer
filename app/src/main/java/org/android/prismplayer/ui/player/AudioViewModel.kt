@@ -300,6 +300,10 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         return playlistRepository.getSongsInPlaylist(playlistId, allSongs)
     }
 
+    fun getPlaylistCovers(playlistId: Long, allSongs: List<Song>): kotlinx.coroutines.flow.Flow<List<String>> {
+        return playlistRepository.getPlaylistCovers(playlistId, allSongs)
+    }
+
     // Optional: Delete playlist
     fun deletePlaylist(playlist: Playlist) {
         viewModelScope.launch {
@@ -323,7 +327,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             // We need a way to just get IDs from the DAO for efficiency,
             // but for now, let's use the existing flow and map it.
             // *NOTE: You might need to update Repository to allow passing 'allSongs' or use a simpler DAO call.*
-            // For now, let's assume we pass the current library:
 
             // BETTER APPROACH: Let's just watch the DB entries directly in DAO (if possible),
             // but sticking to your Repository:

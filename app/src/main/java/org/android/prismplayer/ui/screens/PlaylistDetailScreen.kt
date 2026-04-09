@@ -34,6 +34,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import org.android.prismplayer.data.model.Playlist
 import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.ui.components.DynamicPlaylistCover // [NEW] Import added
 import org.android.prismplayer.ui.components.SongListItem
 import org.android.prismplayer.ui.utils.SongArtHelper
 
@@ -51,11 +52,11 @@ fun PlaylistDetailScreen(
   onDeletePlaylist: () -> Unit,
   bottomPadding: Dp
 ) {
-  // Generate a pseudo-art from the first 4 songs if no cover exists
-  val firstSongArt = songs.firstOrNull()?.songArtUri
+  val coverUris = remember(songs) {
+    songs.mapNotNull { it.songArtUri }.distinct().take(4)
+  }
+  val isFav = playlist.name.equals("Favorites", ignoreCase = true)
   var showDeleteDialog by remember { mutableStateOf(false) }
-
-  // Dynamic accent color based on context (Gold/Yellow for User Lists)
   val accentColor = MaterialTheme.colorScheme.tertiary
 
   Scaffold(
@@ -114,7 +115,6 @@ fun PlaylistDetailScreen(
               .padding(horizontal = 24.dp)
               .height(IntrinsicSize.Min)
           ) {
-            // Playlist Cover Art (First Song or Icon)
             Box(
               modifier = Modifier
                 .size(140.dp)
@@ -123,21 +123,12 @@ fun PlaylistDetailScreen(
                 .padding(4.dp),
               contentAlignment = Alignment.Center
             ) {
-              if (firstSongArt != null) {
-                AsyncImage(
-                  model = firstSongArt,
-                  contentDescription = null,
-                  contentScale = ContentScale.Crop,
-                  modifier = Modifier.fillMaxSize()
-                )
-              } else {
-                Icon(
-                  Icons.Rounded.QueueMusic,
-                  null,
-                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                  modifier = Modifier.size(48.dp)
-                )
-              }
+              DynamicPlaylistCover(
+                isFavorite = isFav,
+                imageUris = coverUris,
+                modifier = Modifier.fillMaxSize()
+              )
+
               // Tech Overlay
               Box(
                 modifier = Modifier
