@@ -46,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.Playlist
 import org.android.prismplayer.data.model.Song
@@ -137,7 +138,7 @@ fun MainLayout(
 
     LaunchedEffect(toastMessage) {
         if (toastMessage != null) {
-            kotlinx.coroutines.delay(2000)
+            delay(2000)
             toastMessage = null
         }
     }
@@ -218,6 +219,7 @@ fun MainLayout(
                         onPageChanged = { newIndex ->
                             libraryTabIndex = newIndex
                         },
+                        audioViewModel = audioViewModel,
                     )
 
                     PrismTab.SETTING -> SettingsScreen(
@@ -382,97 +384,6 @@ fun MainLayout(
                 }
             }
 
-            if (optionsState != null) {
-                BackHandler {
-                    optionsState = null
-                }
-                val song = optionsState!!.first
-                val source = optionsState!!.second
-
-                CustomBottomSheet(
-                    visible = true,
-                    onDismiss = { optionsState = null }
-                ) {
-                    SongOptionSheet(
-                        song = song,
-                        onPlayNext = { optionsState = null },
-                        onAddToQueue = { optionsState = null },
-                        onAddToPlaylist = {
-                            optionsState = null
-                            playlistTargetSong = song
-                        },
-                        onRemoveFromPlaylist = if (source == SheetContext.PLAYLIST && selectedPlaylist != null) {
-                            {
-                                audioViewModel.removeSongFromPlaylist(selectedPlaylist!!.playlistId, song.id)
-                                optionsState = null
-                            }
-                        } else null,
-                        onGoToAlbum = if (source != SheetContext.ALBUM) {
-                            {
-                                val albumName = song.albumName
-                                optionsState = null
-                                selectedAlbumName = albumName
-                            }
-                        } else null,
-                        onGoToArtist = if (source != SheetContext.ARTIST) {
-                            {
-                                val artistName = song.artist
-                                optionsState = null
-                                selectedAlbumName = null
-                                selectedArtist = artistName
-                            }
-                        } else null,
-                        onShare = {
-                            val shareIntent = Intent().apply {
-                                action = Intent.ACTION_SEND
-                                type = "audio/*"
-                                putExtra(Intent.EXTRA_STREAM, Uri.parse(song.path))
-                            }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Song"))
-                            optionsState = null
-                        },
-                        onEdit = {
-                            val songId = song.id
-                            optionsState = null
-                            onEditSong(songId)
-                        },
-                        bottomPadding = globalBottomPadding
-                    )
-                }
-            }
-
-            if (playlistTargetSong != null) {
-                BackHandler { playlistTargetSong = null }
-                val scope = rememberCoroutineScope()
-                CustomBottomSheet(
-                    visible = true,
-                    onDismiss = { playlistTargetSong = null }
-                ) {
-                    AddToPlaylistSheet(
-                        playlists = playlists,
-                        onPlaylistSelected = { playlist ->
-                            scope.launch {
-                                val isDuplicate = audioViewModel.isSongInPlaylist(playlist.playlistId, playlistTargetSong!!.id)
-
-                                if (isDuplicate) {
-                                    pendingPlaylist = playlist
-                                    showDuplicateDialog = true
-                                } else {
-                                    audioViewModel.addSongToPlaylist(playlist.playlistId, playlistTargetSong!!.id)
-                                    toastMessage = "ADDED TO ${playlist.name}"
-                                    playlistTargetSong = null
-                                }
-                            }
-                        },
-                        onCreateNew = {
-                            showCreatePlaylistDialog = true
-                        },
-                        onDismiss = { playlistTargetSong = null },
-                        bottomPadding = globalBottomPadding
-                    )
-                }
-            }
-
             if (showDuplicateDialog && pendingPlaylist != null && playlistTargetSong != null) {
                 DuplicateSongDialog(
                     playlistName = pendingPlaylist!!.name,
@@ -533,6 +444,97 @@ fun MainLayout(
                             optionsState = null
                             playlistTargetSong = null
                         },
+                    )
+                }
+            }
+
+            if (optionsState != null) {
+                BackHandler {
+                    optionsState = null
+                }
+                val song = optionsState!!.first
+                val source = optionsState!!.second
+
+                CustomBottomSheet(
+                    visible = true,
+                    onDismiss = { optionsState = null }
+                ) {
+                    SongOptionSheet(
+                        song = song,
+                        onPlayNext = { optionsState = null },
+                        onAddToQueue = { optionsState = null },
+                        onAddToPlaylist = {
+                            optionsState = null
+                            playlistTargetSong = song
+                        },
+                        onRemoveFromPlaylist = if (source == SheetContext.PLAYLIST && selectedPlaylist != null) {
+                            {
+                                audioViewModel.removeSongFromPlaylist(selectedPlaylist!!.playlistId, song.id)
+                                optionsState = null
+                            }
+                        } else null,
+                        onGoToAlbum = if (source != SheetContext.ALBUM) {
+                            {
+                                val albumName = song.albumName
+                                optionsState = null
+                                selectedAlbumName = albumName
+                            }
+                        } else null,
+                        onGoToArtist = if (source != SheetContext.ARTIST) {
+                            {
+                                val artistName = song.artist
+                                optionsState = null
+                                selectedAlbumName = null
+                                selectedArtist = artistName
+                            }
+                        } else null,
+                        onShare = {
+                            val shareIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                type = "audio/*"
+                                putExtra(Intent.EXTRA_STREAM, Uri.parse(song.path))
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Share Song"))
+                            optionsState = null
+                        },
+                        onEdit = {
+                            val songId = song.id
+                            optionsState = null
+                            onEditSong(songId)
+                        },
+                        bottomPadding = systemBottomInset
+                    )
+                }
+            }
+
+            if (playlistTargetSong != null) {
+                BackHandler { playlistTargetSong = null }
+                val scope = rememberCoroutineScope()
+                CustomBottomSheet(
+                    visible = true,
+                    onDismiss = { playlistTargetSong = null }
+                ) {
+                    AddToPlaylistSheet(
+                        playlists = playlists,
+                        onPlaylistSelected = { playlist ->
+                            scope.launch {
+                                val isDuplicate = audioViewModel.isSongInPlaylist(playlist.playlistId, playlistTargetSong!!.id)
+
+                                if (isDuplicate) {
+                                    pendingPlaylist = playlist
+                                    showDuplicateDialog = true
+                                } else {
+                                    audioViewModel.addSongToPlaylist(playlist.playlistId, playlistTargetSong!!.id)
+                                    toastMessage = "ADDED TO ${playlist.name}"
+                                    playlistTargetSong = null
+                                }
+                            }
+                        },
+                        onCreateNew = {
+                            showCreatePlaylistDialog = true
+                        },
+                        onDismiss = { playlistTargetSong = null },
+                        bottomPadding = systemBottomInset
                     )
                 }
             }

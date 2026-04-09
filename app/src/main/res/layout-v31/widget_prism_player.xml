@@ -15,7 +15,6 @@
         android:src="@drawable/bg_widget_wireframe"
         android:alpha="0.9" />
 
-    <!-- Changed from hard color to a translucent tint so the widget_bg shows through -->
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -25,8 +24,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="8dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="12dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
         android:gravity="center_vertical">
@@ -179,18 +178,20 @@
 
     <ImageView
         android:id="@+id/widget_corner_tr"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:src="@drawable/shape_corner_bracket"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="17dp"
         android:alpha="0.8"
+        android:src="@drawable/shape_corner_bracket"
         app:tint="#D71921" />
 
     <ImageView
         android:id="@+id/widget_corner_tl"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
         android:rotation="-90"
@@ -200,8 +201,8 @@
 
     <ImageView
         android:id="@+id/widget_corner_br"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:rotation="90"
@@ -211,8 +212,8 @@
 
     <ImageView
         android:id="@+id/widget_corner_bl"
-        android:layout_width="12dp"
-        android:layout_height="12dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
         android:rotation="180"

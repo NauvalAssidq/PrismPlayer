@@ -20,7 +20,7 @@ import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.QueueMusic // [NEW] Icon
+import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily // [NEW]
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,25 +42,26 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import kotlinx.coroutines.launch
 import org.android.prismplayer.data.model.Album
-import org.android.prismplayer.data.model.Playlist // [NEW]
+import org.android.prismplayer.data.model.Playlist
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.AlbumCard
 import org.android.prismplayer.ui.components.ArtistListItem
+import org.android.prismplayer.ui.components.DynamicPlaylistCover
 import org.android.prismplayer.ui.components.SongListItem
+import org.android.prismplayer.ui.player.AudioViewModel
 
 @Composable
 fun LibraryScreen(
+    audioViewModel: AudioViewModel,
     state: HomeState,
     currentSong: Song?,
     songs: List<Song>,
-    // [NEW] Playlist Data
     playlists: List<Playlist>,
     isPlaying: Boolean,
     onSongClick: (Song, List<Song>) -> Unit,
     onAlbumClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit,
     onArtistClick: (String) -> Unit,
-    // [NEW] Playlist Click
     onPlaylistClick: (Playlist) -> Unit,
     bottomPadding: Dp,
     initialPage: Int = 0,
@@ -68,7 +69,7 @@ fun LibraryScreen(
 ) {
     val pagerState = rememberPagerState(
         initialPage = initialPage,
-        pageCount = { 4 } // [UPDATED] Increased from 3 to 4
+        pageCount = { 4 }
     )
     val scope = rememberCoroutineScope()
 
@@ -108,7 +109,6 @@ fun LibraryScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            // --- HEADER ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -128,7 +128,6 @@ fun LibraryScreen(
                 )
             }
 
-            // --- TAB ROW ---
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -257,7 +256,7 @@ fun LibraryScreen(
                         }
                     }
 
-                    3 -> { // [NEW] PLAYLISTS
+                    3 -> { // PLAYLISTS
                         if (playlists.isEmpty()) {
                             EmptyStateMessage("NO_PLAYLIST_DATA")
                         } else {
@@ -266,8 +265,15 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(playlists, key = { it.playlistId }) { playlist ->
+                                    val isFav = playlist.name.equals("Favorites", ignoreCase = true)
+                                    // [NEW] Collecting the Flow directly from the AudioViewModel
+                                    val coverUris by audioViewModel.getPlaylistCovers(playlist.playlistId, songs)
+                                        .collectAsState(initial = emptyList())
+
                                     PlaylistItem(
                                         playlist = playlist,
+                                        isFavorite = isFav,
+                                        imageUris = coverUris,
                                         onClick = { onPlaylistClick(playlist) }
                                     )
                                     HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
@@ -327,6 +333,8 @@ fun TabSegment(
 @Composable
 fun PlaylistItem(
     playlist: Playlist,
+    imageUris: List<String> = emptyList(),
+    isFavorite: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
@@ -336,21 +344,11 @@ fun PlaylistItem(
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icon Box
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(0.5f), RoundedCornerShape(4.dp))
-                .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(0.1f), RoundedCornerShape(4.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Rounded.Favorite,
-                null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        DynamicPlaylistCover(
+            isFavorite = isFavorite,
+            imageUris = imageUris,
+            modifier = Modifier.size(48.dp)
+        )
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -388,32 +386,34 @@ fun EmptyStateMessage(message: String) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun LibraryPreview() {
-    val mockSongs = listOf(
-        Song(1, "Midnight City", "M83", "Hurry Up", 1, 240000, "", "", 0, null, 2011, 1, "Rock")
-    )
-    val mockPlaylists = listOf(
-        Playlist(1, "Gym Mix"),
-        Playlist(2, "Night Drive")
-    )
-    val state = HomeState(false, mockSongs, emptyList(), null)
-
-    MaterialTheme {
-        LibraryScreen(
-            state = state,
-            currentSong = null,
-            songs = mockSongs,
-            playlists = mockPlaylists,
-            isPlaying = false,
-            onSongClick = { _, _ -> },
-            onAlbumClick = {},
-            onSongMoreClick = {},
-            onArtistClick = {},
-            onPlaylistClick = {},
-            bottomPadding = 80.dp,
-            onPageChanged = {}
-        )
-    }
-}
+//@Preview(showBackground = true)
+//@Composable
+//fun LibraryPreview() {
+//    val mockSongs = listOf(
+//        Song(1, "Midnight City", "M83", "Hurry Up", 1, 240000, "", "", 0, null, 2011, 1, "Rock")
+//    )
+//    val mockPlaylists = listOf(
+//        Playlist(1, "Gym Mix"),
+//        Playlist(2, "Night Drive")
+//    )
+//    val state = HomeState(false, mockSongs, emptyList(), null)
+//
+//    MaterialTheme {
+//        LibraryScreen(
+//            state = state,
+//            currentSong = null,
+//            songs = mockSongs,
+//            playlists = mockPlaylists,
+//            isPlaying = false,
+//            onSongClick = { _, _ -> },
+//            onAlbumClick = {},
+//            onSongMoreClick = {},
+//            onArtistClick = {},
+//            onPlaylistClick = {},
+//            bottomPadding = 80.dp,
+//            onPageChanged = {},
+//            audioViewModel = TODO(),
+//            initialPage = TODO()
+//        )
+//    }
+//}
