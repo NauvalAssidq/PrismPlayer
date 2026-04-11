@@ -32,8 +32,6 @@ class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
     private lateinit var sessionStore: PlaybackSessionStore
-
-    // CACHE: Lightweight reference to avoid rebuilding queue from Player
     private var currentQueue: List<Song> = emptyList()
 
     @OptIn(UnstableApi::class)

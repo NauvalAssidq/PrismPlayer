@@ -3,6 +3,7 @@ package org.android.prismplayer.ui.components
 import android.annotation.SuppressLint
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -91,7 +93,6 @@ fun SongListItem(
                         .data(
                             SongArtHelper.getUri(song.id)
                                 .buildUpon()
-                                .appendQueryParameter("t", song.dateModified.toString())
                                 .build()
                         )
                         .crossfade(false)
@@ -137,6 +138,29 @@ fun SongListItem(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+
+                // --- NEW: AUDIO QUALITY MARKER ---
+                val qualitySeq = extractQualitySequence(song)
+                if (qualitySeq != null) {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .background(MaterialTheme.colorScheme.onSurface.copy(0.05f), RoundedCornerShape(2.dp))
+                            .border(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(0.15f), RoundedCornerShape(2.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = qualitySeq,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = subTextColor
+                        )
+                    }
+                }
+
                 Text(
                     text = song.artist.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
@@ -150,7 +174,9 @@ fun SongListItem(
                     Text(
                         text = " // ${formatDuration(song.duration)}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp
                     )
                 }
             }
@@ -160,6 +186,7 @@ fun SongListItem(
             Text(
                 text = if (isPlaying) "RUNNING" else "PAUSED",
                 style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
                 fontSize = 9.sp,
                 color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.graphicsLayer { alpha = if (isPlaying) pulseAlpha else 1f }
@@ -177,84 +204,60 @@ fun SongListItem(
     }
 }
 
+private fun extractQualitySequence(song: Song): String? {
+    val path = song.path.lowercase()
+    return when {
+        path.endsWith(".flac") -> "FLAC"
+        path.endsWith(".wav") -> "WAV"
+        path.endsWith(".m4a") -> "AAC"
+        path.endsWith(".mp3") -> "MP3"
+        path.endsWith(".ogg") -> "OGG"
+        else -> "SYS"
+    }
+}
+
 @Composable
 private fun AnimatedEqualizer(color: Color) {
     val infiniteTransition = rememberInfiniteTransition(label = "eq")
 
     val bar1 by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+        initialValue = 0.3f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(500, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
         label = "bar1"
     )
 
     val bar2 by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+        initialValue = 0.5f, targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(animation = tween(600, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
         label = "bar2"
     )
 
     val bar3 by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(700, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
+        initialValue = 0.4f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(700, easing = LinearEasing), repeatMode = RepeatMode.Reverse),
         label = "bar3"
     )
 
     Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight(bar1)
-                .background(color)
-        )
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight(bar2)
-                .background(color)
-        )
-        Box(
-            modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight(bar3)
-                .background(color)
-        )
+        Box(modifier = Modifier.width(3.dp).fillMaxHeight(bar1).background(color))
+        Box(modifier = Modifier.width(3.dp).fillMaxHeight(bar2).background(color))
+        Box(modifier = Modifier.width(3.dp).fillMaxHeight(bar3).background(color))
     }
 }
 
 @Composable
 private fun StaticEqualizer(color: Color) {
     Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
         listOf(0.4f, 0.8f, 0.6f).forEach { level ->
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .fillMaxHeight(level)
-                    .background(color)
-            )
+            Box(modifier = Modifier.width(3.dp).fillMaxHeight(level).background(color))
         }
     }
 }
@@ -271,46 +274,25 @@ private fun formatDuration(ms: Long): String {
 @Composable
 fun SongListItemPreview() {
     PrismPlayerTheme {
-        Box(
-            modifier = Modifier
-                .background(Color.Black)
-        ) {
+        Box(modifier = Modifier.background(Color.Black)) {
             Column {
                 SongListItem(
                     song = Song(
                         id = 1L, title = "Starboy", artist = "The Weeknd", duration = 230_000L,
-                        albumName = "Starboy", albumId = 0, path = "", folderName = "",
+                        albumName = "Starboy", albumId = 0, path = "/storage/music/starboy.flac", folderName = "",
                         dateAdded = 0, songArtUri = "content://media/external/audio/albumart/1",
                         year = 2016, trackNumber = 1, genre = "Pop", dateModified = 0L
                     ),
-                    isActive = true,
-                    isPlaying = true,
-                    index = 1,
-                    onClick = {}
+                    isActive = true, isPlaying = true, index = 1, onClick = {}
                 )
                 SongListItem(
                     song = Song(
                         id = 2L, title = "I Feel It Coming", artist = "The Weeknd", duration = 250_000L,
-                        albumName = "Starboy", albumId = 0, path = "", folderName = "",
+                        albumName = "Starboy", albumId = 0, path = "/storage/music/coming.mp3", folderName = "",
                         dateAdded = 0, songArtUri = null, year = 2016, trackNumber = 2,
                         genre = "Pop", dateModified = 0L
                     ),
-                    isActive = false,
-                    isPlaying = false,
-                    index = 2,
-                    onClick = {}
-                )
-                SongListItem(
-                    song = Song(
-                        id = 3L, title = "Party Monster", artist = "The Weeknd", duration = 245_000L,
-                        albumName = "Starboy", albumId = 0, path = "", folderName = "",
-                        dateAdded = 0, songArtUri = null, year = 2016, trackNumber = 3,
-                        genre = "Pop", dateModified = 0L
-                    ),
-                    isActive = false,
-                    isPlaying = false,
-                    index = 3,
-                    onClick = {}
+                    isActive = false, isPlaying = false, index = 2, onClick = {}
                 )
             }
         }
