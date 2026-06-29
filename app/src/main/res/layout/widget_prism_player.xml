@@ -86,8 +86,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="NO_SIG"
-                android:textSize="8sp"
                 android:textColor="#80FFFFFF"
                 android:fontFamily="monospace"
                 android:visibility="gone"/>

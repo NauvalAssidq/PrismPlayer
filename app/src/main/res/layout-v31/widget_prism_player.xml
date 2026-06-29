@@ -178,14 +178,12 @@
 
     <ImageView
         android:id="@+id/widget_corner_tr"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginTop="18dp"
-        android:layout_marginEnd="17dp"
-        android:alpha="0.8"
         android:src="@drawable/shape_corner_bracket"
+        android:alpha="0.8"
         app:tint="#D71921" />
 
     <ImageView
