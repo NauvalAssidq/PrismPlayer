@@ -2,17 +2,12 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.devtools.ksp") version "2.3.3"
-    id("org.jetbrains.kotlin.plugin.compose") version
-        "2.3.10"
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.10"
 }
 
 android {
     namespace = "org.android.prismplayer"
     compileSdk = 36
-    val keystorePath: String? by project
-    val keystorePass: String? by project
-    val keyAliasVal: String? by project
-    val keyPass: String? by project
 
     defaultConfig {
         applicationId = "org.android.prismplayer"
@@ -23,32 +18,17 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-//    signingConfigs {
-//        if (!keystorePath.isNullOrBlank()
-//            && !keystorePass.isNullOrBlank()
-//            && !keyAliasVal.isNullOrBlank()
-//            && !keyPass.isNullOrBlank()
-//        ) {
-//            create("release") {
-//                storeFile = file(keystorePath)
-//                storePassword = keystorePass
-//                keyAlias = keyAliasVal
-//                keyPassword = keyPass
-//            }
-//        }
-//    }
-
     buildTypes {
         release {
-//            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -62,6 +42,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     tasks.register("renameReleaseApk") {
@@ -69,7 +50,7 @@ android {
         doLast {
             val versionName = android.defaultConfig.versionName ?: "0.0.0"
             val appName = "PrismPlayer"
-            val apkDir = file("$layout.buildDirectory/outputs/apk/release")
+            val apkDir = file("${layout.buildDirectory.get()}/outputs/apk/release")
             val unsigned = File(apkDir, "app-release-unsigned.apk")
             val signed = File(apkDir, "app-release.apk")
             val input = when {
@@ -91,57 +72,50 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.core.splashscreen)
-    implementation(libs.androidx.compose.runtime)
-    implementation(libs.androidx.compose.foundation.layout)
-    implementation(libs.androidx.compose.ui.geometry)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.compose.animation.core)
-    implementation(libs.androidx.compose.ui.text)
     implementation(libs.play.services.appsearch)
-    implementation(libs.androidx.compose.foundation)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.foundation)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.animation.core)
+    implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.navigation.compose)
 
     implementation(libs.coil.compose)
     implementation(libs.androidx.palette.ktx)
-    debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.decoder)
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.8.0+1")
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    debugImplementation(libs.androidx.ui.tooling)
     ksp(libs.androidx.room.compiler) {
         exclude(group = "com.intellij", module = "annotations")
     }
 
     implementation(libs.accompanist.permissions)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    implementation(libs.coil.compose.v260)
     implementation(libs.reorderable)
-    implementation(libs.accompanist.permissions.v0340)
     implementation("io.github.kyant0:taglib:1.0.5")
+    implementation("io.github.kyant0:backdrop:1.0.2")
+
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
     implementation(libs.logging.interceptor)
-    implementation("io.github.kyant0:backdrop:1.0.2")
-    implementation(libs.androidx.media3.decoder)
-    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.8.0+1")
+
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

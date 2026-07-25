@@ -138,8 +138,6 @@ fun SongListItem(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-
-                // --- NEW: AUDIO QUALITY MARKER ---
                 val qualitySeq = extractQualitySequence(song)
                 if (qualitySeq != null) {
                     Box(

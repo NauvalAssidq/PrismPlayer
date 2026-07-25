@@ -22,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import org.android.prismplayer.ui.components.CustomBottomSheet
+import org.android.prismplayer.ui.components.DeleteConfirmationDialog
+import org.android.prismplayer.ui.components.DynamicPlaylistCover
+import org.android.prismplayer.ui.components.SongListItem
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -129,7 +131,6 @@ fun PlaylistDetailScreen(
                 modifier = Modifier.fillMaxSize()
               )
 
-              // Tech Overlay
               Box(
                 modifier = Modifier
                   .fillMaxSize()
@@ -206,7 +207,6 @@ fun PlaylistDetailScreen(
           HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f), modifier = Modifier.padding(bottom = 8.dp))
         }
 
-        // --- SONG LIST ---
         if (songs.isEmpty()) {
           item {
             Box(
@@ -242,24 +242,18 @@ fun PlaylistDetailScreen(
     }
   }
 
-  // Delete Confirmation Dialog
-  if (showDeleteDialog) {
-    AlertDialog(
-      onDismissRequest = { showDeleteDialog = false },
-      title = { Text("CONFIRM_DELETION", fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) },
-      text = { Text("Permanently delete playlist '${playlist.name}'? Audio files will remain in storage.") },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            onDeletePlaylist()
-            showDeleteDialog = false
-          },
-          colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-        ) { Text("DELETE") }
+  // Delete Confirmation Bottom Sheet
+  CustomBottomSheet(
+    visible = showDeleteDialog,
+    onDismiss = { showDeleteDialog = false }
+  ) {
+    DeleteConfirmationDialog(
+      presetName = playlist.name,
+      onConfirm = {
+        onDeletePlaylist()
+        showDeleteDialog = false
       },
-      dismissButton = {
-        TextButton(onClick = { showDeleteDialog = false }) { Text("CANCEL") }
-      }
+      onDismiss = { showDeleteDialog = false }
     )
   }
 }

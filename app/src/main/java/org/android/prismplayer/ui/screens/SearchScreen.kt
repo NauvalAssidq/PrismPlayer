@@ -55,7 +55,12 @@ fun SearchScreen(
     onSongClick: (Song) -> Unit,
     onAlbumClick: (String) -> Unit,    onArtistClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit,
-    bottomPadding: Dp
+    bottomPadding: Dp,
+    onOpenAiCurator: (() -> Unit)? = null,
+    recentSearches: List<org.android.prismplayer.data.model.SearchHistory> = emptyList(),
+    onDeleteSearchHistoryItem: (String) -> Unit = {},
+    onClearSearchHistory: () -> Unit = {},
+    onSaveSearchQuery: (String) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -75,12 +80,30 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 24.dp)
             ) {
-                Text(
-                    text = "SEARCH_PROTOCOL",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    letterSpacing = 2.sp
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "SEARCH_PROTOCOL",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        letterSpacing = 2.sp
+                    )
+
+                    if (onOpenAiCurator != null) {
+                        Text(
+                            text = "[ AI VIBE CURATOR ]",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { onOpenAiCurator() }
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -88,7 +111,12 @@ fun SearchScreen(
                     query = query,
                     onQueryChange = onQueryChange,
                     onClear = { onQueryChange("") },
-                    onDone = { focusManager.clearFocus() }
+                    onDone = {
+                        focusManager.clearFocus()
+                        if (query.isNotBlank()) {
+                            onSaveSearchQuery(query.trim())
+                        }
+                    }
                 )
             }
 
@@ -99,6 +127,72 @@ fun SearchScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = bottomPadding),
             ) {
+                // RECENT SEARCH HISTORY (Shown when query is empty)
+                if (query.isEmpty() && recentSearches.isNotEmpty()) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "RECENT_SEARCH_CACHE",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = "[ PURGE_ALL ]",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.clickable { onClearSearchHistory() }
+                            )
+                        }
+                    }
+
+                    items(recentSearches, key = { it.id }) { historyItem ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onQueryChange(historyItem.query)
+                                    onSaveSearchQuery(historyItem.query)
+                                }
+                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "> ",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                                Text(
+                                    text = historyItem.query,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            Text(
+                                text = "[ ERASE ]",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 9.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(0.4f),
+                                modifier = Modifier.clickable { onDeleteSearchHistoryItem(historyItem.query) }
+                            )
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f))
+                    }
+                }
                 // 1. ARTISTS (Entities)
                 if (results.artists.isNotEmpty()) {
                     item { SectionLabel("IDENTIFIED_ENTITIES", "ARTISTS") }
@@ -147,8 +241,8 @@ fun SearchScreen(
 
                         SongListItem(
                             song = song,
-                            isActive = isCurrent, // True if IDs match
-                            isPlaying = isCurrent && isPlaying, // True if active AND global playing state is true
+                            isActive = isCurrent,
+                            isPlaying = isCurrent && isPlaying,
                             index = null,
                             onClick = { onSongClick(song) },
                             onMoreClick = { onSongMoreClick(song) }

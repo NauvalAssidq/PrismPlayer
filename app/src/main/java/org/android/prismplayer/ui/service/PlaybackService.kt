@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -18,6 +19,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.android.prismplayer.MainActivity
 import org.android.prismplayer.R
 import org.android.prismplayer.data.model.Song
@@ -25,7 +32,6 @@ import org.android.prismplayer.ui.player.manager.EqManager
 import org.android.prismplayer.ui.utils.AudioSessionHolder
 import org.android.prismplayer.ui.utils.PlaybackSessionStore
 import org.android.prismplayer.ui.widget.PrismWidgetProvider
-import androidx.core.net.toUri
 
 class PlaybackService : MediaSessionService() {
 
@@ -33,6 +39,7 @@ class PlaybackService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     private lateinit var sessionStore: PlaybackSessionStore
     private var currentQueue: List<Song> = emptyList()
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -243,32 +250,52 @@ class PlaybackService : MediaSessionService() {
         val metadata = mediaItem?.mediaMetadata
         val title = metadata?.title?.toString() ?: ""
         val artist = metadata?.artist?.toString() ?: ""
-        var bitmap: Bitmap? = null
-        var duration = player.duration
+        val isPlaying = player.isPlaying
+        val artworkData = metadata?.artworkData
+        val artworkUri = metadata?.artworkUri
 
+        serviceScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                var loadedBitmap: Bitmap? = if (artworkData != null) {
+                    BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+                } else if (artworkUri != null) {
+                    try {
+                        contentResolver.openInputStream(artworkUri)?.use {
+                            BitmapFactory.decodeStream(it)
+                        }
+                    } catch (e: Exception) { null }
+                } else null
 
-        if (duration <= 0 || duration == C.TIME_UNSET) {
-            duration = sessionStore.getLastSong()?.duration ?: 0L
-        }
-
-        if (metadata?.artworkData != null) {
-            bitmap = BitmapFactory.decodeByteArray(metadata.artworkData, 0, metadata.artworkData!!.size)
-        } else if (metadata?.artworkUri != null) {
-            try {
-                contentResolver.openInputStream(metadata.artworkUri!!)?.use {
-                    bitmap = BitmapFactory.decodeStream(it)
+                if (loadedBitmap == null) {
+                    val drawable = androidx.core.content.ContextCompat.getDrawable(applicationContext, R.mipmap.ic_launcher)
+                    if (drawable != null) {
+                        loadedBitmap = drawableToBitmap(drawable)
+                    }
                 }
-            } catch (e: Exception)
-            { /* Silent fail */ }
-        }
 
-        if (bitmap == null) {
-            bitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
-        } else if (bitmap!!.width > 256 || bitmap!!.height > 256) {
-            bitmap = Bitmap.createScaledBitmap(bitmap!!, 256, 256, true)
-        }
+                val finalBitmap = loadedBitmap
+                if (finalBitmap != null && (finalBitmap.width > 256 || finalBitmap.height > 256)) {
+                    Bitmap.createScaledBitmap(finalBitmap, 256, 256, true)
+                } else {
+                    finalBitmap
+                }
+            }
 
-        PrismWidgetProvider.pushUpdate(applicationContext, title, artist, player.isPlaying, bitmap)
+            PrismWidgetProvider.pushUpdate(applicationContext, title, artist, isPlaying, bitmap)
+        }
+    }
+
+    private fun drawableToBitmap(drawable: android.graphics.drawable.Drawable): Bitmap {
+        if (drawable is android.graphics.drawable.BitmapDrawable && drawable.bitmap != null) {
+            return drawable.bitmap
+        }
+        val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 256
+        val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 256
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -283,6 +310,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        serviceScope.cancel()
         mediaSession?.run {
             player.release()
             release()

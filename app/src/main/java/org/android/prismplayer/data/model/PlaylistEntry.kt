@@ -15,9 +15,11 @@ import androidx.room.PrimaryKey
       onDelete = ForeignKey.CASCADE
     )
   ],
-  indices = [Index(value = ["playlistId"])]
+  indices = [
+    Index(value = ["playlistId"]),
+    Index(value = ["playlistId", "songId"], unique = true)
+  ]
 )
-
 data class PlaylistEntry(
   @PrimaryKey(autoGenerate = true) val entryId: Long = 0,
   val playlistId: Long,

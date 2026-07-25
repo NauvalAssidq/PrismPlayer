@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,6 +50,17 @@ fun AlbumCard(
         Modifier.fillMaxWidth()
     }
 
+    val context = LocalContext.current
+    val imageRequest = remember(coverUri) {
+        if (!coverUri.isNullOrBlank()) {
+            ImageRequest.Builder(context)
+                .data(coverUri)
+                .crossfade(true)
+                .memoryCacheKey(coverUri)
+                .build()
+        } else null
+    }
+
     Column(
         modifier = modifier.clickable { onClick() }
     ) {
@@ -59,13 +71,9 @@ fun AlbumCard(
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            if (!coverUri.isNullOrBlank()) {
+            if (imageRequest != null) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(coverUri)
-                        .crossfade(true)
-                        .memoryCacheKey(coverUri)
-                        .build(),
+                    model = imageRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

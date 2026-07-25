@@ -11,8 +11,8 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
 
   val allPlaylists: Flow<List<Playlist>> = playlistDao.getAllPlaylists()
 
-  suspend fun createPlaylist(name: String) {
-    playlistDao.createPlaylist(Playlist(name = name))
+  suspend fun createPlaylist(name: String): Long {
+    return playlistDao.createPlaylist(Playlist(name = name))
   }
 
   suspend fun deletePlaylist(playlist: Playlist) {
@@ -40,7 +40,6 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     return playlistDao.isSongInPlaylist(playlistId, songId)
   }
 
-  //creating dynamic playlist covers (Not Permanent)
   fun getPlaylistCovers(playlistId: Long, allLibrarySongs: List<Song>): Flow<List<String>> {
     return playlistDao.getEntriesForPlaylist(playlistId).map { entries ->
       entries.mapNotNull { entry ->

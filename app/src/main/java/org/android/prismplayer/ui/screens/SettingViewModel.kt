@@ -2,6 +2,7 @@ package org.android.prismplayer.ui.screens
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -13,15 +14,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.android.prismplayer.PrismApplication
+import org.android.prismplayer.data.model.Song
+import org.android.prismplayer.data.repository.GeminiRepository
 import org.android.prismplayer.data.repository.MusicRepository
 import org.android.prismplayer.ui.utils.AppTheme
+import org.android.prismplayer.ui.utils.LibraryPreferences
 import org.android.prismplayer.ui.utils.ThemePreferences
-import androidx.core.content.edit
 
 class SettingsViewModel(
     private val repository: MusicRepository,
     private val themePreferences: ThemePreferences,
-    private val sharedPreferences: SharedPreferences
+    private val libraryPreferences: LibraryPreferences,
+    private val sharedPreferences: SharedPreferences,
+    private val geminiRepository: GeminiRepository = GeminiRepository()
 ) : ViewModel() {
 
     private val _isScanning = MutableStateFlow(false)
@@ -60,17 +65,9 @@ class SettingsViewModel(
             _isScanning.value = true
             val startTime = System.currentTimeMillis()
 
-            val foldersToScan = listOf(
-                "/storage/emulated/0/Music",
-                "/storage/emulated/0/Download",
-                "/storage/emulated/0/Podcasts"
-            )
-
-            foldersToScan.forEach { path ->
-                // This is a simple directory walker to find files and tell Android to scan them
-            }
-
+            val foldersToScan = libraryPreferences.getSavedFolders()
             repository.importSongsFromFolders(foldersToScan)
+
             val elapsedTime = System.currentTimeMillis() - startTime
             if (elapsedTime < 1500) {
                 delay(1500 - elapsedTime)
@@ -78,6 +75,15 @@ class SettingsViewModel(
 
             _isScanning.value = false
         }
+    }
+
+    suspend fun curateLibraryWithAi(userQuery: String, allSongs: List<Song>): Result<List<Song>> {
+        return geminiRepository.curateSongs(
+            userQuery = userQuery,
+            apiKey = _geminiApiKey.value,
+            systemPrompt = _aiSystemPrompt.value,
+            allSongs = allSongs
+        )
     }
 
     companion object {
@@ -104,9 +110,10 @@ class SettingsViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val app = checkNotNull(extras[APPLICATION_KEY]) as PrismApplication
                 val themePrefs = ThemePreferences(app.applicationContext)
+                val libraryPrefs = LibraryPreferences(app.applicationContext)
                 val sharedPrefs = app.getSharedPreferences("prism_config", Context.MODE_PRIVATE)
 
-                return SettingsViewModel(app.repository, themePrefs, sharedPrefs) as T
+                return SettingsViewModel(app.repository, themePrefs, libraryPrefs, sharedPrefs) as T
             }
         }
     }

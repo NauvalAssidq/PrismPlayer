@@ -7,10 +7,6 @@ import org.android.prismplayer.data.model.LyricsEntity
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.data.network.RetrofitClient
 
-/**
- * Handles fetching and caching lyrics.
- * Team Note: Edit this if you are changing the Lyrics API or caching logic.
- */
 class LyricsSource(private val lyricsDao: LyricsDao) {
 
     suspend fun getCached(songId: Long): LyricsEntity? = withContext(Dispatchers.IO) {

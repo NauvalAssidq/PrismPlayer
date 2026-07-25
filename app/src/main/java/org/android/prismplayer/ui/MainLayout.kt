@@ -71,7 +71,11 @@ import org.android.prismplayer.ui.screens.HomeViewModel
 import org.android.prismplayer.ui.screens.LibraryScreen
 import org.android.prismplayer.ui.screens.PlaylistDetailScreen
 import org.android.prismplayer.ui.screens.SearchScreen
+import org.android.prismplayer.ui.components.GenerateAiPlaylistSheet
+import org.android.prismplayer.ui.screens.RecentlyPlayedViewModel
+import org.android.prismplayer.ui.screens.SearchHistoryViewModel
 import org.android.prismplayer.ui.screens.SettingsScreen
+import org.android.prismplayer.ui.screens.SettingsViewModel
 import org.android.prismplayer.ui.utils.formatTime
 
 enum class SheetContext {
@@ -120,7 +124,13 @@ fun MainLayout(
     var showDuplicateDialog by remember { mutableStateOf(false) }
     var pendingPlaylist by remember { mutableStateOf<Playlist?>(null) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var showAiGeneratorSheet by remember { mutableStateOf(false) }
     var toastMessage by remember { mutableStateOf<String?>(null) }
+    val settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
+    val searchHistoryViewModel: SearchHistoryViewModel = viewModel(factory = SearchHistoryViewModel.Factory)
+    val recentlyPlayedViewModel: RecentlyPlayedViewModel = viewModel(factory = RecentlyPlayedViewModel.Factory)
+    val recentSearches by searchHistoryViewModel.recentSearches.collectAsState()
+    val recentlyPlayedSongs by recentlyPlayedViewModel.recentlyPlayedSongs.collectAsState()
 
     LaunchedEffect(expandPlayer) {
         if (expandPlayer) {
@@ -181,6 +191,7 @@ fun MainLayout(
                         onSongMoreClick = { song -> optionsState = song to SheetContext.HOME },
                         onSettingsClick = { currentTab = PrismTab.SETTING },
                         bottomPadding = globalBottomPadding,
+                        recentlyPlayedSongs = recentlyPlayedSongs
                     )
 
                     PrismTab.SEARCH -> SearchScreen(
@@ -188,17 +199,29 @@ fun MainLayout(
                         results = searchResults,
                         onQueryChange = { homeViewModel.onSearchQueryChanged(it) },
                         onSongClick = { song ->
+                            if (searchQuery.isNotBlank()) searchHistoryViewModel.saveSearchQuery(searchQuery)
                             audioViewModel.playSong(
                                 song,
                                 searchResults.songs
                             )
                         },
-                        onAlbumClick = { selectedAlbumName = it },
-                        onArtistClick = { selectedArtist = it },
+                        onAlbumClick = {
+                            if (searchQuery.isNotBlank()) searchHistoryViewModel.saveSearchQuery(searchQuery)
+                            selectedAlbumName = it
+                        },
+                        onArtistClick = {
+                            if (searchQuery.isNotBlank()) searchHistoryViewModel.saveSearchQuery(searchQuery)
+                            selectedArtist = it
+                        },
                         onSongMoreClick = { song -> optionsState = song to SheetContext.SEARCH },
                         bottomPadding = globalBottomPadding,
                         currentSong = currentSong,
-                        isPlaying = isPlaying
+                        isPlaying = isPlaying,
+                        onOpenAiCurator = { showAiGeneratorSheet = true },
+                        recentSearches = recentSearches,
+                        onDeleteSearchHistoryItem = { searchHistoryViewModel.deleteSearchQuery(it) },
+                        onClearSearchHistory = { searchHistoryViewModel.clearAllHistory() },
+                        onSaveSearchQuery = { searchHistoryViewModel.saveSearchQuery(it) }
                     )
 
                     PrismTab.LIBRARY -> LibraryScreen(
@@ -220,6 +243,7 @@ fun MainLayout(
                             libraryTabIndex = newIndex
                         },
                         audioViewModel = audioViewModel,
+                        onOpenAiCurator = { showAiGeneratorSheet = true }
                     )
 
                     PrismTab.SETTING -> SettingsScreen(
@@ -337,6 +361,47 @@ fun MainLayout(
                 )
             }
 
+            Column(
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .pointerInput(Unit) {
+                        detectTapGestures { /* Do nothing */ }
+                    }
+                    .navigationBarsPadding()
+            ) {
+                AnimatedVisibility(
+                    visible = currentSong != null && !isFullPlayerOpen && !isEqualizerOpen,
+                    enter = slideInVertically { it },
+                    exit = slideOutVertically { it }
+                ) {
+                    if (currentSong != null) {
+                        MiniPlayer(
+                            song = currentSong!!,
+                            isPlaying = isPlaying,
+                            progress = progress,
+                            onTogglePlay = { audioViewModel.togglePlayPause() },
+                            onSkipNext = { audioViewModel.skipNext() },
+                            onClick = { isFullPlayerOpen = true }
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = !isFullPlayerOpen && !isEqualizerOpen,
+                ) {
+                    PrismNavBar(
+                        currentTab = currentTab,
+                        onTabSelected = {
+                            currentTab = it
+                            selectedPlaylist = null
+                            selectedArtist = null
+                            selectedAlbumName = null
+                            optionsState = null
+                            playlistTargetSong = null
+                        },
+                    )
+                }
+            }
+
             AnimatedVisibility(
                 visible = isFullPlayerOpen,
                 enter = slideInVertically(initialOffsetY = { it }),
@@ -380,70 +445,6 @@ fun MainLayout(
                       onAddToPlaylist = {
                         playlistTargetSong = it
                       },
-                    )
-                }
-            }
-
-            if (showDuplicateDialog && pendingPlaylist != null && playlistTargetSong != null) {
-                DuplicateSongDialog(
-                    playlistName = pendingPlaylist!!.name,
-                    songTitle = playlistTargetSong!!.title,
-                    onDismiss = {
-                        showDuplicateDialog = false
-                        pendingPlaylist = null
-                    }
-                )
-            }
-
-            if (showCreatePlaylistDialog) {
-                CreatePlaylistDialog(
-                    onDismiss = { showCreatePlaylistDialog = false },
-                    onCreate = { newName ->
-                        audioViewModel.createPlaylist(newName)
-                        toastMessage = "INDEX CREATED: $newName"
-                        showCreatePlaylistDialog = false
-                    }
-                )
-            }
-
-
-            Column(
-                modifier = Modifier.align(Alignment.BottomCenter)
-                    .pointerInput(Unit) {
-                        detectTapGestures { /* Do nothing */ }
-                    }
-                    .navigationBarsPadding()
-            ) {
-                AnimatedVisibility(
-                    visible = currentSong != null && !isFullPlayerOpen && !isEqualizerOpen,
-                    enter = slideInVertically { it },
-                    exit = slideOutVertically { it }
-                ) {
-                    if (currentSong != null) {
-                        MiniPlayer(
-                            song = currentSong!!,
-                            isPlaying = isPlaying,
-                            progress = progress,
-                            onTogglePlay = { audioViewModel.togglePlayPause() },
-                            onSkipNext = { audioViewModel.skipNext() },
-                            onClick = { isFullPlayerOpen = true }
-                        )
-                    }
-                }
-
-                AnimatedVisibility(
-                    visible = !isFullPlayerOpen && !isEqualizerOpen,
-                ) {
-                    PrismNavBar(
-                        currentTab = currentTab,
-                        onTabSelected = {
-                            currentTab = it
-                            selectedPlaylist = null
-                            selectedArtist = null
-                            selectedAlbumName = null
-                            optionsState = null
-                            playlistTargetSong = null
-                        },
                     )
                 }
             }
@@ -537,6 +538,56 @@ fun MainLayout(
                         bottomPadding = systemBottomInset
                     )
                 }
+            }
+
+            CustomBottomSheet(
+                visible = showDuplicateDialog && pendingPlaylist != null && playlistTargetSong != null,
+                onDismiss = {
+                    showDuplicateDialog = false
+                    pendingPlaylist = null
+                }
+            ) {
+                if (pendingPlaylist != null && playlistTargetSong != null) {
+                    DuplicateSongDialog(
+                        playlistName = pendingPlaylist!!.name,
+                        songTitle = playlistTargetSong!!.title,
+                        onDismiss = {
+                            showDuplicateDialog = false
+                            pendingPlaylist = null
+                        }
+                    )
+                }
+            }
+
+            CustomBottomSheet(
+                visible = showCreatePlaylistDialog,
+                onDismiss = { showCreatePlaylistDialog = false }
+            ) {
+                CreatePlaylistDialog(
+                    onDismiss = { showCreatePlaylistDialog = false },
+                    onCreate = { newName ->
+                        audioViewModel.createPlaylist(newName)
+                        toastMessage = "INDEX CREATED: $newName"
+                        showCreatePlaylistDialog = false
+                    }
+                )
+            }
+
+            CustomBottomSheet(
+                visible = showAiGeneratorSheet,
+                onDismiss = { showAiGeneratorSheet = false }
+            ) {
+                GenerateAiPlaylistSheet(
+                    allSongs = allSongs,
+                    onCurate = { prompt, songs ->
+                        settingsViewModel.curateLibraryWithAi(prompt, songs)
+                    },
+                    onCreatePlaylistWithSongs = { playlistName, curatedSongs ->
+                        audioViewModel.createPlaylistWithSongs(playlistName, curatedSongs)
+                        toastMessage = "AI PLAYLIST GENERATED: $playlistName (${curatedSongs.size} SONGS)"
+                    },
+                    onDismiss = { showAiGeneratorSheet = false }
+                )
             }
 
             AnimatedVisibility(
