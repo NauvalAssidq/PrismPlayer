@@ -24,10 +24,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
-/**
- * Handles low-level file tagging using Native Libraries (TagLib).
- * Implements a safe "Copy -> Edit -> Replace" strategy to prevent file corruption.
- */
 class NativeMetadataSource(private val context: Context) : MetadataRepository {
 
     override suspend fun writeTags(song: Song, pickedArtUri: String?): Boolean = withContext(Dispatchers.IO) {
@@ -36,13 +32,10 @@ class NativeMetadataSource(private val context: Context) : MetadataRepository {
 
         try {
             val originalUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.id)
-
-            // 1. Copy Source to Temp
             context.contentResolver.openInputStream(originalUri)?.use { input ->
                 FileOutputStream(tempFile).use { output -> input.copyTo(output) }
             } ?: return@withContext false
 
-            // 2. Read Existing Tags
             val currentProperties = try {
                 ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY).use { pfd ->
                     val nativeFd = pfd.dup().detachFd()
@@ -50,7 +43,6 @@ class NativeMetadataSource(private val context: Context) : MetadataRepository {
                 }
             } catch (e: Exception) { null } ?: mutableMapOf()
 
-            // 3. Update Text Data
             if (song.title.isNotBlank()) currentProperties["TITLE"] = arrayOf(song.title)
             if (song.artist.isNotBlank()) currentProperties["ARTIST"] = arrayOf(song.artist)
             if (song.albumName.isNotBlank()) currentProperties["ALBUM"] = arrayOf(song.albumName)
@@ -58,17 +50,14 @@ class NativeMetadataSource(private val context: Context) : MetadataRepository {
             if (song.year > 0) currentProperties["DATE"] = arrayOf(song.year.toString())
             if (song.trackNumber > 0) currentProperties["TRACKNUMBER"] = arrayOf(song.trackNumber.toString())
 
-            // 4. TRANSACTION A: Save Text Tags
             ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_WRITE).use { pfd ->
                 val nativeFd = pfd.dup().detachFd()
                 if (!TagLib.savePropertyMap(nativeFd, currentProperties as PropertyMap)) {
                     throw Exception("Native Save Failed: Text")
                 }
-                // Sync is critical here to ensure file structure is valid for the next step
                 try { pfd.fileDescriptor.sync() } catch (e: Exception) {}
             }
 
-            // 5. TRANSACTION B: Save Picture (If exists)
             if (!pickedArtUri.isNullOrEmpty()) {
                 val bitmap = getBitmapFromUri(context, Uri.parse(pickedArtUri))
                 if (bitmap != null) {
@@ -85,7 +74,6 @@ class NativeMetadataSource(private val context: Context) : MetadataRepository {
                         mimeType = mimeType
                     )
 
-                    // Open fresh for the picture write
                     ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_WRITE).use { pfd ->
                         val nativeFd = pfd.dup().detachFd()
                         TagLib.savePictures(nativeFd, arrayOf(newPic))
@@ -94,7 +82,6 @@ class NativeMetadataSource(private val context: Context) : MetadataRepository {
                 }
             }
 
-            // 6. Write Back (Atomic Replace)
             try {
                 context.contentResolver.openFileDescriptor(originalUri, "rwt")?.use { targetPfd ->
                     FileOutputStream(targetPfd.fileDescriptor).use { output ->
@@ -113,7 +100,6 @@ class NativeMetadataSource(private val context: Context) : MetadataRepository {
                 }
             }
 
-            // 7. Update MediaStore & Force Rescan
             val values = ContentValues().apply {
                 put(MediaStore.Audio.Media.TITLE, song.title)
                 put(MediaStore.Audio.Media.ARTIST, song.artist)
@@ -165,7 +151,6 @@ class NativeMetadataSource(private val context: Context) : MetadataRepository {
     }
 
     // --- Private Helpers ---
-
     private fun getBitmapFromUri(context: Context, uri: Uri): Bitmap? {
         return try {
             context.contentResolver.openInputStream(uri)?.use {

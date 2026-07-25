@@ -9,21 +9,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import org.android.prismplayer.data.model.Playlist
 
 @Composable
@@ -46,7 +42,6 @@ fun AddToPlaylistSheet(
             .navigationBarsPadding()
             .padding(bottom = bottomPadding)
     ) {
-        // --- 1. DECORATIVE HEADER ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -56,21 +51,13 @@ fun AddToPlaylistSheet(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 repeat(5) {
-                    Box(
-                        modifier = Modifier
-                            .width(20.dp)
-                            .height(1.dp)
-                            .background(MaterialTheme.colorScheme.onSurface.copy(0.15f))
-                    )
+                    Box(modifier = Modifier.width(20.dp).height(1.dp).background(MaterialTheme.colorScheme.onSurface.copy(0.15f)))
                 }
             }
         }
 
-        // --- 2. TITLE SECTION ---
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -85,11 +72,8 @@ fun AddToPlaylistSheet(
 
         HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
 
-        // --- 3. SCALED PLAYLIST LIST ---
         LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 400.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
         ) {
             item {
                 PlaylistCommandRow(
@@ -102,10 +86,13 @@ fun AddToPlaylistSheet(
             }
 
             items(playlists) { playlist ->
+                val uris = playlist.iconUri?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
+
                 PlaylistCommandRow(
                     label = playlist.name.uppercase(),
                     subLabel = "STORAGE_ID: ${playlist.playlistId}",
-                    coverUri = playlist.iconUri,
+                    imageUris = uris, // 2. Pass the list down
+                    isFavorite = playlist.name == "Favorites",
                     onClick = { onPlaylistSelected(playlist) }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f))
@@ -119,65 +106,53 @@ private fun PlaylistCommandRow(
     label: String,
     subLabel: String? = null,
     icon: ImageVector? = null,
-    coverUri: String? = null,
+    imageUris: List<String> = emptyList(),
+    isFavorite: Boolean = false,
     isPrimary: Boolean = false,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp) // Resized height for better touch targets and visibility
+            .height(72.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // --- IMAGE / ICON BOX ---
-            Box(
-                modifier = Modifier
-                    .size(48.dp) // Resized cover art
-                    .background(
-                        MaterialTheme.colorScheme.onSurface.copy(0.05f),
-                        RoundedCornerShape(4.dp)
-                    )
-                    .border(
-                        1.dp,
-                        if(isPrimary) MaterialTheme.colorScheme.primary.copy(0.4f)
-                        else MaterialTheme.colorScheme.onSurface.copy(0.1f),
-                        RoundedCornerShape(4.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                if (!coverUri.isNullOrEmpty()) {
-                    AsyncImage(
-                        model = coverUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(4.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
+
+            if (isPrimary) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.onSurface.copy(0.05f), RoundedCornerShape(4.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.4f), RoundedCornerShape(4.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = icon ?: Icons.Rounded.QueueMusic,
+                        imageVector = icon ?: Icons.Rounded.Add,
                         contentDescription = null,
-                        tint = if (isPrimary) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface.copy(0.5f),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
+            } else {
+                DynamicPlaylistCover(
+                    isFavorite = isFavorite,
+                    imageUris = imageUris,
+                    modifier = Modifier.size(48.dp)
+                )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
-
-            // --- TEXT DATA ---
             Column(verticalArrangement = Arrangement.Center) {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
-                    color = if (isPrimary) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurface,
+                    color = if (isPrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -193,7 +168,6 @@ private fun PlaylistCommandRow(
             }
         }
 
-        // Tech visual
         Text(
             text = "[ LOAD ]",
             style = MaterialTheme.typography.labelSmall,

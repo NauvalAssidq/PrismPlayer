@@ -40,7 +40,6 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     return playlistDao.isSongInPlaylist(playlistId, songId)
   }
 
-  //creating dynamic playlist covers (Not Permanent)
   fun getPlaylistCovers(playlistId: Long, allLibrarySongs: List<Song>): Flow<List<String>> {
     return playlistDao.getEntriesForPlaylist(playlistId).map { entries ->
       entries.mapNotNull { entry ->

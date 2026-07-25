@@ -129,7 +129,6 @@ fun PlaylistDetailScreen(
                 modifier = Modifier.fillMaxSize()
               )
 
-              // Tech Overlay
               Box(
                 modifier = Modifier
                   .fillMaxSize()
@@ -206,7 +205,6 @@ fun PlaylistDetailScreen(
           HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f), modifier = Modifier.padding(bottom = 8.dp))
         }
 
-        // --- SONG LIST ---
         if (songs.isEmpty()) {
           item {
             Box(

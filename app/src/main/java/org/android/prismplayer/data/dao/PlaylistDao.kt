@@ -11,7 +11,6 @@ import org.android.prismplayer.data.model.PlaylistEntry
 
 @Dao
 interface PlaylistDao {
-  // --- Playlist Ops ---
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun createPlaylist(playlist: Playlist): Long
 
@@ -24,7 +23,6 @@ interface PlaylistDao {
   @Query("UPDATE playlists SET name = :newName WHERE playlistId = :id")
   suspend fun renamePlaylist(id: Long, newName: String)
 
-  // --- Song Ops ---
   @Insert(onConflict = OnConflictStrategy.IGNORE)
   suspend fun addSongToPlaylist(entry: PlaylistEntry)
 

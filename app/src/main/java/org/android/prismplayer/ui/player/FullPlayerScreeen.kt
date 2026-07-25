@@ -178,7 +178,6 @@ fun FullPlayerContent(
         showOptions = false
     }
 
-    // --- COLOR LOGIC ---
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     LaunchedEffect(song.songArtUri) {
         bitmap = null

@@ -147,8 +147,8 @@ fun SearchScreen(
 
                         SongListItem(
                             song = song,
-                            isActive = isCurrent, // True if IDs match
-                            isPlaying = isCurrent && isPlaying, // True if active AND global playing state is true
+                            isActive = isCurrent,
+                            isPlaying = isCurrent && isPlaying,
                             index = null,
                             onClick = { onSongClick(song) },
                             onMoreClick = { onSongMoreClick(song) }

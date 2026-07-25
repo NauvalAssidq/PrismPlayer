@@ -176,7 +176,6 @@ fun SyncedLyricView(lines: List<LyricLine>, currentTime: Long, glowColor: Color)
         contentPadding = PaddingValues(horizontal = 32.dp, vertical = 100.dp),
         verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
-        // Intro Signal
         if (lines.isNotEmpty() && lines.first().timestamp > 5000) {
             item {
                 if (currentTime < lines.first().timestamp) {
