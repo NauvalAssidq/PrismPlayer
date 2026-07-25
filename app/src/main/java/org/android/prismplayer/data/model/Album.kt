@@ -1,5 +1,8 @@
 package org.android.prismplayer.data.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Album(
     val id: Long,
     val title: String,

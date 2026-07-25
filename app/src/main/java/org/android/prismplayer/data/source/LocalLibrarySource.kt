@@ -7,6 +7,8 @@ import org.android.prismplayer.data.model.Song
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+
 /**
  * Handles all interactions with the local Room Database.
  * Team Note: Edit this file if you are changing how data is saved/loaded from the DB.
@@ -14,15 +16,15 @@ import kotlinx.coroutines.flow.map
 class LocalLibrarySource(private val songDao: SongDao) {
 
     // Song CRUD
-    fun getAllSongs(): Flow<List<Song>> = songDao.getAllSongs()
+    fun getAllSongs(): Flow<List<Song>> = songDao.getAllSongs().distinctUntilChanged()
 
-    fun getRecentSongs(): Flow<List<Song>> = songDao.getRecentlyAddedSongs()
+    fun getRecentSongs(): Flow<List<Song>> = songDao.getRecentlyAddedSongs().distinctUntilChanged()
 
-    fun getRecentlyPlayedSongs(limit: Int = 20): Flow<List<Song>> = songDao.getRecentlyPlayedSongs(limit)
+    fun getRecentlyPlayedSongs(limit: Int = 20): Flow<List<Song>> = songDao.getRecentlyPlayedSongs(limit).distinctUntilChanged()
 
-    fun getSongsByAlbum(albumId: Long): Flow<List<Song>> = songDao.getSongsByAlbum(albumId)
+    fun getSongsByAlbum(albumId: Long): Flow<List<Song>> = songDao.getSongsByAlbum(albumId).distinctUntilChanged()
 
-    fun getSongsByAlbumName(name: String): Flow<List<Song>> = songDao.getSongsByAlbumName(name)
+    fun getSongsByAlbumName(name: String): Flow<List<Song>> = songDao.getSongsByAlbumName(name).distinctUntilChanged()
 
     suspend fun getSongById(id: Long): Song? = songDao.getSongById(id)
 

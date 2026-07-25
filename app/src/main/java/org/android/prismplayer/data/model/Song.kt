@@ -1,9 +1,10 @@
 package org.android.prismplayer.data.model
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.core.net.toUri
 
+@Immutable
 @Entity(tableName = "songs")
 data class Song(
     @PrimaryKey
