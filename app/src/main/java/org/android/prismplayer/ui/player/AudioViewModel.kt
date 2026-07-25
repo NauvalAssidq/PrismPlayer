@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.android.prismplayer.PrismApplication
 import org.android.prismplayer.data.local.PrismDatabase
 import org.android.prismplayer.data.model.EqPreset
 import org.android.prismplayer.data.model.Playlist
@@ -74,6 +75,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = PrismDatabase.getDatabase(application)
     private val playlistRepository = PlaylistRepository(database.playlistDao())
+    private val musicRepository by lazy { (getApplication() as PrismApplication).repository }
 
     private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
     val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
@@ -171,6 +173,11 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 val song = queueManager.currentSong.value
                 if (song != null) {
                     lyricsManager.initializeLyrics(song, viewModelScope)
+                    musicRepository?.let { repo ->
+                        viewModelScope.launch {
+                            repo.recordPlay(song)
+                        }
+                    }
                 } else {
                     lyricsManager.reset()
                 }
@@ -189,6 +196,11 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     fun playSong(song: Song, contextList: List<Song> = emptyList()) {
         player?.let { queueManager.playSong(it, song, contextList) }
+        musicRepository?.let { repo ->
+            viewModelScope.launch {
+                repo.recordPlay(song)
+            }
+        }
     }
 
     fun addToQueue(song: Song) {
@@ -248,6 +260,8 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteCustomPreset(preset: EqPreset) = EqManager.deleteCustomPreset(preset)
     fun applyPreset(preset: EqPreset) = EqManager.applyPreset(preset, viewModelScope)
 
+    fun setupEqualizer(audioSessionId: Int) {}
+
     fun initializeLyrics(song: Song) = lyricsManager.initializeLyrics(song, viewModelScope)
 
     fun fetchLyricsOnline() {
@@ -258,6 +272,15 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     fun createPlaylist(name: String) {
         viewModelScope.launch {
             playlistRepository.createPlaylist(name)
+        }
+    }
+
+    fun createPlaylistWithSongs(name: String, songs: List<Song>) {
+        viewModelScope.launch {
+            val playlistId = playlistRepository.createPlaylist(name)
+            songs.forEach { song ->
+                playlistRepository.addSongToPlaylist(playlistId, song.id)
+            }
         }
     }
 

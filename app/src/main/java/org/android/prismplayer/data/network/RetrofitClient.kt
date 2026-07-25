@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
     private const val BASE_URL = "https://lrclib.net/"
+    private const val GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
@@ -16,8 +17,15 @@ object RetrofitClient {
 
     private val client = OkHttpClient.Builder()
         .addInterceptor(loggingInterceptor)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .build()
+
+    private val geminiClient = OkHttpClient.Builder()
+        .addInterceptor(loggingInterceptor)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     val api: LrcLibApi by lazy {
@@ -27,5 +35,14 @@ object RetrofitClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(LrcLibApi::class.java)
+    }
+
+    val geminiApi: GeminiApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(GEMINI_BASE_URL)
+            .client(geminiClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GeminiApi::class.java)
     }
 }

@@ -21,6 +21,9 @@ interface SongDao {
     @Query("SELECT * FROM songs ORDER BY dateAdded DESC LIMIT 20")
     fun getRecentlyAddedSongs(): Flow<List<Song>>
 
+    @Query("SELECT s.* FROM songs s INNER JOIN play_history h ON s.id = h.songId GROUP BY s.id ORDER BY MAX(h.timestamp) DESC LIMIT :limit")
+    fun getRecentlyPlayedSongs(limit: Int = 20): Flow<List<Song>>
+
     @Insert
     suspend fun logPlay(history: PlayHistory)
 

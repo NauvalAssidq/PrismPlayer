@@ -39,6 +39,8 @@ class MusicRepository(
 
     fun getQuickPlaySongs(): Flow<List<Song>> = localSource.getRecentSongs()
 
+    fun getRecentlyPlayedSongs(limit: Int = 20): Flow<List<Song>> = localSource.getRecentlyPlayedSongs(limit)
+
     fun getTotalListeningHours(): Flow<Float> = localSource.getListeningHours()
 
     fun getTopGenre(): Flow<String> = localSource.getTopGenreDescription()

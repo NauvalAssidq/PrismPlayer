@@ -2,15 +2,18 @@ package org.android.prismplayer.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -18,9 +21,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Audiotrack
+import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -28,17 +36,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.android.prismplayer.data.model.Album
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import org.android.prismplayer.data.model.Song
 import org.android.prismplayer.ui.components.AlbumCard
 import org.android.prismplayer.ui.components.SongListItem
-import org.android.prismplayer.ui.theme.PrismPlayerTheme
 
 @Composable
 fun HomeScreen(
@@ -53,6 +66,7 @@ fun HomeScreen(
     onAlbumClick: (String) -> Unit,
     onSongMoreClick: (Song) -> Unit,
     onSettingsClick: () -> Unit,
+    recentlyPlayedSongs: List<Song> = emptyList()
 ) {
     Box(
         modifier = Modifier
@@ -72,8 +86,9 @@ fun HomeScreen(
                     )
                 }
             } else {
-                val displaySongs = remember(state.songs) { state.songs.take(10) }
+                val displaySongs = remember(state.songs) { state.songs.take(5) }
                 val displayAlbums = remember(state.albums) { state.albums.take(5) }
+                val displayRecentlyPlayed = remember(recentlyPlayedSongs) { recentlyPlayedSongs.take(9) }
                 val songCount = state.totalSongCount
                 val albumCount = state.totalAlbumCount
 
@@ -93,6 +108,69 @@ fun HomeScreen(
                         FullWidthDivider()
                     }
 
+                    // 1. RECENTLY PLAYED (DYNAMIC GRID UP TO 9 SONGS: 3x1, 2x2, 3x2, 3x3)
+                    if (displayRecentlyPlayed.isNotEmpty()) {
+                        item(key = "recently_played_label") {
+                            SectionLabel("RECENTLY_PLAYED", "PLAY_LOGS")
+                        }
+                        item(key = "recently_played_grid") {
+                            val columns = if (displayRecentlyPlayed.size == 4) 2 else 3
+                            val rows = displayRecentlyPlayed.chunked(columns)
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                rows.forEach { rowItems ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        rowItems.forEach { song ->
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                RecentlyPlayedCard(
+                                                    song = song,
+                                                    onClick = { onSongClick(song, displayRecentlyPlayed) }
+                                                )
+                                            }
+                                        }
+                                        repeat(columns - rowItems.size) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        item(key = "recently_played_divider") {
+                            FullWidthDivider()
+                        }
+                    }
+
+                    // 2. NEW ENTRIES (LIMITED TO 5 SONGS MAX)
+                    if (displaySongs.isNotEmpty()) {
+                        item(key = "songs_label") {
+                            SectionLabel("NEW_ENTRIES", "AUDIO_FILES")
+                            FullWidthDivider()
+                        }
+
+                        items(items = displaySongs, key = { it.id }) { song ->
+                            val isCurrent = currentSong?.id == song.id
+                            SongListItem(
+                                song = song,
+                                isActive = isCurrent,
+                                isPlaying = isCurrent && isPlaying,
+                                index = null,
+                                showDuration = true,
+                                onClick = { onSongClick(song, state.songs) },
+                                onMoreClick = { onSongMoreClick(song) }
+                            )
+                            FullWidthDivider()
+                        }
+                    }
+
+                    // 3. RECENT MOUNTS (ALBUMS) MOVED ALL THE WAY DOWN BELOW NEW ENTRIES
                     if (displayAlbums.isNotEmpty()) {
                         item(key = "albums_label") {
                             SectionLabel("RECENT_MOUNTS", "ALBUMS")
@@ -117,27 +195,6 @@ fun HomeScreen(
                             FullWidthDivider()
                         }
                     }
-
-                    if (displaySongs.isNotEmpty()) {
-                        item(key = "songs_label") {
-                            SectionLabel("NEW_ENTRIES", "AUDIO_FILES")
-                            FullWidthDivider()
-                        }
-
-                        items(items = displaySongs, key = { it.id }) { song ->
-                            val isCurrent = currentSong?.id == song.id
-                            SongListItem(
-                                song = song,
-                                isActive = isCurrent,
-                                isPlaying = isCurrent && isPlaying,
-                                index = null,
-                                showDuration = true,
-                                onClick = { onSongClick(song, state.songs) },
-                                onMoreClick = { onSongMoreClick(song) }
-                            )
-                            FullWidthDivider()
-                        }
-                    }
                 }
             }
         }
@@ -145,33 +202,120 @@ fun HomeScreen(
 }
 
 @Composable
-fun DashboardHeader(onSettingsClick: () -> Unit) {
-    Column(
+fun RecentlyPlayedCard(
+    song: Song,
+    onClick: () -> Unit
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding() // FIX: Respects device notch/status bar height
-            .padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 6.dp) // Consistent 24dp spacing
+            .aspectRatio(1f)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.2f))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        if (!song.songArtUri.isNullOrBlank()) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(song.songArtUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Audiotrack,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        // Gradient overlay for bottom-left text readability
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(0.85f)),
+                        startY = 60f
+                    )
+                )
+        )
+
+        // Song Title inside album cover bottom-left
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(8.dp)
         ) {
             Text(
-                text = "PRISM PLAYER",
+                text = song.title.uppercase(),
+                style = TextStyle(
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = song.artist.uppercase(),
+                style = TextStyle(
+                    color = Color.White.copy(0.7f),
+                    fontSize = 8.sp,
+                    fontFamily = FontFamily.Monospace
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun DashboardHeader(onSettingsClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 24.dp, vertical = 20.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = "PRISM_SYSTEM_OS",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary,
                 letterSpacing = 2.sp
             )
-
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "DASHBOARD",
+                style = MaterialTheme.typography.headlineLarge,
+                fontFamily = org.android.prismplayer.ui.theme.DotFont,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
         }
 
-        Text(
-            text = "AUDIO CONSOLE",
-            style = MaterialTheme.typography.displaySmall,
-            color = MaterialTheme.colorScheme.primary,
-            lineHeight = 48.sp
-        )
+        IconButton(onClick = onSettingsClick) {
+            Icon(
+                imageVector = Icons.Outlined.Settings,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp)
+            )
+        }
     }
 }
 
@@ -181,171 +325,35 @@ fun SystemStatsRow(totalSongs: Int, totalAlbums: Int) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween )
-    {
-        StatBadge("INDEXED_FILES", "$totalSongs")
-        StatBadge("ALBUMS_INDEXES", "$totalAlbums")
-        StatBadge("SYS", "ONLINE")
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        StatBox(label = "TOTAL_TRACKS", value = "$totalSongs")
+        StatBox(label = "TOTAL_MOUNTS", value = "$totalAlbums")
+        StatBox(label = "SYSTEM_STATUS", value = "ONLINE")
     }
 }
 
 @Composable
-fun StatBadge(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+fun StatBox(label: String, value: String) {
+    Column {
         Text(
-            text = "$label: ",
+            text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f),
             fontSize = 9.sp
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary,
-            fontSize = 9.sp,
+            fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold
         )
     }
 }
 
-
-@Composable
-fun VerticalDivider() {
-    Box(
-        modifier = Modifier
-            .width(1.dp)
-            .fillMaxHeight()
-            .padding(vertical = 14.dp)
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
-    )
-}
-
 @Composable
 fun FullWidthDivider() {
-    HorizontalDivider(
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-        thickness = 1.dp,
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-//Deprecated but saved for debugging
-
-//@Composable
-//fun RawAlbumCard(album: Album, onClick: () -> Unit) {
-//    Column(
-//        modifier = Modifier
-//            .width(140.dp)
-//            .clickable { onClick() }
-//    ) {
-//        Box(
-//            modifier = Modifier
-//                .size(140.dp)
-//                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f))
-//                .background(Color(0xFF111111))
-//        ) {
-//            if (!album.coverUri.isNullOrBlank()) {
-//                AsyncImage(
-//                    model = ImageRequest.Builder(LocalContext.current)
-//                        .data(album.coverUri)
-//                        .crossfade(false)
-//                        .memoryCacheKey(album.coverUri)
-//                        .diskCacheKey(album.coverUri)
-//                        .build(),
-//                    contentDescription = null,
-//                    contentScale = ContentScale.Crop,
-//                    modifier = Modifier.fillMaxSize()
-//                )
-//            } else {
-//                Column(
-//                    modifier = Modifier.align(Alignment.Center),
-//                    horizontalAlignment = Alignment.CenterHorizontally
-//                ) {
-//                    Icon(
-//                        Icons.Rounded.Album,
-//                        null,
-//                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-//                        modifier = Modifier.size(32.dp)
-//                    )
-//                    Spacer(Modifier.height(8.dp))
-//                    Text(
-//                        "NO_DATA",
-//                        style = MaterialTheme.typography.labelSmall,
-//                        fontSize = 8.sp,
-//                        color = MaterialTheme.colorScheme.onSurfaceVariant
-//                    )
-//                }
-//            }
-//
-//            Row(
-//                modifier = Modifier
-//                    .align(Alignment.BottomEnd)
-//                    .padding(8.dp)
-//                    .background(Color.White.copy(0.85f))
-//                    .padding(horizontal = 3.dp, vertical = 2.dp)
-//                    .height(12.dp),
-//                horizontalArrangement = Arrangement.spacedBy(1.dp),
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                val bars = listOf(1, 2, 1, 1, 3, 1, 2, 1, 2, 3, 1)
-//                bars.forEach { w ->
-//                    Box(
-//                        modifier = Modifier
-//                            .width(w.dp)
-//                            .fillMaxHeight()
-//                            .background(Color.Black)
-//                    )
-//                }
-//            }
-//        }
-//
-//        Spacer(Modifier.height(12.dp))
-//
-//        Text(
-//            text = album.title.uppercase(),
-//            style = MaterialTheme.typography.labelLarge,
-//            color = MaterialTheme.colorScheme.primary,
-//            maxLines = 1,
-//            overflow = TextOverflow.Ellipsis
-//        )
-//        Text(
-//            text = album.artist.uppercase(),
-//            style = MaterialTheme.typography.labelSmall,
-//            color = MaterialTheme.colorScheme.onSurfaceVariant,
-//            maxLines = 1,
-//            overflow = TextOverflow.Ellipsis
-//        )
-//    }
-//}
-
-@Preview(showBackground = true)
-@Composable
-fun HomePreview() {
-    val mockSongs = listOf(
-        Song(1, "Midnight City", "M83", "Hurry Up", 0, 240000, "", "", 0, null, 2011, 1, "Rock")
-    )
-    val mockAlbums = listOf(Album(1, "Hurry Up", "M83", null, 1, 2011))
-
-    val mockState = HomeState(false, mockSongs, mockAlbums, null)
-
-    PrismPlayerTheme {
-        HomeScreen(
-            state = mockState,
-            currentSong = mockSongs.first(),
-            isPlaying = true,
-            bottomPadding = 80.dp,
-            onSongClick = { _, _ -> },
-            onSeeAllSongs = {},
-            onOpenAlbums = {},
-            onOpenArtists = {},
-            onAlbumClick = {},
-            onSongMoreClick = {},
-            onSettingsClick = {},
-        )
-    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.05f))
 }

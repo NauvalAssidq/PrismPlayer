@@ -18,6 +18,8 @@ class LocalLibrarySource(private val songDao: SongDao) {
 
     fun getRecentSongs(): Flow<List<Song>> = songDao.getRecentlyAddedSongs()
 
+    fun getRecentlyPlayedSongs(limit: Int = 20): Flow<List<Song>> = songDao.getRecentlyPlayedSongs(limit)
+
     fun getSongsByAlbum(albumId: Long): Flow<List<Song>> = songDao.getSongsByAlbum(albumId)
 
     fun getSongsByAlbumName(name: String): Flow<List<Song>> = songDao.getSongsByAlbumName(name)

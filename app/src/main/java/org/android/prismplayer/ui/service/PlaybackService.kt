@@ -256,27 +256,46 @@ class PlaybackService : MediaSessionService() {
 
         serviceScope.launch {
             val bitmap = withContext(Dispatchers.IO) {
-                var loadedBitmap: Bitmap? = null
-                if (artworkData != null) {
-                    loadedBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+                var loadedBitmap: Bitmap? = if (artworkData != null) {
+                    BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
                 } else if (artworkUri != null) {
                     try {
                         contentResolver.openInputStream(artworkUri)?.use {
-                            loadedBitmap = BitmapFactory.decodeStream(it)
+                            BitmapFactory.decodeStream(it)
                         }
-                    } catch (e: Exception) { }
-                }
+                    } catch (e: Exception) { null }
+                } else null
 
                 if (loadedBitmap == null) {
-                    loadedBitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
-                } else if (loadedBitmap.width > 256 || loadedBitmap.height > 256) {
-                    loadedBitmap = Bitmap.createScaledBitmap(loadedBitmap, 256, 256, true)
+                    val drawable = androidx.core.content.ContextCompat.getDrawable(applicationContext, R.mipmap.ic_launcher)
+                    if (drawable != null) {
+                        loadedBitmap = drawableToBitmap(drawable)
+                    }
                 }
-                loadedBitmap
+
+                val finalBitmap = loadedBitmap
+                if (finalBitmap != null && (finalBitmap.width > 256 || finalBitmap.height > 256)) {
+                    Bitmap.createScaledBitmap(finalBitmap, 256, 256, true)
+                } else {
+                    finalBitmap
+                }
             }
 
             PrismWidgetProvider.pushUpdate(applicationContext, title, artist, isPlaying, bitmap)
         }
+    }
+
+    private fun drawableToBitmap(drawable: android.graphics.drawable.Drawable): Bitmap {
+        if (drawable is android.graphics.drawable.BitmapDrawable && drawable.bitmap != null) {
+            return drawable.bitmap
+        }
+        val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 256
+        val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 256
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession

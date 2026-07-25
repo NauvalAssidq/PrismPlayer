@@ -11,8 +11,8 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
 
   val allPlaylists: Flow<List<Playlist>> = playlistDao.getAllPlaylists()
 
-  suspend fun createPlaylist(name: String) {
-    playlistDao.createPlaylist(Playlist(name = name))
+  suspend fun createPlaylist(name: String): Long {
+    return playlistDao.createPlaylist(Playlist(name = name))
   }
 
   suspend fun deletePlaylist(playlist: Playlist) {

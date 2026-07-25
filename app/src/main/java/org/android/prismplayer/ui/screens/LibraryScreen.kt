@@ -66,6 +66,7 @@ fun LibraryScreen(
     bottomPadding: Dp,
     initialPage: Int = 0,
     onPageChanged: (Int) -> Unit,
+    onOpenAiCurator: (() -> Unit)? = null
 ) {
     val pagerState = rememberPagerState(
         initialPage = initialPage,
@@ -257,16 +258,48 @@ fun LibraryScreen(
                     }
 
                     3 -> { // PLAYLISTS
-                        if (playlists.isEmpty()) {
-                            EmptyStateMessage("NO_PLAYLIST_DATA")
-                        } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(bottom = bottomPadding),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
+                        LazyColumn(
+                            contentPadding = PaddingValues(bottom = bottomPadding),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            if (onOpenAiCurator != null) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onOpenAiCurator() }
+                                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "> GENERATE_AI_VIBE_PLAYLIST",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+
+                                        Text(
+                                            text = "[ GEMINI AI ]",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                                }
+                            }
+
+                            if (playlists.isEmpty()) {
+                                item {
+                                    EmptyStateMessage("NO_PLAYLIST_DATA")
+                                }
+                            } else {
                                 items(playlists, key = { it.playlistId }) { playlist ->
                                     val isFav = playlist.name.equals("Favorites", ignoreCase = true)
-                                    // [NEW] Collecting the Flow directly from the AudioViewModel
                                     val coverUris by audioViewModel.getPlaylistCovers(playlist.playlistId, songs)
                                         .collectAsState(initial = emptyList())
 

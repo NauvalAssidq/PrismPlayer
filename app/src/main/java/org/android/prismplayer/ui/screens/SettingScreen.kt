@@ -16,11 +16,13 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.*
+import org.android.prismplayer.ui.components.CustomBottomSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -199,7 +201,10 @@ fun SettingsContent(
             SystemProcessDialog()
         }
 
-        if (showGeminiDialog) {
+        CustomBottomSheet(
+            visible = showGeminiDialog,
+            onDismiss = { showGeminiDialog = false }
+        ) {
             GeminiKeyDialog(
                 currentKey = geminiApiKey,
                 onDismiss = { showGeminiDialog = false },
@@ -397,142 +402,144 @@ fun GeminiKeyDialog(
 ) {
     var text by remember { mutableStateOf(currentKey) }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "status_light")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f, targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-        label = "alpha"
-    )
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(0.15f),
+                shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+            )
+            .navigationBarsPadding()
+            .imePadding()
     ) {
-        Column(
+        // 1. TOP GRIP HANDLE STRIP
+        Box(
             modifier = Modifier
-                .width(320.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(2.dp))
+                .fillMaxWidth()
+                .height(26.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "SYS_CONFIG // GEMINI_API",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "INPUT_REQ",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(Modifier.width(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(5) {
                     Box(
                         modifier = Modifier
-                            .size(6.dp)
-                            .alpha(alpha)
-                            .background(MaterialTheme.colorScheme.secondary, CircleShape)
+                            .width(20.dp)
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.onSurface.copy(0.15f))
                     )
                 }
             }
+        }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(0.1f))
+        // 2. TITLE BAR
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "SYS_CONFIG // GEMINI_API",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 2.sp,
+                fontSize = 11.sp
+            )
+        }
 
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = "> ENTER_API_KEY:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = FontFamily.Monospace,
+        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+
+        // 3. INPUT AREA
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp)
+        ) {
+            Text(
+                text = "> ENTER_API_KEY:",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(0.4f)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it },
+                textStyle = TextStyle(
                     color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp,
+                    fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                BasicTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    textStyle = TextStyle(
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 14.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(
-                        onDone = { onSave(text.trim()) }
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.secondary),
-                    singleLine = true,
-                    decorationBox = { innerTextField ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.background)
-                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(0.2f))
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (text.isEmpty()) {
-                                Text(
-                                    text = "AIzaSy...",
-                                    style = TextStyle(
-                                        color = MaterialTheme.colorScheme.onSurface.copy(0.3f),
-                                        fontSize = 14.sp,
-                                        fontFamily = FontFamily.Monospace
-                                    )
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = { onSave(text.trim()) }
+                ),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                singleLine = true,
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(0.3f), RoundedCornerShape(4.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (text.isEmpty()) {
+                            Text(
+                                text = "AIzaSy...",
+                                style = TextStyle(
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    fontSize = 14.sp,
+                                    fontFamily = FontFamily.Monospace
                                 )
-                            }
-                            innerTextField()
+                            )
                         }
+                        innerTextField()
                     }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 4. FOOTER ACTIONS
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "[ ABORT ]",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(0.4f),
+                    modifier = Modifier
+                        .clickable { onDismiss() }
+                        .padding(8.dp)
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "[ ABORT ]",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f),
-                        modifier = Modifier
-                            .clickable { onDismiss() }
-                            .padding(8.dp)
-                    )
-
-                    Spacer(Modifier.width(12.dp))
-
-                    Text(
-                        text = "[ EXECUTE ]",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier
-                            .clickable { onSave(text.trim()) }
-                            .padding(8.dp)
-                    )
-                }
+                Text(
+                    text = "[ EXECUTE ]",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { onSave(text.trim()) }
+                        .padding(8.dp)
+                )
             }
         }
     }

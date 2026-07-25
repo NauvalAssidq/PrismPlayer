@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import org.android.prismplayer.data.model.EqBand
 import org.android.prismplayer.data.model.EqPreset
+import org.android.prismplayer.ui.components.CustomBottomSheet
 import org.android.prismplayer.ui.components.DeleteConfirmationDialog
 import org.android.prismplayer.ui.components.KnobComponent
 import org.android.prismplayer.ui.components.SavePresetDialog
@@ -265,24 +266,33 @@ private fun EqualizerScreenContent(
         }
     }
 
-    if (showSaveDialog) {
+    CustomBottomSheet(
+        visible = showSaveDialog,
+        onDismiss = { showSaveDialog = false }
+    ) {
         SavePresetDialog(
-                onDismiss = { showSaveDialog = false },
-                onSave = {
-                    showSaveDialog = false
-                    onSavePreset(it)
-                }
+            onDismiss = { showSaveDialog = false },
+            onSave = {
+                showSaveDialog = false
+                onSavePreset(it)
+            }
         )
     }
-    if (presetToDelete != null) {
-        DeleteConfirmationDialog(
+
+    CustomBottomSheet(
+        visible = presetToDelete != null,
+        onDismiss = { presetToDelete = null }
+    ) {
+        if (presetToDelete != null) {
+            DeleteConfirmationDialog(
                 presetName = presetToDelete!!.name,
                 onConfirm = {
                     onDeletePreset(presetToDelete!!)
                     presetToDelete = null
                 },
                 onDismiss = { presetToDelete = null }
-        )
+            )
+        }
     }
 }
 
