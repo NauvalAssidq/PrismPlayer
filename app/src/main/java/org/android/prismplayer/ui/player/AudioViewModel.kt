@@ -298,15 +298,17 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         return playlistRepository.getPlaylistCovers(playlistId, allSongs)
     }
 
-    fun deletePlaylist(playlist: Playlist) {
+    fun deletePlaylist(playlist: Playlist, onShowToast: ((String) -> Unit)? = null) {
         viewModelScope.launch {
             playlistRepository.deletePlaylist(playlist)
+            onShowToast?.invoke("PLAYLIST DELETED: ${playlist.name.uppercase()}")
         }
     }
 
-    fun removeSongFromPlaylist(playlistId: Long, songId: Long) {
+    fun removeSongFromPlaylist(playlistId: Long, songId: Long, onShowToast: ((String) -> Unit)? = null) {
         viewModelScope.launch {
             playlistRepository.removeSongFromPlaylist(playlistId, songId)
+            onShowToast?.invoke("TRACK REMOVED FROM PLAYLIST")
         }
     }
 
@@ -322,13 +324,14 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun toggleLike(song: Song) {
+    fun toggleLike(song: Song, onShowToast: ((String) -> Unit)? = null) {
         val favId = favoritesPlaylistId ?: return
         val isLiked = _likedSongIds.value.contains(song.id)
 
         viewModelScope.launch {
             if (isLiked) {
                 playlistRepository.removeSongFromPlaylist(favId, song.id)
+                onShowToast?.invoke("REMOVED FROM FAVORITES")
             } else {
                 database.playlistDao().addSongToPlaylist(
                     PlaylistEntry(
@@ -336,6 +339,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                         songId = song.id
                     )
                 )
+                onShowToast?.invoke("ADDED TO FAVORITES")
             }
         }
     }

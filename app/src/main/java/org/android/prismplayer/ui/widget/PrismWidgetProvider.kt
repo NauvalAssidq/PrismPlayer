@@ -21,6 +21,8 @@ import org.android.prismplayer.MainActivity
 import org.android.prismplayer.R
 import org.android.prismplayer.ui.service.PlaybackService
 import org.android.prismplayer.ui.utils.PlaybackSessionStore
+import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 
 class PrismWidgetProvider : AppWidgetProvider() {
 
@@ -54,7 +56,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        private const val TAG = "PrismWidget"
         const val ACTION_PLAY_PAUSE = "org.android.prismplayer.ACTION_PLAY_PAUSE"
         const val ACTION_NEXT = "org.android.prismplayer.ACTION_NEXT"
         const val ACTION_PREV = "org.android.prismplayer.ACTION_PREV"
@@ -71,7 +72,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
             val defaultBg = createGradientBitmap(Color.BLACK, Color.BLACK)
             views.setImageViewBitmap(R.id.widget_bg_gradient, defaultBg)
 
-            val defaultAccent = 0xFFD71921.toInt()
             val openIntent = Intent(context, MainActivity::class.java)
             val openPending = PendingIntent.getActivity(
                 context, 0, openIntent,
@@ -104,7 +104,7 @@ class PrismWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_no_sig_text, View.GONE)
 
             if (metadata.artUri != null) {
-                views.setImageViewUri(R.id.widget_album_art, Uri.parse(metadata.artUri))
+                views.setImageViewUri(R.id.widget_album_art, metadata.artUri.toUri())
             } else {
                 views.setImageViewResource(R.id.widget_album_art, android.R.drawable.ic_menu_gallery)
             }
@@ -212,12 +212,11 @@ class PrismWidgetProvider : AppWidgetProvider() {
             )
         }
 
-
         // Bg color of the widget
         private fun createGradientBitmap(startColor: Int, endColor: Int): Bitmap {
             val width = 400
             val height = 100
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val bitmap = createBitmap(width, height)
             val canvas = Canvas(bitmap)
 
             val shader = LinearGradient(

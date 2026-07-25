@@ -50,7 +50,11 @@ import org.android.prismplayer.ui.player.AudioViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EqualizerScreen(viewModel: AudioViewModel, onBack: () -> Unit) {
+fun EqualizerScreen(
+    viewModel: AudioViewModel,
+    onBack: () -> Unit,
+    onShowToast: ((String) -> Unit)? = null
+) {
     val context = LocalContext.current
 
     val permissionLauncher =
@@ -88,11 +92,23 @@ fun EqualizerScreen(viewModel: AudioViewModel, onBack: () -> Unit) {
             loudnessGain = loudnessGain,
             fftData = visualizerData.fft,
             onBack = onBack,
-            onToggleEnabled = { viewModel.toggleEq(it) },
-            onApplyPreset = { viewModel.applyPreset(it) },
+            onToggleEnabled = { enabled ->
+                viewModel.toggleEq(enabled)
+                onShowToast?.invoke(if (enabled) "EQUALIZER ENABLED" else "EQUALIZER DISABLED")
+            },
+            onApplyPreset = { preset ->
+                viewModel.applyPreset(preset)
+                onShowToast?.invoke("PRESET APPLIED: ${preset.name.uppercase()}")
+            },
             onSetBandLevel = { id, level -> viewModel.setEqBandLevel(id, level) },
-            onSavePreset = { name -> viewModel.saveCustomPreset(name) },
-            onDeletePreset = { preset -> viewModel.deleteCustomPreset(preset) },
+            onSavePreset = { name ->
+                viewModel.saveCustomPreset(name)
+                onShowToast?.invoke("EQ PRESET SAVED: ${name.uppercase()}")
+            },
+            onDeletePreset = { preset ->
+                viewModel.deleteCustomPreset(preset)
+                onShowToast?.invoke("EQ PRESET ERASED: ${preset.name.uppercase()}")
+            },
             onBassChange = { viewModel.setBassStrength(it) },
             onVirtChange = { viewModel.setVirtStrength(it) },
             onGainChange = { viewModel.setGainStrength(it) },

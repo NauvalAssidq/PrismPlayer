@@ -58,6 +58,7 @@ fun SettingsScreen(
     onOpenEqualizer: () -> Unit,
     bottomPadding: Dp,
     onReselectFolders: () -> Unit,
+    onShowToast: ((String) -> Unit)? = null,
     viewModel: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val isScanning by viewModel.isScanning.collectAsState()
@@ -69,11 +70,22 @@ fun SettingsScreen(
         currentTheme = currentTheme,
         geminiApiKey = geminiApiKey,
         onBack = onBack,
-        onRescan = { if (!isScanning) viewModel.rescanLibrary() },
-        onThemeChanged = viewModel::setTheme,
+        onRescan = {
+            if (!isScanning) {
+                viewModel.rescanLibrary()
+                onShowToast?.invoke("LIBRARY RESCAN INITIATED")
+            }
+        },
+        onThemeChanged = { theme ->
+            viewModel.setTheme(theme)
+            onShowToast?.invoke("THEME APPLIED: ${theme.name}")
+        },
         onOpenEqualizer = onOpenEqualizer,
         onReselectFolders = onReselectFolders,
-        onSaveGeminiKey = viewModel::setGeminiApiKey,
+        onSaveGeminiKey = { key ->
+            viewModel.setGeminiApiKey(key)
+            onShowToast?.invoke("GEMINI API KEY SAVED")
+        },
         bottomPadding = bottomPadding
     )
 }

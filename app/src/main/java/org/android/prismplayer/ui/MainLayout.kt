@@ -220,8 +220,14 @@ fun MainLayout(
                         isPlaying = isPlaying,
                         onOpenAiCurator = { showAiGeneratorSheet = true },
                         recentSearches = recentSearches,
-                        onDeleteSearchHistoryItem = { searchHistoryViewModel.deleteSearchQuery(it) },
-                        onClearSearchHistory = { searchHistoryViewModel.clearAllHistory() },
+                        onDeleteSearchHistoryItem = {
+                            searchHistoryViewModel.deleteSearchQuery(it)
+                            toastMessage = "SEARCH LOG ERASED"
+                        },
+                        onClearSearchHistory = {
+                            searchHistoryViewModel.clearAllHistory()
+                            toastMessage = "SEARCH CACHE PURGED"
+                        },
                         onSaveSearchQuery = { searchHistoryViewModel.saveSearchQuery(it) }
                     )
 
@@ -251,7 +257,8 @@ fun MainLayout(
                         onBack = { currentTab = PrismTab.HOME },
                         onOpenEqualizer = { isEqualizerOpen = true },
                         bottomPadding = globalBottomPadding,
-                        onReselectFolders = onReselectFolders
+                        onReselectFolders = onReselectFolders,
+                        onShowToast = { msg -> toastMessage = msg }
                     )
                 }
             }
@@ -358,7 +365,8 @@ fun MainLayout(
             ) {
                 EqualizerScreen(
                     viewModel = audioViewModel,
-                    onBack = { isEqualizerOpen = false }
+                    onBack = { isEqualizerOpen = false },
+                    onShowToast = { msg -> toastMessage = msg }
                 )
             }
 
