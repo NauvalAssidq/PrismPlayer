@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -18,6 +19,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.android.prismplayer.MainActivity
 import org.android.prismplayer.R
 import org.android.prismplayer.data.model.Song
@@ -25,7 +32,6 @@ import org.android.prismplayer.ui.player.manager.EqManager
 import org.android.prismplayer.ui.utils.AudioSessionHolder
 import org.android.prismplayer.ui.utils.PlaybackSessionStore
 import org.android.prismplayer.ui.widget.PrismWidgetProvider
-import androidx.core.net.toUri
 
 class PlaybackService : MediaSessionService() {
 
@@ -33,6 +39,7 @@ class PlaybackService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     private lateinit var sessionStore: PlaybackSessionStore
     private var currentQueue: List<Song> = emptyList()
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     @OptIn(UnstableApi::class)
     override fun onCreate() {
@@ -243,32 +250,33 @@ class PlaybackService : MediaSessionService() {
         val metadata = mediaItem?.mediaMetadata
         val title = metadata?.title?.toString() ?: ""
         val artist = metadata?.artist?.toString() ?: ""
-        var bitmap: Bitmap? = null
-        var duration = player.duration
+        val isPlaying = player.isPlaying
+        val artworkData = metadata?.artworkData
+        val artworkUri = metadata?.artworkUri
 
-
-        if (duration <= 0 || duration == C.TIME_UNSET) {
-            duration = sessionStore.getLastSong()?.duration ?: 0L
-        }
-
-        if (metadata?.artworkData != null) {
-            bitmap = BitmapFactory.decodeByteArray(metadata.artworkData, 0, metadata.artworkData!!.size)
-        } else if (metadata?.artworkUri != null) {
-            try {
-                contentResolver.openInputStream(metadata.artworkUri!!)?.use {
-                    bitmap = BitmapFactory.decodeStream(it)
+        serviceScope.launch {
+            val bitmap = withContext(Dispatchers.IO) {
+                var loadedBitmap: Bitmap? = null
+                if (artworkData != null) {
+                    loadedBitmap = BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+                } else if (artworkUri != null) {
+                    try {
+                        contentResolver.openInputStream(artworkUri)?.use {
+                            loadedBitmap = BitmapFactory.decodeStream(it)
+                        }
+                    } catch (e: Exception) { }
                 }
-            } catch (e: Exception)
-            { /* Silent fail */ }
-        }
 
-        if (bitmap == null) {
-            bitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
-        } else if (bitmap!!.width > 256 || bitmap!!.height > 256) {
-            bitmap = Bitmap.createScaledBitmap(bitmap!!, 256, 256, true)
-        }
+                if (loadedBitmap == null) {
+                    loadedBitmap = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher)
+                } else if (loadedBitmap.width > 256 || loadedBitmap.height > 256) {
+                    loadedBitmap = Bitmap.createScaledBitmap(loadedBitmap, 256, 256, true)
+                }
+                loadedBitmap
+            }
 
-        PrismWidgetProvider.pushUpdate(applicationContext, title, artist, player.isPlaying, bitmap)
+            PrismWidgetProvider.pushUpdate(applicationContext, title, artist, isPlaying, bitmap)
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
@@ -283,6 +291,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        serviceScope.cancel()
         mediaSession?.run {
             player.release()
             release()
