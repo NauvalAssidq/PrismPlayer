@@ -293,7 +293,7 @@ fun DashboardHeader(onSettingsClick: () -> Unit) {
     ) {
         Column {
             Text(
-                text = "PRISM_SYSTEM_OS",
+                text = "THINGS_SYSTEM_OS",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.secondary,
                 letterSpacing = 2.sp

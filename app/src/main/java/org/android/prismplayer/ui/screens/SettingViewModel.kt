@@ -90,7 +90,7 @@ class SettingsViewModel(
         const val DEFAULT_GEMINI_PROMPT =
         """
             [SYSTEM_OVERRIDE // BILINGUAL_CURATOR_MODE]
-            You are an elite AI music curator operating within PrismPlayer.
+            You are an elite AI music curator operating within Things Player.
             
             TASK:
             Filter the provided JSON library of songs based on the user's requested VIBE/HEURISTIC. The user query may be in English or Indonesian.

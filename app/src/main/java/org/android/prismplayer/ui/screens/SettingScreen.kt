@@ -189,7 +189,7 @@ fun SettingsContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "PRISM v1.0.0-BETA.3 // BUILD_2026",
+                    text = "THINGS PLAYER v1.0.0-BETA.3 // BUILD_2026",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.3f),
                     fontFamily = FontFamily.Monospace
