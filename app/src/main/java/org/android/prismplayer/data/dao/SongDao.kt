@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 import org.android.prismplayer.data.model.PlayHistory
 import org.android.prismplayer.data.model.Song
 
+import androidx.room.Transaction
+
 @Dao
 interface SongDao {
 
@@ -53,6 +55,12 @@ interface SongDao {
 
     @Query("DELETE FROM songs")
     suspend fun deleteAllSongs()
+
+    @Transaction
+    suspend fun replaceAllSongs(songs: List<Song>) {
+        deleteAllSongs()
+        insertSongs(songs)
+    }
 
     @Query("SELECT path FROM songs WHERE id = :id LIMIT 1")
     suspend fun getSongPathById(id: Long): String?

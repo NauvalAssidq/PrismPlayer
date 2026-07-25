@@ -44,21 +44,17 @@ fun SongListItem(
     val subTextColor = if (isActive) MaterialTheme.colorScheme.secondary.copy(0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
     val bgColor = if (isActive) MaterialTheme.colorScheme.surfaceVariant.copy(0.5f) else Color.Transparent
 
-    val pulseAlpha = if (isActive && isPlaying) {
-        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-        val alpha by infiniteTransition.animateFloat(
-            initialValue = 0.4f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(600, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "pulseAlpha"
-        )
-        alpha
-    } else {
-        1f
-    }
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val animAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+    val pulseAlpha = if (isActive && isPlaying) animAlpha else 1f
 
     Row(
         modifier = Modifier

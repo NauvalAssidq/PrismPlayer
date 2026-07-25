@@ -30,8 +30,7 @@ class LocalLibrarySource(private val songDao: SongDao) {
 
     suspend fun refreshLibrary(songs: List<Song>) {
         if (songs.isNotEmpty()) {
-            songDao.deleteAllSongs()
-            songDao.insertSongs(songs)
+            songDao.replaceAllSongs(songs)
         }
     }
 

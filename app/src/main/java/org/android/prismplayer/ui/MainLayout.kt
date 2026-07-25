@@ -331,8 +331,10 @@ fun MainLayout(
             }
 
             if (selectedPlaylist != null) {
-                val playlistSongs by audioViewModel.getPlaylistSongs(selectedPlaylist!!.playlistId, allSongs)
-                    .collectAsState(initial = emptyList())
+                val currentPlaylistId = selectedPlaylist!!.playlistId
+                val playlistSongs by remember(currentPlaylistId, allSongs) {
+                    audioViewModel.getPlaylistSongs(currentPlaylistId, allSongs)
+                }.collectAsState(initial = emptyList())
 
                 PlaylistDetailScreen(
                     playlist = selectedPlaylist!!,

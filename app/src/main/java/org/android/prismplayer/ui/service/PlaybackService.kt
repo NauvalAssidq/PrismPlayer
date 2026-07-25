@@ -149,60 +149,62 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun restoreSession() {
-        val lastState = sessionStore.getLastPlaybackState()
-
-        if (lastState.queue.isNotEmpty()) {
-            currentQueue = lastState.queue
-            val mediaItems = currentQueue.map { song ->
-                val artUri = if (!song.songArtUri.isNullOrEmpty()) song.songArtUri.toUri() else null
-
-                MediaItem.Builder()
-                    .setUri(song.path.toUri())
-                    .setMediaId(song.id.toString())
-                    .setMediaMetadata(
-                        MediaMetadata.Builder()
-                            .setTitle(song.title)
-                            .setArtist(song.artist)
-                            .setArtworkUri(artUri)
-                            .build()
-                    )
-                    .build()
-            }
-
-            var startIndex = lastState.currentIndex
-            var startPos = lastState.positionMs
-
-            if (startIndex < 0 || startIndex >= mediaItems.size) {
-                startIndex = 0
-            }
-
-            if (startPos < 0) {
-                startPos = 0
-            }
-
-            player.setMediaItems(mediaItems, startIndex, startPos)
-            player.prepare()
-        } else {
+        serviceScope.launch(Dispatchers.IO) {
+            val lastState = sessionStore.getLastPlaybackState()
             val lastSong = sessionStore.getLastSong()
-            if (lastSong != null) {
-                currentQueue = listOf(lastSong)
-                val artUri = if (!lastSong.songArtUri.isNullOrEmpty()) Uri.parse(lastSong.songArtUri) else null
 
-                val mediaItem = MediaItem.Builder()
-                    .setUri(Uri.parse(lastSong.path ?: ""))
-                    .setMediaId(lastSong.id.toString())
-                    .setMediaMetadata(
-                        MediaMetadata.Builder()
-                            .setTitle(lastSong.title)
-                            .setArtist(lastSong.artist)
-                            .setArtworkUri(artUri)
+            withContext(Dispatchers.Main) {
+                if (lastState.queue.isNotEmpty()) {
+                    currentQueue = lastState.queue
+                    val mediaItems = currentQueue.map { song ->
+                        val artUri = if (!song.songArtUri.isNullOrEmpty()) song.songArtUri.toUri() else null
+
+                        MediaItem.Builder()
+                            .setUri(song.path.toUri())
+                            .setMediaId(song.id.toString())
+                            .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setTitle(song.title)
+                                    .setArtist(song.artist)
+                                    .setArtworkUri(artUri)
+                                    .build()
+                            )
                             .build()
-                    )
-                    .build()
-                player.setMediaItem(mediaItem)
+                    }
 
-                val lastPos = sessionStore.getLastPlaybackState().positionMs
-                if (lastPos > 0) player.seekTo(lastPos)
+                    var startIndex = lastState.currentIndex
+                    var startPos = lastState.positionMs
+
+                    if (startIndex < 0 || startIndex >= mediaItems.size) {
+                        startIndex = 0
+                    }
+
+                    if (startPos < 0) {
+                        startPos = 0
+                    }
+
+                    player.setMediaItems(mediaItems, startIndex, startPos)
+                    player.prepare()
+                } else if (lastSong != null) {
+                    currentQueue = listOf(lastSong)
+                    val artUri = if (!lastSong.songArtUri.isNullOrEmpty()) Uri.parse(lastSong.songArtUri) else null
+
+                    val mediaItem = MediaItem.Builder()
+                        .setUri(Uri.parse(lastSong.path ?: ""))
+                        .setMediaId(lastSong.id.toString())
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(lastSong.title)
+                                .setArtist(lastSong.artist)
+                                .setArtworkUri(artUri)
+                                .build()
+                        )
+                        .build()
+                    player.setMediaItem(mediaItem)
+
+                    val lastPos = lastState.positionMs
+                    if (lastPos > 0) player.seekTo(lastPos)
+                }
             }
         }
     }
@@ -210,23 +212,11 @@ class PlaybackService : MediaSessionService() {
     private fun saveCurrentState() {
         val mediaItem = player.currentMediaItem ?: return
         val metadata = mediaItem.mediaMetadata
-
-        val validDuration = if (player.duration != C.TIME_UNSET && player.duration > 0) {
-            player.duration
-        } else {
-            sessionStore.getLastSong()?.duration ?: 0L
-        }
-
-        val currentSong = Song(
-            id = mediaItem.mediaId.toLongOrNull() ?: -1L,
-            title = metadata.title.toString(),
-            artist = metadata.artist.toString(),
-            path = mediaItem.localConfiguration?.uri.toString(),
-            songArtUri = metadata.artworkUri?.toString() ?: "",
-            duration = validDuration,
-            albumName = "", albumId = 0, folderName = "", dateAdded = 0,
-            year = 0, trackNumber = 0, dateModified = 0, genre = ""
-        )
+        val playerDuration = player.duration
+        val currentPosition = player.currentPosition
+        val currentMediaItemIndex = player.currentMediaItemIndex
+        val shuffleModeEnabled = player.shuffleModeEnabled
+        val repeatMode = player.repeatMode
 
         val freshQueue = ArrayList<Song>()
         for (i in 0 until player.mediaItemCount) {
@@ -250,10 +240,29 @@ class PlaybackService : MediaSessionService() {
             ))
         }
 
-        sessionStore.saveCurrentSong(currentSong, 0, 0)
-        sessionStore.savePosition(player.currentPosition)
-        sessionStore.saveQueueState(freshQueue, player.currentMediaItemIndex, player.shuffleModeEnabled, player.repeatMode)
-        currentQueue = freshQueue
+        serviceScope.launch(Dispatchers.IO) {
+            val validDuration = if (playerDuration != C.TIME_UNSET && playerDuration > 0) {
+                playerDuration
+            } else {
+                sessionStore.getLastSong()?.duration ?: 0L
+            }
+
+            val currentSong = Song(
+                id = mediaItem.mediaId.toLongOrNull() ?: -1L,
+                title = metadata.title.toString(),
+                artist = metadata.artist.toString(),
+                path = mediaItem.localConfiguration?.uri.toString(),
+                songArtUri = metadata.artworkUri?.toString() ?: "",
+                duration = validDuration,
+                albumName = "", albumId = 0, folderName = "", dateAdded = 0,
+                year = 0, trackNumber = 0, dateModified = 0, genre = ""
+            )
+
+            sessionStore.saveCurrentSong(currentSong, 0, 0)
+            sessionStore.savePosition(currentPosition)
+            sessionStore.saveQueueState(freshQueue, currentMediaItemIndex, shuffleModeEnabled, repeatMode)
+            currentQueue = freshQueue
+        }
     }
 
     private fun updateWidgetUI() {

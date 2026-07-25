@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.android.prismplayer.PrismApplication
 import org.android.prismplayer.data.local.PrismDatabase
@@ -118,7 +119,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         }, MoreExecutors.directExecutor())
 
         viewModelScope.launch {
-            while (true) {
+            while (isActive) {
                 val activePlayer = player
                 if (activePlayer != null && activePlayer.isPlaying && !isSeeking) {
                     _currentTime.value = activePlayer.currentPosition
@@ -138,8 +139,10 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 _playlists.value = list
                 val fav = list.find { it.name == FAVORITES_NAME }
                 if (fav != null) {
-                    favoritesPlaylistId = fav.playlistId
-                    observeFavorites(fav.playlistId)
+                    if (favoritesPlaylistId != fav.playlistId) {
+                        favoritesPlaylistId = fav.playlistId
+                        observeFavorites(fav.playlistId)
+                    }
                 } else {
                     createPlaylist(FAVORITES_NAME)
                 }
@@ -316,8 +319,11 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         return playlistRepository.isSongInPlaylist(playlistId, songId)
     }
 
+    private var favoritesObserverJob: kotlinx.coroutines.Job? = null
+
     private fun observeFavorites(playlistId: Long) {
-        viewModelScope.launch {
+        favoritesObserverJob?.cancel()
+        favoritesObserverJob = viewModelScope.launch {
             database.playlistDao().getEntriesForPlaylist(playlistId).collect { entries ->
                 _likedSongIds.value = entries.map { it.songId }.toSet()
             }

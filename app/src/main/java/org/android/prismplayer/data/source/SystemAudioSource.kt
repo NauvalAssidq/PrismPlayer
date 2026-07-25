@@ -119,7 +119,7 @@ class SystemAudioSource(private val context: Context) {
         return@withContext null
     }
 
-    private fun fetchGenreMap(): Map<Long, String> {
+    private suspend fun fetchGenreMap(): Map<Long, String> = withContext(Dispatchers.IO) {
         val map = HashMap<Long, String>()
         try {
             val genreProjection = arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME)
@@ -141,10 +141,10 @@ class SystemAudioSource(private val context: Context) {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        return map
+        map
     }
 
-    private fun fetchGenreForSingleSong(songId: Long): String {
+    private suspend fun fetchGenreForSingleSong(songId: Long): String = withContext(Dispatchers.IO) {
         try {
             val genreUri = MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI
             context.contentResolver.query(genreUri, arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME), null, null, null)?.use { genreCursor ->
@@ -153,12 +153,12 @@ class SystemAudioSource(private val context: Context) {
                     val genreName = genreCursor.getString(1)
                     val membersUri = MediaStore.Audio.Genres.Members.getContentUri("external", genreId)
                     context.contentResolver.query(membersUri, arrayOf(MediaStore.Audio.Media._ID), "${MediaStore.Audio.Media._ID} = ?", arrayOf(songId.toString()), null)?.use {
-                        if (it.moveToFirst()) return genreName
+                        if (it.moveToFirst()) return@withContext genreName
                     }
                 }
             }
         } catch (e: Exception) { }
-        return "Unknown"
+        "Unknown"
     }
 
     suspend fun scanAudioFolders(): List<FolderItem> {

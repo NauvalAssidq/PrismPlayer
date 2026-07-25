@@ -300,8 +300,9 @@ fun LibraryScreen(
                             } else {
                                 items(playlists, key = { it.playlistId }) { playlist ->
                                     val isFav = playlist.name.equals("Favorites", ignoreCase = true)
-                                    val coverUris by audioViewModel.getPlaylistCovers(playlist.playlistId, songs)
-                                        .collectAsState(initial = emptyList())
+                                    val coverUris by remember(playlist.playlistId, songs) {
+                                        audioViewModel.getPlaylistCovers(playlist.playlistId, songs)
+                                    }.collectAsState(initial = emptyList())
 
                                     PlaylistItem(
                                         playlist = playlist,
