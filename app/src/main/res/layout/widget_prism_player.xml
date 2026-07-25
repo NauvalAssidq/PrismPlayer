@@ -174,47 +174,4 @@
         </LinearLayout>
     </LinearLayout>
 
-    <ImageView
-        android:id="@+id/widget_corner_tr"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:src="@drawable/shape_corner_bracket"
-        android:alpha="0.8"
-        app:tint="#D71921" />
-
-    <ImageView
-        android:id="@+id/widget_corner_tl"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentStart="true"
-        android:rotation="-90"
-        android:src="@drawable/shape_corner_bracket"
-        android:alpha="0.8"
-        app:tint="#D71921" />
-
-    <ImageView
-        android:id="@+id/widget_corner_br"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true"
-        android:rotation="90"
-        android:src="@drawable/shape_corner_bracket"
-        android:alpha="0.8"
-        app:tint="#D71921" />
-
-    <ImageView
-        android:id="@+id/widget_corner_bl"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentStart="true"
-        android:rotation="180"
-        android:src="@drawable/shape_corner_bracket"
-        android:alpha="0.8"
-        app:tint="#D71921" />
-
 </RelativeLayout>

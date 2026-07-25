@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -592,11 +593,11 @@ fun MainLayout(
 
             AnimatedVisibility(
                 visible = toastMessage != null,
-                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = globalBottomPadding)
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
             ) {
                 if (toastMessage != null) {
                     PrismToast(message = toastMessage!!)

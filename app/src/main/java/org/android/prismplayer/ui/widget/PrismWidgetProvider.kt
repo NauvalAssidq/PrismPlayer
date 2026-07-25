@@ -72,8 +72,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
             views.setImageViewBitmap(R.id.widget_bg_gradient, defaultBg)
 
             val defaultAccent = 0xFFD71921.toInt()
-            updateCorners(views, defaultAccent)
-
             val openIntent = Intent(context, MainActivity::class.java)
             val openPending = PendingIntent.getActivity(
                 context, 0, openIntent,
@@ -113,8 +111,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
 
             val bgBitmap = createGradientBitmap(metadata.bgColor, 0xFF000000.toInt())
             views.setImageViewBitmap(R.id.widget_bg_gradient, bgBitmap)
-            updateCorners(views, metadata.accentColor)
-
             views.setImageViewResource(R.id.widget_btn_play, android.R.drawable.ic_media_play)
             views.setInt(R.id.widget_btn_play, "setColorFilter", Color.WHITE)
 
@@ -179,7 +175,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
 
             val bgBitmap = createGradientBitmap(bgColor, 0xFF000000.toInt())
             views.setImageViewBitmap(R.id.widget_bg_gradient, bgBitmap)
-            updateCorners(views, accentColor)
 
             val playIcon = if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
             views.setImageViewResource(R.id.widget_btn_play, playIcon)
@@ -205,13 +200,6 @@ class PrismWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_btn_next, getPendingIntent(context, ACTION_NEXT))
 
             appWidgetManager.updateAppWidget(ids, views)
-        }
-
-        private fun updateCorners(views: RemoteViews, color: Int) {
-            views.setInt(R.id.widget_corner_tr, "setColorFilter", color)
-            views.setInt(R.id.widget_corner_tl, "setColorFilter", color)
-            views.setInt(R.id.widget_corner_br, "setColorFilter", color)
-            views.setInt(R.id.widget_corner_bl, "setColorFilter", color)
         }
 
         private fun getPendingIntent(context: Context, action: String): PendingIntent {
