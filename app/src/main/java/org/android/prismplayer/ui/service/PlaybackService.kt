@@ -265,6 +265,8 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    private var widgetUpdateJob: kotlinx.coroutines.Job? = null
+
     private fun updateWidgetUI() {
         val mediaItem = player.currentMediaItem
         val metadata = mediaItem?.mediaMetadata
@@ -274,7 +276,8 @@ class PlaybackService : MediaSessionService() {
         val artworkData = metadata?.artworkData
         val artworkUri = metadata?.artworkUri
 
-        serviceScope.launch {
+        widgetUpdateJob?.cancel()
+        widgetUpdateJob = serviceScope.launch {
             val bitmap = withContext(Dispatchers.IO) {
                 var loadedBitmap: Bitmap? = if (artworkData != null) {
                     BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)

@@ -56,6 +56,19 @@ fun SongListItem(
     )
     val pulseAlpha = if (isActive && isPlaying) animAlpha else 1f
 
+    val context = LocalContext.current
+    val imageRequest = remember(song.id, song.songArtUri) {
+        if (!song.songArtUri.isNullOrBlank()) {
+            ImageRequest.Builder(context)
+                .data(SongArtHelper.getUri(song.id).buildUpon().build())
+                .crossfade(false)
+                .size(96, 96)
+                .build()
+        } else null
+    }
+
+    val qualitySeq = remember(song.path) { extractQualitySequence(song) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -83,17 +96,9 @@ fun SongListItem(
                 .clip(RoundedCornerShape(2.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            if (!song.songArtUri.isNullOrBlank()) {
+            if (imageRequest != null) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(
-                            SongArtHelper.getUri(song.id)
-                                .buildUpon()
-                                .build()
-                        )
-                        .crossfade(false)
-                        .size(96, 96)
-                        .build(),
+                    model = imageRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -134,7 +139,6 @@ fun SongListItem(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val qualitySeq = extractQualitySequence(song)
                 if (qualitySeq != null) {
                     Box(
                         modifier = Modifier
@@ -243,6 +247,8 @@ private fun AnimatedEqualizer(color: Color) {
     }
 }
 
+private val STATIC_EQ_LEVELS = listOf(0.4f, 0.8f, 0.6f)
+
 @Composable
 private fun StaticEqualizer(color: Color) {
     Row(
@@ -250,7 +256,7 @@ private fun StaticEqualizer(color: Color) {
         horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        listOf(0.4f, 0.8f, 0.6f).forEach { level ->
+        STATIC_EQ_LEVELS.forEach { level ->
             Box(modifier = Modifier.width(3.dp).fillMaxHeight(level).background(color))
         }
     }

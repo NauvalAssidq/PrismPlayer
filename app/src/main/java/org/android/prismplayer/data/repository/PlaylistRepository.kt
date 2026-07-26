@@ -24,6 +24,11 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     playlistDao.addSongToPlaylist(entry)
   }
 
+  suspend fun addSongsToPlaylist(playlistId: Long, songIds: List<Long>) {
+    val entries = songIds.map { PlaylistEntry(playlistId = playlistId, songId = it) }
+    playlistDao.addSongsToPlaylist(entries)
+  }
+
   fun getSongsInPlaylist(playlistId: Long, allLibrarySongs: List<Song>): Flow<List<Song>> {
     return playlistDao.getEntriesForPlaylist(playlistId).map { entries ->
       entries.mapNotNull { entry ->

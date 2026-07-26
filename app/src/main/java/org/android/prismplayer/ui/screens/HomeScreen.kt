@@ -115,7 +115,7 @@ fun HomeScreen(
                         }
                         item(key = "recently_played_grid") {
                             val columns = if (displayRecentlyPlayed.size == 4) 2 else 3
-                            val rows = displayRecentlyPlayed.chunked(columns)
+                            val rows = remember(displayRecentlyPlayed, columns) { displayRecentlyPlayed.chunked(columns) }
 
                             Column(
                                 modifier = Modifier
@@ -206,6 +206,23 @@ fun RecentlyPlayedCard(
     song: Song,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val imageRequest = remember(song.songArtUri) {
+        if (!song.songArtUri.isNullOrBlank()) {
+            ImageRequest.Builder(context)
+                .data(song.songArtUri)
+                .crossfade(true)
+                .build()
+        } else null
+    }
+
+    val gradientBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color.Transparent, Color.Black.copy(0.85f)),
+            startY = 60f
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -214,12 +231,9 @@ fun RecentlyPlayedCard(
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
     ) {
-        if (!song.songArtUri.isNullOrBlank()) {
+        if (imageRequest != null) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(song.songArtUri)
-                    .crossfade(true)
-                    .build(),
+                model = imageRequest,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
@@ -242,12 +256,7 @@ fun RecentlyPlayedCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(0.85f)),
-                        startY = 60f
-                    )
-                )
+                .background(gradientBrush)
         )
 
         // Song Title inside album cover bottom-left

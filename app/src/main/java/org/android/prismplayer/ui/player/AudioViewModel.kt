@@ -199,11 +199,6 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     fun playSong(song: Song, contextList: List<Song> = emptyList()) {
         player?.let { queueManager.playSong(it, song, contextList) }
-        musicRepository?.let { repo ->
-            viewModelScope.launch {
-                repo.recordPlay(song)
-            }
-        }
     }
 
     fun addToQueue(song: Song) {
@@ -281,9 +276,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
     fun createPlaylistWithSongs(name: String, songs: List<Song>) {
         viewModelScope.launch {
             val playlistId = playlistRepository.createPlaylist(name)
-            songs.forEach { song ->
-                playlistRepository.addSongToPlaylist(playlistId, song.id)
-            }
+            playlistRepository.addSongsToPlaylist(playlistId, songs.map { it.id })
         }
     }
 
@@ -339,12 +332,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                 playlistRepository.removeSongFromPlaylist(favId, song.id)
                 onShowToast?.invoke("REMOVED FROM FAVORITES")
             } else {
-                database.playlistDao().addSongToPlaylist(
-                    PlaylistEntry(
-                        playlistId = favId,
-                        songId = song.id
-                    )
-                )
+                playlistRepository.addSongToPlaylist(favId, song.id)
                 onShowToast?.invoke("ADDED TO FAVORITES")
             }
         }

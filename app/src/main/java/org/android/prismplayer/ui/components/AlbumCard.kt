@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 
+private val ALBUM_BAR_WIDTHS = listOf(1, 2, 1, 1, 3, 1, 2, 1, 2, 3, 1)
+
 @Composable
 fun AlbumCard(
     title: String,
@@ -44,10 +46,12 @@ fun AlbumCard(
     onClick: () -> Unit,
     fixedWidth: Dp? = null
 ) {
-    val modifier = if (fixedWidth != null) {
-        Modifier.width(fixedWidth)
-    } else {
-        Modifier.fillMaxWidth()
+    val modifier = remember(fixedWidth) {
+        if (fixedWidth != null) {
+            Modifier.width(fixedWidth)
+        } else {
+            Modifier.fillMaxWidth()
+        }
     }
 
     val context = LocalContext.current
@@ -102,8 +106,7 @@ fun AlbumCard(
                 horizontalArrangement = Arrangement.spacedBy(1.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val bars = listOf(1, 2, 1, 1, 3, 1, 2, 1, 2, 3, 1)
-                bars.forEach { w ->
+                ALBUM_BAR_WIDTHS.forEach { w ->
                     Box(
                         modifier = Modifier
                             .width(w.dp)

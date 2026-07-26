@@ -119,7 +119,9 @@ fun MainLayout(
     val playlists by audioViewModel.playlists.collectAsState()
     var isEqualizerOpen by rememberSaveable { mutableStateOf(false) }
     val systemBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val globalBottomPadding = (if (currentSong != null) 178.dp else 88.dp) + systemBottomInset
+    val globalBottomPadding = remember(currentSong != null, systemBottomInset) {
+        (if (currentSong != null) 178.dp else 88.dp) + systemBottomInset
+    }
     val allSongs by homeViewModel.allSongs.collectAsState()
     val backdrop = rememberLayerBackdrop()
     var showDuplicateDialog by remember { mutableStateOf(false) }
@@ -285,9 +287,10 @@ fun MainLayout(
                     onSongClick = { song, list -> audioViewModel.playSong(song, list) },
                     onAlbumClick = { selectedAlbumName = it },
                     onShufflePlay = { list ->
-                        if (list.isNotEmpty()) audioViewModel.playSong(
-                            list.shuffled().first(), list.shuffled()
-                        )
+                        if (list.isNotEmpty()) {
+                            val shuffled = list.shuffled()
+                            audioViewModel.playSong(shuffled.first(), shuffled)
+                        }
                     },
                     onSongMoreClick = { song -> optionsState = song to SheetContext.ARTIST },
                     bottomPadding = globalBottomPadding,

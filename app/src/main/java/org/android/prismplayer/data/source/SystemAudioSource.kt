@@ -44,7 +44,7 @@ class SystemAudioSource(private val context: Context) {
                     val isInside = authorizedPaths.any { path.startsWith(it) }
                     val isAudio = path.substringAfterLast('.', "").lowercase() in audioExtensions
 
-                    if (isInside && isAudio && duration >= 0 && File(path).exists()) {
+                    if (isInside && isAudio && duration >= 0) {
                         val id = c.getLong(idCol)
                         songsFound.add(
                             Song(

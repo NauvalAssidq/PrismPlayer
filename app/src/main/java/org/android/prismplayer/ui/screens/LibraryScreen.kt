@@ -74,23 +74,24 @@ fun LibraryScreen(
     )
     val scope = rememberCoroutineScope()
 
-    val albums = remember(songs) {
+    val albums = remember(songs.size, songs.firstOrNull()?.id) {
         songs
             .groupBy { "${it.albumName.trim()}|${it.artist.trim()}" }
             .map { (_, list) -> list.first() }
             .sortedBy { it.albumName.lowercase() }
     }
 
-    val artists = remember(songs) {
+    val artists = remember(songs.size, songs.firstOrNull()?.id) {
         songs
             .map { it.artist.trim() }
             .distinct()
             .sortedWith(String.CASE_INSENSITIVE_ORDER)
     }
 
+    val currentOnPageChanged by rememberUpdatedState(onPageChanged)
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
-            onPageChanged(page)
+            currentOnPageChanged(page)
         }
     }
 
@@ -241,7 +242,7 @@ fun LibraryScreen(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(artists, key = { it }) { artistName ->
-                                    val imageUri = remember(artistName) {
+                                    val imageUri = remember(artistName, songs.size) {
                                         songs.firstOrNull { it.artist == artistName }?.songArtUri
                                     }
 

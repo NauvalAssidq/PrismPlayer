@@ -26,6 +26,9 @@ interface PlaylistDao {
   @Insert(onConflict = OnConflictStrategy.IGNORE)
   suspend fun addSongToPlaylist(entry: PlaylistEntry)
 
+  @Insert(onConflict = OnConflictStrategy.IGNORE)
+  suspend fun addSongsToPlaylist(entries: List<PlaylistEntry>)
+
   @Query("SELECT * FROM playlist_entries WHERE playlistId = :playlistId ORDER BY dateAdded ASC")
   fun getEntriesForPlaylist(playlistId: Long): Flow<List<PlaylistEntry>>
 
