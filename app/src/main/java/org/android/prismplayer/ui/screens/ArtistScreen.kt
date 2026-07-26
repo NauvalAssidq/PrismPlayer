@@ -74,7 +74,7 @@ fun ArtistScreen(
         }
     }
 
-    val rawColor = rememberImmersiveColor(bitmap)
+    val rawColor = rememberImmersiveColor(artUri = state.heroArtUri, bitmap = bitmap)
 
     val accentColor by
             animateColorAsState(
@@ -87,7 +87,7 @@ fun ArtistScreen(
                                     base
                                 }
                             },
-                    animationSpec = tween(1000),
+                    animationSpec = tween(250),
                     label = "accentGlow"
             )
 

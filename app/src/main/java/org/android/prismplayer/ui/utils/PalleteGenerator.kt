@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
+import androidx.compose.material3.MaterialTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,24 +31,26 @@ fun rememberDominantColor(
 
 @Composable
 fun rememberImmersiveColor(
+    artUri: String?,
     bitmap: Bitmap?,
-    defaultColor: Color = Color(0xFF202020)
+    defaultColor: Color = MaterialTheme.colorScheme.secondary
 ): Color {
-    var color by remember { mutableStateOf(defaultColor) }
-    LaunchedEffect(bitmap) {
-        if (bitmap == null) return@LaunchedEffect
-        launch(Dispatchers.Default) {
-            val generationId = "immersive_${bitmap.hashCode()}"
-            val cached = paletteCache.get(generationId)
+    val cacheKey = artUri ?: bitmap?.hashCode()?.toString() ?: ""
+    val cachedColor = if (cacheKey.isNotEmpty()) paletteCache.get(cacheKey) else null
 
-            if (cached != null) {
-                withContext(Dispatchers.Main) { color = cached }
-            } else {
-                val extracted = PrismaColorUtils.extractDominantColor(bitmap)
-                val finalColor = PrismaColorUtils.adjustForAccent(extracted)
-                paletteCache.put(generationId, finalColor)
-                withContext(Dispatchers.Main) { color = finalColor }
-            }
+    var color by remember(cacheKey) { mutableStateOf(cachedColor ?: defaultColor) }
+
+    LaunchedEffect(bitmap, cacheKey) {
+        if (bitmap == null || cacheKey.isEmpty()) return@LaunchedEffect
+        if (paletteCache.get(cacheKey) != null) {
+            color = paletteCache.get(cacheKey)!!
+            return@LaunchedEffect
+        }
+        launch(Dispatchers.Default) {
+            val extracted = PrismaColorUtils.extractDominantColor(bitmap)
+            val finalColor = PrismaColorUtils.adjustForAccent(extracted)
+            paletteCache.put(cacheKey, finalColor)
+            withContext(Dispatchers.Main) { color = finalColor }
         }
     }
 
