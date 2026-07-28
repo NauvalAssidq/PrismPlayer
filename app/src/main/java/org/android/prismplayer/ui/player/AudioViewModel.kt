@@ -130,7 +130,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
                     val calcDuration = _duration.value.coerceAtLeast(1)
                     _progress.value = activePlayer.currentPosition.toFloat() / calcDuration
                 }
-                delay(100)
+                delay(250)
             }
         }
 

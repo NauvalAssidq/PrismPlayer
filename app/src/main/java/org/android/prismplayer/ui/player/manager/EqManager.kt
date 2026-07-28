@@ -45,22 +45,41 @@ object EqManager {
     private val _gainStrength = MutableStateFlow(0f)
     val gainStrength: StateFlow<Float> = _gainStrength.asStateFlow()
 
+    private var lastAudioSessionId: Int = 0
+
     fun setupEqualizer(context: Context, audioSessionId: Int) {
         try {
-            if (equalizer != null) return
-
+            lastAudioSessionId = audioSessionId
             eqPrefs = EqPreferences(context)
             val prefs = eqPrefs!!
+
+            val savedEnabledState = prefs.isEqEnabled
+            _eqEnabled.value = savedEnabledState
+            _currentPresetName.value = prefs.getLastPresetName()
+            _bassStrength.value = prefs.getBassLevel() / 1000f
+            _virtStrength.value = prefs.getVirtLevel() / 1000f
+            _gainStrength.value = prefs.getGainLevel() / 800f
+
+            if (savedEnabledState) {
+                attachHardwareEffects(audioSessionId)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun attachHardwareEffects(audioSessionId: Int) {
+        try {
+            if (equalizer != null || audioSessionId == 0) return
+            val prefs = eqPrefs ?: return
 
             val eq = Equalizer(0, audioSessionId)
             val enhancer = LoudnessEnhancer(audioSessionId)
             val bass = BassBoost(0, audioSessionId)
             val virt = Virtualizer(0, audioSessionId)
 
-            val savedEnabledState = prefs.isEqEnabled
             loadPresets(prefs, eq.numberOfBands.toInt())
             loadEqBands(prefs, eq)
-            _currentPresetName.value = prefs.getLastPresetName()
 
             val savedBass = prefs.getBassLevel()
             val savedVirt = prefs.getVirtLevel()
@@ -68,23 +87,17 @@ object EqManager {
 
             if (bass.strengthSupported) bass.setStrength(savedBass)
             if (virt.strengthSupported) virt.setStrength(savedVirt)
-            enhancer.setTargetGain(if (savedEnabledState) savedGain else 0)
+            enhancer.setTargetGain(savedGain)
 
-            _bassStrength.value = savedBass / 1000f
-            _virtStrength.value = savedVirt / 1000f
-            _gainStrength.value = savedGain / 800f
-
-            eq.enabled = savedEnabledState
-            enhancer.enabled = savedEnabledState
-            bass.enabled = savedEnabledState
-            virt.enabled = savedEnabledState
+            eq.enabled = true
+            enhancer.enabled = true
+            bass.enabled = true
+            virt.enabled = true
 
             equalizer = eq
             loudnessEnhancer = enhancer
             bassBoost = bass
             virtualizer = virt
-            _eqEnabled.value = savedEnabledState
-
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -124,13 +137,11 @@ object EqManager {
     fun toggleEq(isEnabled: Boolean) {
         val prefs = eqPrefs ?: return
 
-        equalizer?.enabled = isEnabled
-        bassBoost?.enabled = isEnabled
-        virtualizer?.enabled = isEnabled
-        loudnessEnhancer?.enabled = isEnabled
-
-        val savedGain = prefs.getGainLevel()
-        loudnessEnhancer?.setTargetGain(if (isEnabled) savedGain else 0)
+        if (isEnabled) {
+            attachHardwareEffects(lastAudioSessionId)
+        } else {
+            release()
+        }
 
         _eqEnabled.value = isEnabled
         prefs.isEqEnabled = isEnabled

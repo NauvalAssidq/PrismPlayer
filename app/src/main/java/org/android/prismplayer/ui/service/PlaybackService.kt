@@ -56,10 +56,10 @@ class PlaybackService : MediaSessionService() {
 
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                15000,
-                50000,
-                1000,
-                2000
+                30000,
+                120000,
+                2500,
+                5000
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
@@ -70,6 +70,16 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_LOCAL)
             .setLoadControl(loadControl)
             .build()
+
+        val offloadParams = player.trackSelectionParameters
+            .buildUpon()
+            .setAudioOffloadPreferences(
+                androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences.Builder()
+                    .setAudioOffloadMode(androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences.AUDIO_OFFLOAD_MODE_ENABLED)
+                    .build()
+            )
+            .build()
+        player.trackSelectionParameters = offloadParams
 
         AudioSessionHolder.updateSessionId(player.audioSessionId)
         EqManager.setupEqualizer(applicationContext, player.audioSessionId)
