@@ -54,7 +54,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra("EXPAND_PLAYER", false) == true) {
+        if (intent == null) return
+        if (intent.action.isNullOrEmpty()) {
+            intent.action = Intent.ACTION_MAIN
+        }
+        if (intent.getBooleanExtra("EXPAND_PLAYER", false)) {
             expandPlayerFromWidget = true
             intent.removeExtra("EXPAND_PLAYER")
         }
