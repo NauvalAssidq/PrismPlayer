@@ -590,10 +590,10 @@ fun ThemeSelector(currentTheme: AppTheme, onThemeSelected: (AppTheme) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         ThemeOption(
-            label = "SYSTEM",
+            label = "SYS",
             isSelected = currentTheme == AppTheme.SYSTEM,
             onClick = { onThemeSelected(AppTheme.SYSTEM) },
             modifier = Modifier.weight(1f)
@@ -608,6 +608,12 @@ fun ThemeSelector(currentTheme: AppTheme, onThemeSelected: (AppTheme) -> Unit) {
             label = "DARK",
             isSelected = currentTheme == AppTheme.DARK,
             onClick = { onThemeSelected(AppTheme.DARK) },
+            modifier = Modifier.weight(1f)
+        )
+        ThemeOption(
+            label = "OLED",
+            isSelected = currentTheme == AppTheme.OLED_BLACK,
+            onClick = { onThemeSelected(AppTheme.OLED_BLACK) },
             modifier = Modifier.weight(1f)
         )
     }

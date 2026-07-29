@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -218,6 +219,7 @@ fun FullPlayerContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer()
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
@@ -258,14 +260,15 @@ fun FullPlayerContent(
                         style = MaterialTheme.typography.labelSmall,
                         color = glowColor,
                         fontFamily = FontFamily.Monospace,
-                        fontSize = 9.sp
+                        fontSize = 10.sp,
+                        letterSpacing = 1.sp
                     )
                     Text(
-                        "PRISM_OS",
-                        style = MaterialTheme.typography.labelMedium,
+                        song.title.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onBackground.copy(0.7f),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -280,6 +283,7 @@ fun FullPlayerContent(
                 modifier = Modifier
                     .width(screenWidth * artWidthFraction)
                     .aspectRatio(1f)
+                    .graphicsLayer()
                     .background(MaterialTheme.colorScheme.surfaceVariant)
                     .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(0.15f))
                     .padding(6.dp)

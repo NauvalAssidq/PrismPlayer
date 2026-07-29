@@ -35,6 +35,25 @@ private val DarkColorScheme = darkColorScheme(
     outlineVariant = Color(0xFF333333)
 )
 
+private val OledDarkColorScheme = darkColorScheme(
+    primary = PrismColor.White,
+    onPrimary = PrismColor.Black,
+    primaryContainer = PrismColor.Black,
+    onPrimaryContainer = PrismColor.White,
+    secondary = PrismColor.Red,
+    onSecondary = PrismColor.White,
+    secondaryContainer = PrismColor.Red.copy(alpha = 0.2f),
+    onSecondaryContainer = PrismColor.Red,
+    background = PrismColor.Black,
+    onBackground = PrismColor.White,
+    surface = PrismColor.Black,
+    onSurface = PrismColor.White,
+    surfaceVariant = PrismColor.Black,
+    onSurfaceVariant = PrismColor.LightGrey,
+    outline = Color(0xFF222222),
+    outlineVariant = Color(0xFF111111)
+)
+
 private val LightColorScheme = lightColorScheme(
     primary = PrismColor.Black,
     onPrimary = PrismColor.White,
@@ -56,11 +75,13 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun PrismPlayerTheme(
+    appTheme: org.android.prismplayer.ui.utils.AppTheme = org.android.prismplayer.ui.utils.AppTheme.SYSTEM,
     darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
+        appTheme == org.android.prismplayer.ui.utils.AppTheme.OLED_BLACK -> OledDarkColorScheme
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -69,6 +90,8 @@ fun PrismPlayerTheme(
         else -> LightColorScheme
     }
 
+    val isDark = darkTheme || appTheme == org.android.prismplayer.ui.utils.AppTheme.OLED_BLACK
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -76,8 +99,8 @@ fun PrismPlayerTheme(
             window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
             val controller = WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = !darkTheme
-            controller.isAppearanceLightNavigationBars = !darkTheme
+            controller.isAppearanceLightStatusBars = !isDark
+            controller.isAppearanceLightNavigationBars = !isDark
         }
     }
 

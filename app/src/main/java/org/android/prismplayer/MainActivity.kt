@@ -35,10 +35,10 @@ class MainActivity : ComponentActivity() {
             val isDarkTheme = when (appTheme) {
                 AppTheme.SYSTEM -> isSystemInDarkTheme()
                 AppTheme.LIGHT -> false
-                AppTheme.DARK -> true
+                AppTheme.DARK, AppTheme.OLED_BLACK -> true
             }
 
-            PrismPlayerTheme(darkTheme = isDarkTheme) {
+            PrismPlayerTheme(appTheme = appTheme, darkTheme = isDarkTheme) {
                 AppNavigation(
                     expandPlayer = expandPlayerFromWidget,
                     onExpandConsumed = { expandPlayerFromWidget = false }

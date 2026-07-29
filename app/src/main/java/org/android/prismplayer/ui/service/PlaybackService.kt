@@ -56,11 +56,12 @@ class PlaybackService : MediaSessionService() {
 
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                30000,
-                120000,
+                50000,
+                180000,
                 2500,
                 5000
             )
+            .setTargetBufferBytes(50 * 1024 * 1024)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
 
