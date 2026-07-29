@@ -91,15 +91,17 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
         val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
 
-        controllerFuture.addListener({
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val controller = controllerFuture.get()
-                player = controller
-                setupPlayerListener(controller)
-                queueManager.syncQueueFromController(controller)
-                queueManager.syncPlayerState(controller)
-                controller.currentMediaItem?.let {
-                    queueManager.syncCurrentSong(it)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    player = controller
+                    setupPlayerListener(controller)
+                    queueManager.syncQueueFromController(controller)
+                    queueManager.syncPlayerState(controller)
+                    controller.currentMediaItem?.let {
+                        queueManager.syncCurrentSong(it)
+                    }
                 }
 
                 val store = PlaybackSessionStore(application)
@@ -116,9 +118,9 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-        }, MoreExecutors.directExecutor())
+        }
 
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             while (isActive) {
                 val activePlayer = player
                 if (activePlayer != null && activePlayer.isPlaying && !isSeeking) {
@@ -134,7 +136,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             playlistRepository.allPlaylists.collect { list ->
                 _playlists.value = list
                 val fav = list.find { it.name == FAVORITES_NAME }
@@ -316,7 +318,7 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun observeFavorites(playlistId: Long) {
         favoritesObserverJob?.cancel()
-        favoritesObserverJob = viewModelScope.launch {
+        favoritesObserverJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             database.playlistDao().getEntriesForPlaylist(playlistId).collect { entries ->
                 _likedSongIds.value = entries.map { it.songId }.toSet()
             }
