@@ -91,46 +91,46 @@ class AudioViewModel(application: Application) : AndroidViewModel(application) {
         val sessionToken = SessionToken(application, ComponentName(application, PlaybackService::class.java))
         val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
 
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        controllerFuture.addListener({
             try {
                 val controller = controllerFuture.get()
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    player = controller
-                    setupPlayerListener(controller)
-                    queueManager.syncQueueFromController(controller)
-                    queueManager.syncPlayerState(controller)
-                    controller.currentMediaItem?.let {
-                        queueManager.syncCurrentSong(it)
-                    }
+                player = controller
+                setupPlayerListener(controller)
+                queueManager.syncQueueFromController(controller)
+                queueManager.syncPlayerState(controller)
+                controller.currentMediaItem?.let {
+                    queueManager.syncCurrentSong(it)
                 }
-
-                val store = PlaybackSessionStore(application)
-                val savedState = store.getLastSong()
 
                 val currentDuration = controller.duration
-                val safeDuration = if (currentDuration > 0 && currentDuration != C.TIME_UNSET) {
-                    currentDuration
+                if (currentDuration > 0 && currentDuration != C.TIME_UNSET) {
+                    _duration.value = currentDuration
                 } else {
-                    savedState?.duration ?: 0L
+                    viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        val store = PlaybackSessionStore(application)
+                        val savedState = store.getLastSong()
+                        if (savedState != null && savedState.duration > 0) {
+                            _duration.value = savedState.duration
+                        }
+                    }
                 }
-                _duration.value = safeDuration
-
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-        }
+        }, ContextCompat.getMainExecutor(application))
 
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
             while (isActive) {
                 val activePlayer = player
                 if (activePlayer != null && activePlayer.isPlaying && !isSeeking) {
-                    _currentTime.value = activePlayer.currentPosition
+                    val pos = activePlayer.currentPosition
                     val realDuration = activePlayer.duration
+                    _currentTime.value = pos
                     if (realDuration > 0 && realDuration != C.TIME_UNSET) {
                         _duration.value = realDuration
                     }
                     val calcDuration = _duration.value.coerceAtLeast(1)
-                    _progress.value = activePlayer.currentPosition.toFloat() / calcDuration
+                    _progress.value = pos.toFloat() / calcDuration
                 }
                 delay(250)
             }
